@@ -1,0 +1,53 @@
+import { useEffect, useRef, useState } from 'react';
+import { Bell, ChevronDown, LogOut, Menu, MessageSquare, Search, UserRound } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
+import './TopBar.css';
+
+export default function TopBar({ onMenu }) {
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
+  const [open, setOpen] = useState(false);
+  const menuRef = useRef(null);
+
+  useEffect(() => {
+    const close = (event) => {
+      if (!menuRef.current?.contains(event.target)) setOpen(false);
+    };
+    document.addEventListener('mousedown', close);
+    return () => document.removeEventListener('mousedown', close);
+  }, []);
+
+  const handleLogout = () => {
+    logout();
+    setOpen(false);
+    navigate('/login', { replace: true });
+  };
+
+  return (
+    <header className="topbar">
+      <button className="icon-btn mobile-menu" onClick={onMenu} aria-label="Open navigation"><Menu size={21} /></button>
+      <label className="searchbox">
+        <Search size={17} />
+        <input placeholder="Search anything..." />
+      </label>
+      <div className="topbar-actions">
+        <Link className="icon-btn notification-dot" to="/notifications" aria-label="Notifications"><Bell size={19} /></Link>
+        <button className="icon-btn notification-dot subtle" aria-label="Messages"><MessageSquare size={19} /></button>
+        <div className="profile-menu" ref={menuRef}>
+          <button type="button" className="profile-trigger" onClick={() => setOpen((value) => !value)} aria-expanded={open} aria-haspopup="menu">
+            <div className="avatar">{user?.initials}</div>
+            <div className="profile-copy"><strong>{user?.name}</strong><span>{user?.title}</span></div>
+            <ChevronDown size={16} className={open ? 'rotate-180' : ''} />
+          </button>
+          {open && (
+            <div className="profile-dropdown" role="menu">
+              <button type="button" onClick={() => { setOpen(false); navigate('/profile'); }}><UserRound size={17} /> My Profile</button>
+              <button type="button" className="danger" onClick={handleLogout}><LogOut size={17} /> Logout</button>
+            </div>
+          )}
+        </div>
+      </div>
+    </header>
+  );
+}

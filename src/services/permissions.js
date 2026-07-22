@@ -1,0 +1,95 @@
+export const PERMISSIONS = {
+  EMPLOYEE: [
+    "DASHBOARD_VIEW_OWN",
+    "ATTENDANCE_MARK",
+    "ATTENDANCE_VIEW_OWN",
+    "LEAVE_APPLY",
+    "LEAVE_VIEW_OWN",
+    "PAYSLIP_VIEW_OWN",
+    "TIMESHEET_CREATE",
+    "TIMESHEET_VIEW_OWN",
+    "PERFORMANCE_VIEW_OWN",
+    "POST_VIEW",
+    "POST_LIKE",
+    "POST_COMMENT",
+    "PROFILE_EDIT_OWN",
+  ],
+
+  MANAGER: [
+    "DASHBOARD_VIEW_TEAM",
+    "ATTENDANCE_MARK",
+    "ATTENDANCE_VIEW_OWN",
+    "TEAM_ATTENDANCE_VIEW",
+    "LEAVE_APPLY",
+    "LEAVE_VIEW_OWN",
+    "LEAVE_APPROVE_HR",
+    "TIMESHEET_CREATE",
+    "TIMESHEET_APPROVE",
+    "TEAM_PERFORMANCE_VIEW",
+    "PERFORMANCE_CREATE",
+    "POST_VIEW",
+    "POST_LIKE",
+    "POST_COMMENT",
+  ],
+
+  HR_ADMIN: [
+    "DASHBOARD_VIEW_HR",
+    "ATTENDANCE_MARK",
+    "ATTENDANCE_MANAGE",
+    "LEAVE_APPLY",
+    "LEAVE_VIEW_OWN",
+    "LEAVE_APPROVE_EMPLOYEE",
+    "LEAVE_APPROVE_PAYROLL",
+    "EMPLOYEE_CREATE",
+    "EMPLOYEE_EDIT",
+    "EMPLOYEE_DELETE",
+    "EMPLOYEE_VIEW",
+    "POST_CREATE",
+    "POST_EDIT",
+    "POST_DELETE",
+    "ANNOUNCEMENT_CREATE",
+    "EVENT_CREATE",
+    "BIRTHDAY_POST_CREATE",
+    "REPORT_VIEW_HR",
+  ],
+
+  PAYROLL_ADMIN: [
+    "DASHBOARD_VIEW_PAYROLL",
+    "LEAVE_APPLY",
+    "LEAVE_VIEW_OWN",
+    "PAYROLL_CREATE",
+    "PAYROLL_EDIT",
+    "PAYROLL_PROCESS",
+    "PAYSLIP_GENERATE",
+    "FORM16_MANAGE",
+    "PAYROLL_REPORT_VIEW",
+  ],
+
+  SUPER_ADMIN: [
+    "DASHBOARD_VIEW_SUPER_ADMIN",
+    "LEAVE_APPROVE_MANAGER",
+    "USER_MANAGE",
+    "ROLE_MANAGE",
+    "PERMISSION_MANAGE",
+    "SETTINGS_MANAGE",
+    "AUDIT_VIEW",
+    "REPORT_VIEW_ALL",
+    "POST_MANAGE_ALL",
+  ],
+
+  CLIENT: [
+    "DASHBOARD_VIEW_CLIENT",
+    "TIMESHEET_VIEW_ASSIGNED",
+    "TIMESHEET_APPROVE_CLIENT",
+  ],
+};
+
+export function hasPermission(role, permission) {
+  return PERMISSIONS[role]?.includes(permission) || false;
+}
+
+export function hasAnyPermission(role, permissions = []) {
+  return permissions.some((permission) =>
+    hasPermission(role, permission)
+  );
+}

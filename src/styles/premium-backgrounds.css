@@ -1,0 +1,128 @@
+/* Calm photographic login backgrounds — no gradient blobs, no looping animation */
+:root {
+  --portal-image: url('../assets/backgrounds/portal-office-real.png');
+  --login-image: url('../assets/backgrounds/login-building-real.jpg');
+}
+
+html, body, #root { min-width: 0; min-height: 100%; }
+body { overflow-x: hidden; }
+
+/* Role portal — one calm screen */
+.role-login-page {
+  position: relative;
+  min-height: 100svh;
+  width: 100%;
+  padding: clamp(16px, 2.5vw, 32px);
+  display: block;
+  overflow-x: hidden;
+  overflow-y: auto;
+  background-image:
+    linear-gradient(110deg, rgba(248, 250, 255, .78), rgba(238, 244, 255, .72)),
+    var(--portal-image);
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+.role-login-shell {
+  width: min(1180px, 100%);
+  min-width: 0;
+  margin: 0 auto;
+  position: relative;
+  z-index: 2;
+}
+
+@media (min-width: 901px) {
+  .role-login-page {
+    height: 100dvh;
+    min-height: 100dvh;
+    overflow: hidden;
+    display: flex;
+    align-items: stretch;
+    padding: clamp(10px, 1.6vh, 18px) clamp(18px, 2.2vw, 30px);
+  }
+  .role-login-shell {
+    height: 100%;
+    display: grid;
+    grid-template-rows: auto auto minmax(0, 1fr) auto;
+    align-content: stretch;
+    gap: clamp(7px, 1.1vh, 12px);
+  }
+}
+
+/* Individual role login — single photographic backdrop, floating form */
+.login-page {
+  position: relative;
+  min-height: 100svh;
+  width: 100%;
+  display: block;
+  overflow: hidden;
+  background-image:
+    linear-gradient(100deg, rgba(8, 38, 120, .62) 0%, rgba(28, 64, 168, .5) 60%, rgba(20, 32, 64, .35) 100%),
+    var(--login-image);
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+.login-visual {
+  position: absolute;
+  inset: 0;
+  min-height: 0;
+  padding: 0;
+  background: transparent;
+  pointer-events: none;
+}
+.login-visual .visual-copy,
+.login-visual .floating-card,
+.login-visual .orb { display: none; }
+
+.login-panel {
+  position: relative;
+  z-index: 2;
+  min-height: 100svh;
+  width: 100%;
+  max-width: 520px;
+  margin: 0 auto;
+  padding: clamp(18px, 3vw, 42px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  backdrop-filter: none;
+}
+
+@media (min-width: 901px) {
+  .login-page {
+    height: 100dvh;
+    min-height: 100dvh;
+  }
+  .login-panel {
+    min-height: 100dvh;
+    width: 56%;
+    max-width: 620px;
+    margin: 0;
+    margin-left: auto;
+    padding: 24px 30px;
+  }
+}
+
+@media (max-width: 900px) {
+  .login-page {
+    min-height: 100dvh;
+    overflow-y: auto;
+    background-position: 68% center;
+  }
+  .login-panel {
+    min-height: 100svh;
+    padding: 16px;
+  }
+}
+
+/* App shell background — calm, no blobs */
+.main-content {
+  position: relative;
+  isolation: isolate;
+  background: var(--bg);
+}
+.main-content::before { display: none; }
