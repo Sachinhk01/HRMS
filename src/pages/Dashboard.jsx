@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   BookOpen,
@@ -20,7 +20,7 @@ import {
 import SummaryCard from '../components/SummaryCard';
 import { useAuth } from '../context/AuthContext';
 import { getEmployees } from '../services/employeeService';
-import { getAttendanceRecords, getTodayAttendance } from '../services/attendanceService';
+import { getAttendanceDashboard, getAttendanceHistory } from '../services/attendanceService';
 import { getLeaveSummary, getPendingApprovals } from '../services/leaveService';
 import { announcementStore, eventStore, postStore } from '../services/contentService';
 import { getEmployeeOfMonth, getMonthlyMagazine, saveEmployeeOfMonth, saveMonthlyMagazine } from '../services/dashboardContentService';
@@ -58,11 +58,66 @@ export default function Dashboard() {
   const leaveSummary = getLeaveSummary(user.id);
   const upcomingHoliday = getUpcomingHoliday();
 
+  // ---- NEW: attendance state (replaces getAttendanceRecords / getTodayAttendance) ----
+  const [attendanceDashboard, setAttendanceDashboard] = useState(null);
+  const [attendanceCount, setAttendanceCount] = useState(0);
+  const [attendanceLoading, setAttendanceLoading] = useState(true);
+  const [attendanceError, setAttendanceError] = useState('');
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadAttendance() {
+      setAttendanceLoading(true);
+      setAttendanceError('');
+      try {
+        const [dashboardData, historyData] = await Promise.all([
+          getAttendanceDashboard(),
+          getAttendanceHistory(),
+        ]);
+
+        if (cancelled) return;
+
+        setAttendanceDashboard(dashboardData);
+
+        // NOTE: adjust this if your backend wraps history differently,
+        // e.g. historyData.records instead of historyData directly.
+        const records = Array.isArray(historyData)
+          ? historyData
+          : historyData?.records || historyData?.content || [];
+        setAttendanceCount(records.length);
+      } catch (error) {
+        if (!cancelled) {
+          setAttendanceError(error?.response?.data?.message || 'Failed to load attendance data.');
+        }
+      } finally {
+        if (!cancelled) setAttendanceLoading(false);
+      }
+    }
+
+    loadAttendance();
+    return () => { cancelled = true; };
+  }, []);
+
+  // Today's check-in status — adjust field name if your DTO differs
+  // (e.g. checkInTime, firstCheckIn, todayCheckInAt, etc.)
+  const isCheckedInToday = Boolean(
+    attendanceDashboard?.checkInAt ||
+    attendanceDashboard?.checkInTime ||
+    attendanceDashboard?.todayCheckInAt ||
+    attendanceDashboard?.currentStatus === 'WORKING' ||
+    attendanceDashboard?.currentStatus === 'ON_BREAK'
+  );
+
   let cards = [];
   let links = [];
   if (role === 'EMPLOYEE') {
-    const today = getTodayAttendance(user.id);
-    cards = [[Clock3, 'Attendance', today?.checkInAt ? 'Marked' : 'Not marked', 'Today', 'green', '/attendance'], [CalendarDays, 'Leaves left', leaveSummary.left, `${leaveSummary.taken} days taken`, 'pink', '/leave'], [PartyPopper, 'Celebrations', postStore.all().length, 'Published posts', 'orange', '/celebrations'], [UserRound, 'Profile', 'Update', 'Personal details', 'teal', '/profile']];
+    cards = [
+      [Clock3, 'Attendance', attendanceLoading ? '...' : (isCheckedInToday ? 'Marked' : 'Not marked'), 'Today', 'green', '/attendance'],
+      [CalendarDays, 'Leaves left', leaveSummary.left, `${leaveSummary.taken} days taken`, 'pink', '/leave'],
+      [PartyPopper, 'Celebrations', postStore.all().length, 'Published posts', 'orange', '/celebrations'],
+      [UserRound, 'Profile', 'Update', 'Personal details', 'teal', '/profile'],
+    ];
     links = [
       { label: "Attendance", path: "/attendance", icon: Clock3 },
       { label: "Apply Leave", path: "/leave", icon: CalendarDays },
@@ -70,7 +125,12 @@ export default function Dashboard() {
       { label: "Profile", path: "/profile", icon: UserRound },
     ];
   } else if (role === 'HR_ADMIN') {
-    cards = [[Users, 'Employees', employees.length, 'Total users', 'green', '/employees'], [Clock3, 'Attendance', getAttendanceRecords().length, 'Records', 'teal', '/attendance'], [Megaphone, 'Announcements', announcementStore.all().length, 'Published', 'orange', '/announcements'], [CalendarRange, 'Events', eventStore.all().length, 'Created', 'pink', '/events']];
+    cards = [
+      [Users, 'Employees', employees.length, 'Total users', 'green', '/employees'],
+      [Clock3, 'Attendance', attendanceLoading ? '...' : attendanceCount, 'Records', 'teal', '/attendance'],
+      [Megaphone, 'Announcements', announcementStore.all().length, 'Published', 'orange', '/announcements'],
+      [CalendarRange, 'Events', eventStore.all().length, 'Created', 'pink', '/events'],
+    ];
     links = [
       { label: "Employees", path: "/employees", icon: Users },
       { label: "My Leave", path: "/leave", icon: CalendarDays },
@@ -80,7 +140,12 @@ export default function Dashboard() {
       { label: "Reports", path: "/reports", icon: BookOpen },
     ];
   } else {
-    cards = [[ClipboardCheck, 'Pending leave', getPendingApprovals(user.id).length, 'Awaiting decision', 'pink', '/leave-approvals'], [CalendarDays, 'My leaves left', leaveSummary.left, `${leaveSummary.taken} days taken`, 'blue', '/leave'], [Clock3, 'Attendance', getAttendanceRecords().length, 'Team records', 'green', '/attendance'], [Target, 'Performance', 'Review', 'Team goals', 'orange', '/performance']];
+    cards = [
+      [ClipboardCheck, 'Pending leave', getPendingApprovals(user.id).length, 'Awaiting decision', 'pink', '/leave-approvals'],
+      [CalendarDays, 'My leaves left', leaveSummary.left, `${leaveSummary.taken} days taken`, 'blue', '/leave'],
+      [Clock3, 'Attendance', attendanceLoading ? '...' : attendanceCount, 'Team records', 'green', '/attendance'],
+      [Target, 'Performance', 'Review', 'Team goals', 'orange', '/performance'],
+    ];
     links = [
       { label: "My Leave", path: "/leave", icon: CalendarDays },
       { label: "Leave Approvals", path: "/leave-approvals", icon: ClipboardCheck },
@@ -128,6 +193,8 @@ export default function Dashboard() {
           <img src={welcomePersonImg} alt="Person working on laptop" />
         </div>
       </section>
+
+      {attendanceError && <div className="form-alert">{attendanceError}</div>}
 
       <div className="summary-grid">{cards.map(([Icon, label, value, meta, tone, path]) => <SummaryCard key={label} icon={Icon} label={label} value={value} meta={meta} tone={tone} onClick={() => nav(path)} />)}</div>
 
