@@ -27,16 +27,67 @@ export default function CelebrationWall() {
   const [imageText, setImageText] = useState('');
   const [commentDrafts, setCommentDrafts] = useState({});
   const isHr = user.role === 'HR_ADMIN';
-  const members = getEmployees().filter((member) => member.id !== user.id && member.active !== false);
-  const filteredMembers = members.filter((member) => {
-    const term = memberSearch.trim().toLowerCase();
-    return !term || member.name?.toLowerCase().includes(term) || member.email?.toLowerCase().includes(term);
-  });
-  useEffect(() => { if (isHr && ensureAutomaticCelebrations(user, getEmployees()).length) setPosts(postStore.all()); }, []);
-  const visible = useMemo(() => {
-    const filtered = active === 'ALL' ? posts : posts.filter((item) => item.type === active);
-    return sortRecent(filtered).sort((a, b) => Number(Boolean(b.pinned)) - Number(Boolean(a.pinned)));
-  }, [posts, active]);
+const [members, setMembers] = useState([]);
+
+useEffect(() => {
+  let cancelled = false;
+  async function loadMembers() {
+    try {
+      const result = await getEmployees({ size: 100 });
+      const normalized = (result?.content || [])
+        .filter((member) => member.id !== user.id && member.active !== false)
+        .map((member) => ({
+          ...member,
+          name: `${member.firstName} ${member.lastName || ''}`.trim(),
+          dob: member.dateOfBirth,
+        }));
+      if (!cancelled) setMembers(normalized);
+      if (!cancelled && isHr && ensureAutomaticCelebrations(user, normalized).length) {
+        setPosts(postStore.all());
+      }
+    } catch (error) {
+      if (!cancelled) setMembers([]);
+    }
+  }
+  loadMembers();
+  return () => { cancelled = true; };
+}, []);
+
+useEffect(() => {
+  let cancelled = false;
+  async function loadMembers() {
+    try {
+      const result = await getEmployees({ size: 100 });
+      const normalized = (result?.content || [])
+        .filter((member) => member.id !== user.id && member.active !== false)
+        .map((member) => ({
+          ...member,
+          name: `${member.firstName} ${member.lastName || ''}`.trim(),
+          dob: member.dateOfBirth,
+        }));
+      if (!cancelled) setMembers(normalized);
+      if (!cancelled && isHr && ensureAutomaticCelebrations(user, normalized).length) {
+        setPosts(postStore.all());
+      }
+    } catch (error) {
+      if (!cancelled) setMembers([]);
+    }
+  }
+  loadMembers();
+  return () => { cancelled = true; };
+}, []);
+
+const filteredMembers = members.filter((member) => {
+  const term = memberSearch.trim().toLowerCase();
+  return !term || member.name?.toLowerCase().includes(term) || member.email?.toLowerCase().includes(term);
+});
+
+const visible = useMemo(() => {
+  const filtered = active === 'ALL' ? posts : posts.filter((item) => item.type === active);
+  return sortRecent(filtered).sort((a, b) => Number(Boolean(b.pinned)) - Number(Boolean(a.pinned)));
+}, [posts, active]);
+
+
   const { page, setPage, pageItems, pageSize } = usePagination(visible, 5);
 
   const refresh = () => setPosts(postStore.all());

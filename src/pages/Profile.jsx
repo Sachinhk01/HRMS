@@ -4,7 +4,8 @@ import { useSearchParams } from 'react-router-dom';
 import PageHeader from '../components/PageHeader';
 import { useAuth } from '../context/AuthContext';
 import { hrmsService } from '../services/hrmsService';
-import { getEmployees } from '../services/employeeService';
+
+import { getEmployeeById, getProfilePhotoUrl } from '../services/employeeService';
 import './Profile.css';
 
 const TABS = ['Personal Info', 'Employment Details', 'Change Password'];
@@ -13,72 +14,76 @@ export default function Profile() {
   const { user, updateUser } = useAuth();
   const [searchParams] = useSearchParams();
   const requestedUserId = searchParams.get('user');
-  const isOwnProfile = !requestedUserId || requestedUserId === user?.id;
+  const isOwnProfile = !requestedUserId || requestedUserId === String(user?.id);
   const [profile, setProfile] = useState(null);
+  const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState('');
+  const [error, setError] = useState('');
   const [passwordError, setPasswordError] = useState('');
   const [activeTab, setActiveTab] = useState(TABS[0]);
+  const [photoObjectUrl, setPhotoObjectUrl] = useState('');
+  const [photoUploading, setPhotoUploading] = useState(false);
 
-  useEffect(() => {
-    if (isOwnProfile) {
-      hrmsService.getProfile(user?.email)
-        .then(setProfile)
-        .catch((err) => console.error('Profile fetch failed:', err.message));
-    } else {
-      setProfile(getEmployees().find((employee) => employee.id === requestedUserId) || null);
-    }
-  }, [user?.email, requestedUserId, isOwnProfile]);
-
-  const persist = async (updates) => {
-    const next = await hrmsService.saveProfile(updates);
-    const saved = next.find ? next.find((item) => item.id === updates.id) : next;
-    setProfile(saved || updates);
-    return saved || updates;
+  const loadProfile = () => {
+    setLoading(true);
+    setError('');
+    const loader = isOwnProfile ? hrmsService.getProfile() : getEmployeeById(requestedUserId);
+    loader
+      .then(setProfile)
+      .catch((err) => {
+        setProfile(null);
+        setError(err?.response?.data?.message || err.message || 'Failed to load profile.');
+      })
+      .finally(() => setLoading(false));
   };
+  useEffect(() => {
+  let objectUrl;
+  if (profile?.hasProfilePhoto) {
+    getProfilePhotoUrl(profile.id)
+      .then((url) => { objectUrl = url; setPhotoObjectUrl(url); })
+      .catch(() => setPhotoObjectUrl(''));
+  } else {
+    setPhotoObjectUrl('');
+  }
+  return () => { if (objectUrl) URL.revokeObjectURL(objectUrl); };
+}, [profile?.id, profile?.hasProfilePhoto]);
+
+  useEffect(loadProfile, [user?.id, requestedUserId, isOwnProfile]);
 
   const save = async (event) => {
     event.preventDefault();
+    setMessage('');
+    setError('');
     const form = new FormData(event.currentTarget);
     const updates = {
-      ...profile,
-      name: form.get('name'),
-      email: form.get('email'),
-      phone: form.get('phone'),
-      dob: form.get('dob'),
+      firstName: form.get('firstName'),
+      lastName: form.get('lastName'),
+      phoneNumber: form.get('phoneNumber'),
       gender: form.get('gender'),
-      emergencyContact: form.get('emergencyContact'),
-      address: form.get('address'),
+      dateOfBirth: form.get('dateOfBirth'),
     };
 
-    await persist(updates);
-    updateUser({ ...user, name: updates.name, email: updates.email, phone: updates.phone });
-    setMessage('Profile updated.');
-  };
-
-  const saveEmployment = async (event) => {
-    event.preventDefault();
-    const form = new FormData(event.currentTarget);
-    const updates = {
-      ...profile,
-      title: form.get('title'),
-      department: form.get('department'),
-      doj: form.get('doj'),
-    };
-
-    await persist(updates);
-    setMessage('Employment details updated.');
+    try {
+      const saved = await hrmsService.saveProfile(updates);
+      setProfile(saved);
+      updateUser({ ...user, name: `${saved.firstName} ${saved.lastName || ''}`.trim() });
+      setMessage('Profile updated.');
+    } catch (err) {
+      setError(err?.response?.data?.message || err.message || 'Failed to update profile.');
+    }
   };
 
   const changePassword = async (event) => {
     event.preventDefault();
     setPasswordError('');
+    setMessage('');
     const form = new FormData(event.currentTarget);
-    const currentPassword = form.get('currentPassword');
+    const oldPassword = form.get('oldPassword');
     const newPassword = form.get('newPassword');
     const confirmPassword = form.get('confirmPassword');
 
-    if (newPassword.length < 6) {
-      setPasswordError('New password must be at least 6 characters.');
+    if (newPassword.length < 8) {
+      setPasswordError('New password must be at least 8 characters.');
       return;
     }
     if (newPassword !== confirmPassword) {
@@ -87,58 +92,63 @@ export default function Profile() {
     }
 
     try {
-      if (typeof hrmsService.changePassword === 'function') {
-        await hrmsService.changePassword(profile.id, { currentPassword, newPassword });
-      } else {
-        await persist({ ...profile, password: newPassword });
-      }
+      await hrmsService.changePassword({ oldPassword, newPassword, confirmPassword });
       setMessage('Password changed successfully.');
       event.currentTarget.reset();
     } catch (err) {
-      setPasswordError(err.message || 'Could not change password.');
+      setPasswordError(err?.response?.data?.message || err.message || 'Could not change password.');
     }
   };
 
-  const handlePhotoChange = (event) => {
+  const handlePhotoChange = async (event) => {
     const file = event.target.files?.[0];
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = async () => {
-      const updates = { ...profile, photoUrl: reader.result };
-      await persist(updates);
-      if (isOwnProfile) updateUser({ ...user, photoUrl: reader.result });
+    setError('');
+    setPhotoUploading(true);
+    try {
+      const saved = await hrmsService.uploadPhoto(file);
+      setProfile(saved);
+      if (isOwnProfile) updateUser({ ...user, photoUrl: saved.profilePhotoUrl });
       setMessage('Profile photo updated.');
-    };
-    reader.readAsDataURL(file);
+    } catch (err) {
+      setError(err?.response?.data?.message || err.message || 'Failed to upload photo.');
+    } finally {
+      setPhotoUploading(false);
+    }
   };
 
-  if (!profile) return <section className="panel"><p className="empty-inline">Profile not found.</p></section>;
+  if (loading) return <section className="panel"><p className="empty-inline">Loading profile…</p></section>;
+  if (!profile) return <section className="panel"><p className="empty-inline">{error || 'Profile not found.'}</p></section>;
 
-  const photoUrl = profile.photoUrl || '';
+  const fullName = `${profile.firstName} ${profile.lastName || ''}`.trim();
+  const initials = fullName.split(' ').map((part) => part[0]).join('').slice(0, 2).toUpperCase();
+  const photoUrl = photoObjectUrl;
 
   return (
     <div className="page-stack profile-page page-reveal">
       <PageHeader
         eyebrow="Employee Profile"
-        title={isOwnProfile ? 'My profile' : profile.name}
+        title={isOwnProfile ? 'My profile' : fullName}
         description="View and manage your personal information."
       />
+
+      {error && <div className="form-alert">{error}</div>}
 
       <section className="panel profile-card">
         <div className="profile-avatar-wrap">
           {photoUrl
-            ? <img className="profile-avatar" src={photoUrl} alt={profile.name} />
-            : <div className="profile-avatar">{profile.initials || 'HR'}</div>}
+            ? <img className="profile-avatar" src={photoUrl} alt={fullName} />
+            : <div className="profile-avatar">{initials || 'HR'}</div>}
           {isOwnProfile && (
             <label className="profile-avatar-edit" title="Change photo">
               <Camera size={14} />
-              <input type="file" accept="image/*" onChange={handlePhotoChange} hidden />
+              <input type="file" accept="image/*" onChange={handlePhotoChange} hidden disabled={photoUploading} />
             </label>
           )}
         </div>
         <div className="profile-card-body">
-          <h2>{profile.name}</h2>
-          <span>{profile.title || profile.position || profile.role}{profile.department ? ` · ${profile.department}` : ''}</span>
+          <h2>{fullName}</h2>
+          <span>{profile.jobTitle || profile.designationName}{profile.departmentName ? ` · ${profile.departmentName}` : ''}</span>
         </div>
       </section>
 
@@ -149,7 +159,7 @@ export default function Profile() {
               key={tab}
               type="button"
               className={activeTab === tab ? 'active' : ''}
-              onClick={() => { setActiveTab(tab); setMessage(''); setPasswordError(''); }}
+              onClick={() => { setActiveTab(tab); setMessage(''); setError(''); setPasswordError(''); }}
               role="tab"
               aria-selected={activeTab === tab}
             >
@@ -162,60 +172,51 @@ export default function Profile() {
           {activeTab === 'Personal Info' && (
             isOwnProfile ? (
               <form className="form-grid" onSubmit={save}>
-                <label>Full Name<input name="name" defaultValue={profile.name} /></label>
-                <label>Email<input name="email" type="email" defaultValue={profile.email} /></label>
-                <label>Phone<input name="phone" defaultValue={profile.phone} /></label>
-                <label>Date of Birth<input name="dob" type="date" defaultValue={profile.dob} /></label>
+                <label>First Name<input name="firstName" defaultValue={profile.firstName} required /></label>
+                <label>Last Name<input name="lastName" defaultValue={profile.lastName} /></label>
+                <label>Email<input value={profile.email} disabled /></label>
+                <label>Phone<input name="phoneNumber" defaultValue={profile.phoneNumber} /></label>
+                <label>Date of Birth<input name="dateOfBirth" type="date" defaultValue={profile.dateOfBirth} /></label>
                 <label>
                   Gender
                   <select name="gender" defaultValue={profile.gender || ''}>
                     <option value="">Select</option>
-                    <option value="Male">Male</option>
-                    <option value="Female">Female</option>
-                    <option value="Other">Other</option>
+                    <option value="MALE">Male</option>
+                    <option value="FEMALE">Female</option>
                   </select>
                 </label>
-                <label>Emergency Contact<input name="emergencyContact" defaultValue={profile.emergencyContact} /></label>
-                <label className="full-span">Address<input name="address" defaultValue={profile.address} /></label>
                 {message && <div className="success-alert full-span">{message}</div>}
                 <button className="btn btn-primary full-span"><Save size={18} />Save changes</button>
               </form>
             ) : (
               <div className="profile-info-grid">
-                <div><span>Full Name</span><strong>{profile.name}</strong></div>
+                <div><span>Full Name</span><strong>{fullName}</strong></div>
                 <div><span>Email</span><strong>{profile.email}</strong></div>
-                <div><span>Phone</span><strong>{profile.phone || 'Not provided'}</strong></div>
-                <div><span>Date of Birth</span><strong>{profile.dob || 'Not provided'}</strong></div>
+                <div><span>Phone</span><strong>{profile.phoneNumber || 'Not provided'}</strong></div>
+                <div><span>Date of Birth</span><strong>{profile.dateOfBirth || 'Not provided'}</strong></div>
                 <div><span>Gender</span><strong>{profile.gender || 'Not provided'}</strong></div>
-                <div><span>Emergency Contact</span><strong>{profile.emergencyContact || 'Not provided'}</strong></div>
-                <div className="full-span"><span>Address</span><strong>{profile.address || 'Not provided'}</strong></div>
               </div>
             )
           )}
 
           {activeTab === 'Employment Details' && (
-            isOwnProfile ? (
-              <form className="form-grid" onSubmit={saveEmployment}>
-                <label>Designation<input name="title" defaultValue={profile.title || profile.position || ''} placeholder="e.g. Software Engineer" /></label>
-                <label>Department<input name="department" defaultValue={profile.department || ''} placeholder="e.g. Engineering" /></label>
-                <label>Date of Joining<input name="doj" type="date" defaultValue={profile.doj || ''} /></label>
-                {message && <div className="success-alert full-span">{message}</div>}
-                <button className="btn btn-primary full-span"><Save size={18} />Save changes</button>
-              </form>
-            ) : (
-              <div className="profile-info-grid">
-                <div><span>Designation</span><strong>{profile.title || profile.position || profile.role}</strong></div>
-                <div><span>Department</span><strong>{profile.department || 'Not provided'}</strong></div>
-                <div><span>Date of Joining</span><strong>{profile.doj || 'Not provided'}</strong></div>
-              </div>
-            )
+            <div className="profile-info-grid">
+              <div><span>Employee Code</span><strong>{profile.employeeCode}</strong></div>
+              <div><span>Job Title</span><strong>{profile.jobTitle || 'Not provided'}</strong></div>
+              <div><span>Designation</span><strong>{profile.designationName || 'Not provided'}</strong></div>
+              <div><span>Department</span><strong>{profile.departmentName || 'Not provided'}</strong></div>
+              <div><span>Date of Joining</span><strong>{profile.dateOfJoining || 'Not provided'}</strong></div>
+              <div><span>Employment Type</span><strong>{profile.employmentType || 'Not provided'}</strong></div>
+              <div><span>Reporting Manager</span><strong>{profile.reportingManagerName || 'Not assigned'}</strong></div>
+              <div className="full-span"><small>Employment details can only be updated by HR from the Employees page.</small></div>
+            </div>
           )}
 
           {activeTab === 'Change Password' && isOwnProfile && (
             <form className="form-grid" onSubmit={changePassword}>
-              <label className="full-span">Current Password<input name="currentPassword" type="password" required /></label>
-              <label>New Password<input name="newPassword" type="password" required minLength={6} /></label>
-              <label>Confirm New Password<input name="confirmPassword" type="password" required minLength={6} /></label>
+              <label className="full-span">Current Password<input name="oldPassword" type="password" required /></label>
+              <label>New Password<input name="newPassword" type="password" required minLength={8} maxLength={20} /></label>
+              <label>Confirm New Password<input name="confirmPassword" type="password" required minLength={8} maxLength={20} /></label>
               {passwordError && <div className="form-alert full-span">{passwordError}</div>}
               {message && !passwordError && <div className="success-alert full-span">{message}</div>}
               <button className="btn btn-primary full-span"><KeyRound size={18} />Update password</button>

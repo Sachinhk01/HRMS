@@ -7,12 +7,29 @@ import { getAttendanceHistory } from '../services/attendanceService';
 import { getSection } from '../services/localStorageService';
 
 export default function Reports() {
-  const employees = getEmployees();
+  const [employees, setEmployees] = useState([]);
+  const [employeesLoading, setEmployeesLoading] = useState(true);
   const leaves = getSection('leaveRequests') || [];
 
   const [attendanceCount, setAttendanceCount] = useState(0);
   const [loadingAttendance, setLoadingAttendance] = useState(true);
   const [attendanceError, setAttendanceError] = useState('');
+
+  useEffect(() => {
+    let cancelled = false;
+    async function loadEmployees() {
+      try {
+        const result = await getEmployees({ size: 100 });
+        if (!cancelled) setEmployees(result?.content || []);
+      } catch {
+        if (!cancelled) setEmployees([]);
+      } finally {
+        if (!cancelled) setEmployeesLoading(false);
+      }
+    }
+    loadEmployees();
+    return () => { cancelled = true; };
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -24,7 +41,6 @@ export default function Reports() {
         const historyData = await getAttendanceHistory();
         if (cancelled) return;
 
-        // NOTE: adjust if backend wraps records differently
         const records = Array.isArray(historyData)
           ? historyData
           : historyData?.records || historyData?.content || [];
@@ -51,7 +67,7 @@ export default function Reports() {
       />
       {attendanceError && <div className="form-alert">{attendanceError}</div>}
       <div className="summary-grid three">
-        <SummaryCard icon={Users} label="Employees" value={employees.length} meta="Total accounts" tone="green" />
+        <SummaryCard icon={Users} label="Employees" value={employeesLoading ? '...' : employees.length} meta="Total accounts" tone="green" />
         <SummaryCard
           icon={Clock3}
           label="Attendance"
@@ -65,20 +81,20 @@ export default function Reports() {
         <div className="table-wrap">
           <table>
             <thead>
-              <tr><th>Employee</th><th>Role</th><th>Department</th><th>Email</th></tr>
+              <tr><th>Employee</th><th>Department</th><th>Designation</th><th>Email</th></tr>
             </thead>
             <tbody>
               {employees.map(x => (
                 <tr key={x.id}>
-                  <td>{x.name}</td>
-                  <td>{x.role === 'HR_ADMIN' ? 'HR' : x.role}</td>
-                  <td>{x.department || '—'}</td>
+                  <td>{x.firstName} {x.lastName}</td>
+                  <td>{x.departmentName || '—'}</td>
+                  <td>{x.designationName || '—'}</td>
                   <td>{x.email}</td>
                 </tr>
               ))}
             </tbody>
           </table>
-          {!employees.length && <p className="empty-inline">No employee records.</p>}
+          {!employeesLoading && !employees.length && <p className="empty-inline">No employee records.</p>}
         </div>
       </section>
     </div>
