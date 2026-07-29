@@ -1,5 +1,9 @@
 import { getSection, setSection } from './localStorageService';
-import { createNotification } from './notificationService';
+// NOTE: notificationService now calls the real backend, which has no endpoint
+// for creating arbitrary client-side notifications (they're generated server-side).
+// This local celebration/announcement module still runs on localStorage and will
+// be reconnected to a real notification trigger when Celebrations is migrated to
+// the backend (a later part).
 
 function crud(section) {
   const all = () => getSection(section) || [];
@@ -25,16 +29,8 @@ export const eventStore = crud('events');
 const postAll = () => getSection('posts') || [];
 const postSave = (value) => setSection('posts', value);
 
-function notifyTaggedUsers(post, actor) {
-  (post.taggedMembers || []).filter((member) => member.id !== actor.id).forEach((member) => {
-    createNotification({
-      userId: member.id,
-      title: 'You were tagged in a celebration post',
-      message: `${actor.name} tagged you in “${post.title}”.`,
-      type: 'MENTION',
-      relatedId: post.id,
-    });
-  });
+function notifyTaggedUsers(_post, _actor) {
+  // TODO: reconnect once Celebrations has a real backend notification trigger.
 }
 
 export const postStore = {

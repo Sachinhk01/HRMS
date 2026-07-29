@@ -59,9 +59,10 @@ export default function Leave() {
 
   const submit = async (event) => {
     event.preventDefault();
+    const formEl = event.currentTarget;
     setMsg('');
     setErr('');
-    const form = new FormData(event.currentTarget);
+    const form = new FormData(formEl);
     const leaveTypeId = Number(form.get('leaveTypeId'));
     const startDate = form.get('from');
     const endDate = form.get('to');
@@ -78,7 +79,7 @@ export default function Leave() {
 
     try {
       await applyLeave({ leaveTypeId, startDate, endDate, reason: reason.trim() });
-      event.currentTarget.reset();
+      formEl.reset();
       await load();
       setPage(1);
       setMsg('Leave request submitted successfully.');

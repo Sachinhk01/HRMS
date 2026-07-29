@@ -20,8 +20,9 @@
 .sidebar-head {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 18px 18px 14px;
+  justify-content: center;
+  position: relative;
+  padding: 10px 14px 6px;
 }
 
 .sidebar-nav {
@@ -175,4 +176,10 @@
   }
   .sidebar--open { transform: translateX(0); }
   .mobile-only { display: inline-flex; }
+}
+.sidebar-head .mobile-only {
+  position: absolute;
+  right: 14px;
+  top: 50%;
+  transform: translateY(-50%);
 }

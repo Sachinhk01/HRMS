@@ -1,0 +1,88 @@
+.notifications-panel {
+  padding: 8px;
+}
+
+.notification-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 14px 12px;
+  border-radius: var(--radius-sm);
+  cursor: default;
+  transition: background .15s ease;
+}
+.notification-row:not(:last-child) {
+  border-bottom: 1px solid var(--line);
+}
+.notification-row.is-unread {
+  background: #f2f7ff;
+  cursor: pointer;
+}
+.notification-row.is-unread:hover {
+  background: #e9f1ff;
+}
+
+.notification-icon {
+  width: 40px;
+  height: 40px;
+  min-width: 40px;
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+  background: #eef1f6;
+  color: var(--muted);
+}
+.notification-icon.tone-blue   { background: #eaf2fe; color: var(--blue); }
+.notification-icon.tone-green  { background: #e7f8f0; color: var(--green); }
+.notification-icon.tone-orange { background: #fef3e3; color: var(--orange); }
+.notification-icon.tone-pink   { background: #fdeaf3; color: var(--pink); }
+.notification-icon.tone-red    { background: #fdeaee; color: var(--red); }
+.notification-icon.tone-teal   { background: #e5f7f5; color: var(--teal); }
+
+.notification-body {
+  flex: 1;
+  min-width: 0;
+}
+.notification-body strong {
+  display: block;
+  font-size: 14px;
+  color: var(--ink);
+  margin-bottom: 2px;
+}
+.notification-body span {
+  display: block;
+  font-size: 13px;
+  color: var(--muted);
+  line-height: 1.4;
+}
+.notification-time {
+  font-size: 11px;
+  color: var(--muted);
+  white-space: nowrap;
+  margin-top: 2px;
+}
+
+.notification-row.is-unread .notification-body strong::after {
+  content: '';
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--blue);
+  margin-left: 8px;
+  vertical-align: middle;
+}
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 8px;
+  padding: 48px 16px;
+  color: var(--muted);
+}
+.empty-state svg { color: var(--line); }
+.empty-state strong { color: var(--ink); font-size: 15px; }
+.empty-state p { margin: 0; font-size: 13px; }

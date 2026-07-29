@@ -31,6 +31,7 @@ import calendarLeaveImg from '../assets/illustrations/calendar-leave.png';
 import celebrationCakeImg from '../assets/illustrations/celebration-cake.png';
 import celebrationGroupImg from '../assets/illustrations/celebration-group.png';
 import './Dashboard.css';
+import BirthdayWidget from '../components/BirthdayWidget';
 
 const actionImages = {
   'Attendance': calendarAttendanceImg,
@@ -264,10 +265,13 @@ useEffect(() => {
         <div className="feature-icon"><CalendarDays size={24} /></div>
         <div>
           <span className="eyebrow">Upcoming Holiday</span>
-          {upcomingHoliday ? <><h2>{upcomingHoliday.name}</h2><p>{new Date(`${upcomingHoliday.date}T00:00:00`).toLocaleDateString([], { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' })}</p></> : <><h2>No upcoming holiday</h2><p>HR or Manager can add holidays from the Holiday List.</p></>}
+        {upcomingHoliday ? <><h2>{upcomingHoliday.holidayName}</h2><p>{new Date(`${upcomingHoliday.holidayDate}T00:00:00`).toLocaleDateString([], { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' })}</p></> : <><h2>No upcoming holiday</h2><p>HR or Manager can add holidays from the Holiday List.</p></>}
         </div>
         <button type="button" className="btn btn-small btn-primary">View Holiday List</button>
       </section>
+      <BirthdayWidget employees={employees} onViewAll={() => nav('/celebrations')} />
+
+      <div className="dashboard-feature-grid"></div>
 
       <div className="dashboard-feature-grid">
         <section className="panel magazine-card">

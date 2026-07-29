@@ -19,6 +19,7 @@ import LeaveApprovals from './pages/LeaveApprovals';
 import Announcements from './pages/Announcements';
 import Events from './pages/Events';
 import AccessDenied from './pages/AccessDenied';
+import Notifications from './pages/Notifications';
 
 function ProtectedRoute() {
   const { user } = useAuth();
@@ -31,8 +32,6 @@ function RoleRoute({ children }) {
 
   const allowed = ROUTE_ROLES[pathname] || [];
   const userRole = user?.roles?.[0];
-
-
 
   return allowed.includes(userRole)
     ? children
@@ -67,6 +66,7 @@ export default function App() {
         <Route path="/events" element={<RoleRoute><Events /></RoleRoute>} />
         <Route path="/reports" element={<RoleRoute><Reports /></RoleRoute>} />
         <Route path="/performance" element={<RoleRoute><Performance /></RoleRoute>} />
+        <Route path="/notifications" element={<RoleRoute><Notifications /></RoleRoute>} />
         <Route path="/access-denied" element={<AccessDenied />} />
       </Route>
 

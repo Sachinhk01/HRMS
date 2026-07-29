@@ -2,13 +2,23 @@ import { useEffect, useRef, useState } from 'react';
 import { Bell, ChevronDown, LogOut, Menu, MessageSquare, Search, UserRound } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { getUnreadCount } from '../services/notificationService';
 import './TopBar.css';
 
 export default function TopBar({ onMenu }) {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
   const menuRef = useRef(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    getUnreadCount()
+      .then((count) => { if (!cancelled) setUnreadCount(count || 0); })
+      .catch(() => { if (!cancelled) setUnreadCount(0); });
+    return () => { cancelled = true; };
+  }, []);
 
   useEffect(() => {
     const close = (event) => {
@@ -32,8 +42,10 @@ export default function TopBar({ onMenu }) {
         <input placeholder="Search anything..." />
       </label>
       <div className="topbar-actions">
-        <Link className="icon-btn notification-dot" to="/notifications" aria-label="Notifications"><Bell size={19} /></Link>
-        <button className="icon-btn notification-dot subtle" aria-label="Messages"><MessageSquare size={19} /></button>
+        <Link className={`icon-btn${unreadCount > 0 ? ' notification-dot' : ''}`} to="/notifications" aria-label="Notifications">
+          <Bell size={19} />
+        </Link>
+        <button className="icon-btn subtle" aria-label="Messages"><MessageSquare size={19} /></button>
         <div className="profile-menu" ref={menuRef}>
           <button type="button" className="profile-trigger" onClick={() => setOpen((value) => !value)} aria-expanded={open} aria-haspopup="menu">
             <div className="avatar">{user?.initials}</div>

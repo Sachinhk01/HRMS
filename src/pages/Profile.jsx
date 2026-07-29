@@ -52,9 +52,10 @@ export default function Profile() {
 
   const save = async (event) => {
     event.preventDefault();
+    const formEl = event.currentTarget;
     setMessage('');
     setError('');
-    const form = new FormData(event.currentTarget);
+    const form = new FormData(formEl);
     const updates = {
       firstName: form.get('firstName'),
       lastName: form.get('lastName'),
@@ -75,9 +76,10 @@ export default function Profile() {
 
   const changePassword = async (event) => {
     event.preventDefault();
+    const formEl = event.currentTarget;
     setPasswordError('');
     setMessage('');
-    const form = new FormData(event.currentTarget);
+    const form = new FormData(formEl);
     const oldPassword = form.get('oldPassword');
     const newPassword = form.get('newPassword');
     const confirmPassword = form.get('confirmPassword');
@@ -94,7 +96,7 @@ export default function Profile() {
     try {
       await hrmsService.changePassword({ oldPassword, newPassword, confirmPassword });
       setMessage('Password changed successfully.');
-      event.currentTarget.reset();
+      formEl.reset();
     } catch (err) {
       setPasswordError(err?.response?.data?.message || err.message || 'Could not change password.');
     }

@@ -129,6 +129,17 @@ export const ROUTE_ROLES = {
     'MANAGER',
     'SUPER_ADMIN',
   ],
+  '/notifications': [
+  'EMPLOYEE',
+  'HR_ADMIN',
+  'MANAGER',
+  'SUPER_ADMIN',
+  'PAYROLL_ADMIN',
+  'CLIENT',
+],
+
+
+
 
   '/performance': [
     'MANAGER',

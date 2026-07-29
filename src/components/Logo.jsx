@@ -6,7 +6,7 @@ export default function Logo({ compact = false }) {
       <img
         src={logo}
         alt="HourlyRecruit Tech Labs"
-        style={{ height: compact ? 42 : 54, width: 'auto' }}
+        style={{ height: compact ? 100 : 120, width: 'auto' }}
       />
     </div>
   );

@@ -1,35 +1,30 @@
-import { getSection, setSection } from './localStorageService';
+import api from './api';
 
-const NOTIFICATIONS_KEY = 'notifications';
-const all = () => getSection(NOTIFICATIONS_KEY) || [];
-const save = (items) => setSection(NOTIFICATIONS_KEY, items);
-const generateId = () => `notification-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-
-export function getNotifications() { return all(); }
-
-export function createNotification(notificationData) {
-  const item = {
-    id: generateId(),
-    userId: notificationData.userId,
-    title: notificationData.title,
-    message: notificationData.message,
-    type: notificationData.type || 'INFO',
-    relatedId: notificationData.relatedId || null,
-    read: false,
-    createdAt: new Date().toISOString(),
-  };
-  save([item, ...all()]);
-  return item;
+/**
+ * Fetch the logged-in employee's notifications (paginated).
+ * Returns the unwrapped PageResponse<NotificationResponse>: { content, page, size, totalElements, totalPages, first, last }
+ */
+export async function getNotifications({ page = 0, size = 10 } = {}) {
+  const { data } = await api.get('/notifications', { params: { page, size } });
+  return data.data;
 }
 
-export const getUserNotifications = (userId) => all().filter((item) => item.userId === userId);
-
-export function markNotificationRead(notificationId) {
-  const next = all().map((item) => item.id === notificationId ? { ...item, read: true } : item);
-  save(next); return next.find((item) => item.id === notificationId);
+export async function getUnreadCount() {
+  const { data } = await api.get('/notifications/unread-count');
+  return data.data;
 }
 
-export function markAllNotificationsRead(userId) {
-  const next = all().map((item) => item.userId === userId ? { ...item, read: true } : item);
-  save(next); return next.filter((item) => item.userId === userId);
+export async function markNotificationRead(notificationId) {
+  const { data } = await api.patch(`/notifications/${notificationId}/read`);
+  return data.data;
+}
+
+export async function markAllNotificationsRead() {
+  const { data } = await api.patch('/notifications/read-all');
+  return data.data;
+}
+
+export async function createAnnouncement({ title, message }) {
+  const { data } = await api.post('/notifications/announcement', { title, message });
+  return data.data;
 }
