@@ -16,15 +16,16 @@ import {
   Wallet,
   Timer,
   Target,
+  ChevronRight,
 } from "lucide-react";
 import SummaryCard from '../components/SummaryCard';
 import { useAuth } from '../context/AuthContext';
-import { getEmployees } from '../services/employeeService';
+import { getEmployees, getBirthdaysToday } from '../services/employeeService';
 import { getAttendanceDashboard, getAttendanceHistory } from '../services/attendanceService';
 import { getMyLeaveBalances, getTeamLeaveRequests } from '../services/leaveService';
 import { announcementStore, eventStore, postStore } from '../services/contentService';
 import { getEmployeeOfMonth, getMonthlyMagazine, saveEmployeeOfMonth, saveMonthlyMagazine } from '../services/dashboardContentService';
-import { getUpcomingHolidays } from '../services/holidayService';
+import { getHolidays, getUpcomingHolidays } from '../services/holidayService';
 import welcomePersonImg from '../assets/illustrations/welcome-person.png';
 import calendarAttendanceImg from '../assets/illustrations/calendar-attendance.png';
 import calendarLeaveImg from '../assets/illustrations/calendar-leave.png';
@@ -32,6 +33,7 @@ import celebrationCakeImg from '../assets/illustrations/celebration-cake.png';
 import celebrationGroupImg from '../assets/illustrations/celebration-group.png';
 import './Dashboard.css';
 import BirthdayWidget from '../components/BirthdayWidget';
+import HighlightCards from '../components/HighlightCards';
 
 const actionImages = {
   'Attendance': calendarAttendanceImg,
@@ -41,6 +43,16 @@ const actionImages = {
   'Celebration Wall': celebrationCakeImg,
   'Events': celebrationGroupImg,
 };
+
+function formatHolidayDate(value) {
+  if (!value) return '';
+  return new Date(`${value}T00:00:00`).toLocaleDateString([], {
+    weekday: 'long',
+    day: '2-digit',
+    month: 'long',
+    year: 'numeric',
+  });
+}
 
 export default function Dashboard() {
   const { user } = useAuth();
@@ -56,11 +68,18 @@ export default function Dashboard() {
   const [employeeOfMonth, setEmployeeOfMonth] = useState(getEmployeeOfMonth());
   const [message, setMessage] = useState('');
   const [employees, setEmployees] = useState([]);
-const [employeesLoading, setEmployeesLoading] = useState(true);
+  const [employeesLoading, setEmployeesLoading] = useState(true);
 
 useEffect(() => {
   let cancelled = false;
+
   async function loadEmployees() {
+    if (!['HR_ADMIN', 'MANAGER'].includes(role)) {
+      setEmployees([]);
+      setEmployeesLoading(false);
+      return;
+    }
+
     try {
       const result = await getEmployees({ size: 100 });
       if (!cancelled) setEmployees(result?.content || []);
@@ -70,18 +89,83 @@ useEffect(() => {
       if (!cancelled) setEmployeesLoading(false);
     }
   }
-  loadEmployees();
-  return () => { cancelled = true; };
-}, []);
-  const [upcomingHoliday, setUpcomingHoliday] = useState(null);
 
-useEffect(() => {
-  let cancelled = false;
-  getUpcomingHolidays()
-    .then((list) => { if (!cancelled) setUpcomingHoliday((list || [])[0] || null); })
-    .catch(() => { if (!cancelled) setUpcomingHoliday(null); });
-  return () => { cancelled = true; };
-}, []);
+  loadEmployees();
+
+  return () => {
+    cancelled = true;
+  };
+}, [role]);
+
+  const [birthdayEmployees, setBirthdayEmployees] = useState([]);
+  const [birthdayLoading, setBirthdayLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadBirthdays() {
+      setBirthdayLoading(true);
+      try {
+        const list = await getBirthdaysToday({ days: 30 });
+        if (!cancelled) setBirthdayEmployees(Array.isArray(list) ? list : []);
+      } catch {
+        if (!cancelled) setBirthdayEmployees([]);
+      } finally {
+        if (!cancelled) setBirthdayLoading(false);
+      }
+    }
+
+    loadBirthdays();
+    window.addEventListener('focus', loadBirthdays);
+    return () => {
+      cancelled = true;
+      window.removeEventListener('focus', loadBirthdays);
+    };
+  }, []);
+
+  const [upcomingHoliday, setUpcomingHoliday] = useState(null);
+  const [upcomingHolidays, setUpcomingHolidays] = useState([]);
+  const [holidaysLoading, setHolidaysLoading] = useState(true);
+  const [holidaysError, setHolidaysError] = useState('');
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadHolidays() {
+      setHolidaysLoading(true);
+      setHolidaysError('');
+      try {
+        const [upcomingResult, holidayList] = await Promise.all([
+          getUpcomingHolidays(),
+          getHolidays({ size: 6, active: true, sortDirection: 'asc' }),
+        ]);
+
+        if (cancelled) return;
+
+        const upcoming = Array.isArray(upcomingResult) ? upcomingResult.filter(Boolean) : [];
+        const fallback = Array.isArray(holidayList?.content)
+          ? holidayList.content
+              .filter((item) => item?.holidayDate)
+              .sort((a, b) => new Date(a.holidayDate) - new Date(b.holidayDate))
+              .slice(0, 4)
+          : [];
+
+        setUpcomingHoliday(upcoming[0] || fallback[0] || null);
+        setUpcomingHolidays(upcoming.length ? upcoming.slice(0, 4) : fallback);
+      } catch (error) {
+        if (!cancelled) {
+          setUpcomingHoliday(null);
+          setUpcomingHolidays([]);
+          setHolidaysError(error?.message || 'Failed to load holiday data.');
+        }
+      } finally {
+        if (!cancelled) setHolidaysLoading(false);
+      }
+    }
+
+    loadHolidays();
+    return () => { cancelled = true; };
+  }, []);
 
   // ---- Attendance state ----
   const [attendanceDashboard, setAttendanceDashboard] = useState(null);
@@ -186,10 +270,10 @@ useEffect(() => {
       { label: "Celebration Wall", path: "/celebrations", icon: PartyPopper },
       { label: "Profile", path: "/profile", icon: UserRound },
     ];
-  } else if (role === 'HR_ADMIN') {
+} else if (role === 'HR_ADMIN') {
     cards = [
       [Users, 'Employees', employees.length, 'Total users', 'green', '/employees'],
-      [Clock3, 'Attendance', attendanceLoading ? '...' : attendanceCount, 'Records', 'teal', '/attendance'],
+      [Clock3, 'My Attendance', attendanceLoading ? '...' : (isCheckedInToday ? 'Marked' : 'Not marked'), 'Check in / out', 'teal', '/attendance'],
       [Megaphone, 'Announcements', announcementStore.all().length, 'Published', 'orange', '/announcements'],
       [CalendarRange, 'Events', eventStore.all().length, 'Created', 'pink', '/events'],
     ];
@@ -261,29 +345,46 @@ useEffect(() => {
 
       <div className="summary-grid">{cards.map(([Icon, label, value, meta, tone, path]) => <SummaryCard key={label} icon={Icon} label={label} value={value} meta={meta} tone={tone} onClick={() => nav(path)} />)}</div>
 
-      <section className="panel dashboard-holiday-banner" onClick={() => nav('/holidays')} role="button" tabIndex={0}>
+      <BirthdayWidget employees={birthdayEmployees} onViewAll={() => nav('/celebrations')} />
+
+      <section
+        className="panel dashboard-holiday-banner"
+        onClick={() => nav('/holidays')}
+        onKeyDown={(event) => {
+          if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            nav('/holidays');
+          }
+        }}
+        role="button"
+        tabIndex={0}
+      >
         <div className="feature-icon"><CalendarDays size={24} /></div>
-        <div>
-          <span className="eyebrow">Upcoming Holiday</span>
-        {upcomingHoliday ? <><h2>{upcomingHoliday.holidayName}</h2><p>{new Date(`${upcomingHoliday.holidayDate}T00:00:00`).toLocaleDateString([], { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' })}</p></> : <><h2>No upcoming holiday</h2><p>HR or Manager can add holidays from the Holiday List.</p></>}
+        <div className="dashboard-holiday-content">
+          <span className="eyebrow">Upcoming holidays</span>
+          <h2>{upcomingHoliday ? upcomingHoliday.holidayName : holidaysLoading ? 'Loading upcoming holidays…' : 'No upcoming holiday'}</h2>
+          <p>
+            {upcomingHoliday
+              ? formatHolidayDate(upcomingHoliday.holidayDate)
+              : 'HR or Manager can add holidays from the Holiday List.'}
+          </p>
+          {!holidaysLoading && upcomingHolidays.length > 0 && (
+            <div className="dashboard-holiday-list">
+              {upcomingHolidays.slice(0, 3).map((holiday) => (
+                <div key={holiday.id || `${holiday.holidayName}-${holiday.holidayDate}`} className="dashboard-holiday-chip">
+                  <span>{new Date(`${holiday.holidayDate}T00:00:00`).toLocaleDateString([], { day: '2-digit', month: 'short' })}</span>
+                  <strong>{holiday.holidayName}</strong>
+                </div>
+              ))}
+            </div>
+          )}
+          {holidaysError && <p className="dashboard-holiday-error">{holidaysError}</p>}
         </div>
         <button type="button" className="btn btn-small btn-primary">View Holiday List</button>
       </section>
-      <BirthdayWidget employees={employees} onViewAll={() => nav('/celebrations')} />
 
-      <div className="dashboard-feature-grid"></div>
-
-      <div className="dashboard-feature-grid">
-        <section className="panel magazine-card">
-          <div className="feature-icon"><BookOpen size={25} /></div>
-          <div className="feature-copy"><span className="eyebrow">Monthly Magazine</span><h2>{magazine?.title || 'No magazine published yet'}</h2><p>{magazine?.description || 'HR or Manager can publish the company magazine here for everyone.'}</p>{magazine?.month && <small>{magazine.month}</small>}{magazine?.documentUrl && <a className="btn btn-small btn-primary" href={magazine.documentUrl} target="_blank" rel="noreferrer">Open magazine</a>}</div>
-          {magazine?.coverUrl && <img src={magazine.coverUrl} alt="Magazine cover" />}
-        </section>
-        <section className="panel employee-month-card">
-          <div className="employee-month-badge"><Award size={28} /></div>
-          {employeeOfMonth?.employeeName ? <><div className="employee-month-avatar">{employeeOfMonth.employeeName.split(' ').map((part) => part[0]).join('').slice(0, 2)}</div><div><span className="eyebrow">Employee of the Month</span><h2>{employeeOfMonth.employeeName}</h2><p>{employeeOfMonth.designation || employeeOfMonth.department || employeeOfMonth.message}</p><small>{employeeOfMonth.month}</small></div></> : <div><span className="eyebrow">Employee of the Month</span><h2>Not selected yet</h2><p>HR or Manager can recognise an outstanding employee here.</p></div>}
-        </section>
-      </div>
+      {/* Redesigned Monthly Magazine + Employee of the Month cards */}
+      <HighlightCards magazine={magazine} employeeOfMonth={employeeOfMonth} />
 
       {['HR_ADMIN', 'MANAGER'].includes(role) && (
         <section className="panel dashboard-content-admin">

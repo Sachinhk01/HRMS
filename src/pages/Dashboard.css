@@ -1,6 +1,7 @@
 /* ============================================================
    Dashboard — visual refresh (premium soft-shadow card language)
-   Logic/behaviour unchanged; only layout, polish, hover, reveal.
+   Layout: Welcome → Stats → Celebration (top) → Holidays →
+           Highlights (Magazine + EOM) → Admin → Quick Actions
    ============================================================ */
 
 .dashboard-page { display: flex; flex-direction: column; gap: 22px; }
@@ -149,51 +150,47 @@
   place-items: center;
   flex-shrink: 0;
 }
+.dashboard-holiday-content {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
 .dashboard-holiday-banner h2 { margin: 2px 0; font-size: 18px; color: var(--navy); }
 .dashboard-holiday-banner p { margin: 0; font-size: 13px; color: var(--muted); }
+.dashboard-holiday-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+.dashboard-holiday-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 10px;
+  border-radius: 999px;
+  background: rgba(255,255,255,.72);
+  border: 1px solid rgba(59,130,246,.14);
+  font-size: 12px;
+  color: var(--navy);
+}
+.dashboard-holiday-chip span {
+  font-weight: 700;
+  color: var(--blue);
+}
+.dashboard-holiday-error {
+  margin-top: 6px;
+  color: var(--pink);
+  font-size: 12px;
+  font-weight: 600;
+}
 .dashboard-holiday-banner .btn { margin-left: auto; }
 
-/* ---------- Feature grid (magazine + employee of month) ---------- */
-.dashboard-feature-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 18px;
-}
-.magazine-card, .employee-month-card {
-  display: flex;
-  gap: 14px;
-  align-items: flex-start;
-  position: relative;
-}
-.magazine-card:hover, .employee-month-card:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 18px 34px rgba(30, 55, 90, .12);
-}
-.magazine-card .feature-icon, .employee-month-card .feature-icon {
-  width: 46px; height: 46px; border-radius: 13px;
-  background: #eaf2fe; color: var(--blue);
-  display: grid; place-items: center; flex-shrink: 0;
-}
-.magazine-card .feature-copy h2, .employee-month-card h2 {
-  margin: 4px 0; font-size: 16px; color: var(--navy);
-}
-.magazine-card .feature-copy p, .employee-month-card p {
-  margin: 0; font-size: 13px; color: var(--muted);
-}
-.magazine-card img {
-  width: 92px; height: 92px; object-fit: cover; border-radius: 14px;
-  margin-left: auto; flex-shrink: 0;
-}
-.employee-month-badge {
-  width: 46px; height: 46px; border-radius: 13px;
-  background: #fdf2e2; color: var(--orange);
-  display: grid; place-items: center; flex-shrink: 0;
-}
-.employee-month-avatar {
-  width: 58px; height: 58px; border-radius: 50%;
-  background: linear-gradient(135deg, var(--blue), var(--blue-2));
-  color: #fff; display: grid; place-items: center;
-  font-weight: 700; flex-shrink: 0;
+@media (max-width: 720px) {
+  .dashboard-holiday-banner { flex-wrap: wrap; }
+  .dashboard-holiday-banner .btn { margin-left: 0; width: 100%; }
 }
 
 /* ---------- Dashboard content admin ---------- */
@@ -268,88 +265,362 @@
   color: var(--ink);
 }
 
-/* ---------- Birthday / Celebration Wall widget ---------- */
-.birthday-widget {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
+/* ============================================================
+   CELEBRATION WIDGET — large carousel (top of page, ~25% height)
+   ============================================================ */
+.celebration-widget {
+  position: relative;
+  padding: 26px 28px 22px;
+  background: linear-gradient(160deg, #fffdf7 0%, #fff9ed 40%, #fef6ff 100%);
+  border: 1px solid #f5e7c8;
+  overflow: hidden;
 }
-.birthday-widget[role="button"] { cursor: pointer; }
-.birthday-widget:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 18px 34px rgba(30, 55, 90, .12);
-}
-.birthday-widget .panel-title h2 {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-.view-all-affordance {
-  display: inline-flex;
-  align-items: center;
-  gap: 2px;
-  color: var(--blue);
-  font-weight: 700;
-  font-size: 12px;
+.celebration-widget::before {
+  content: '';
+  position: absolute;
+  top: -40px; right: -40px;
+  width: 200px; height: 200px;
+  background: radial-gradient(circle, rgba(245,158,11,.12), transparent 70%);
   pointer-events: none;
 }
-.birthday-list {
+
+.cw-header {
   display: flex;
-  flex-direction: column;
-  gap: 10px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 18px;
+  position: relative;
+  z-index: 1;
 }
-.birthday-row {
+.cw-header-left { display: flex; align-items: center; gap: 14px; }
+.cw-header-icon {
+  width: 50px; height: 50px; border-radius: 14px;
+  display: grid; place-items: center; flex-shrink: 0;
+}
+.cw-eyebrow {
+  display: block; font-size: 11px; font-weight: 700;
+  color: var(--muted); text-transform: uppercase; letter-spacing: .05em;
+}
+.cw-title {
+  margin: 2px 0 0; font-size: 20px; font-weight: 800;
+  color: var(--navy); letter-spacing: -.01em;
+}
+
+.cw-header-right { display: flex; align-items: center; gap: 12px; }
+.cw-dots { display: flex; gap: 6px; }
+.cw-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  border: none; padding: 0; cursor: pointer;
+  background: #e0d4bc;
+  transition: background .2s ease, transform .2s ease;
+}
+.cw-dot.active { background: var(--orange); transform: scale(1.3); }
+
+.cw-nav { display: flex; gap: 6px; }
+.cw-nav-btn {
+  width: 34px; height: 34px; border-radius: 10px;
+  border: 1px solid var(--line); background: #fff;
+  color: #4a5a78; cursor: pointer;
+  display: grid; place-items: center;
+  transition: background .18s ease, color .18s ease, border-color .18s ease;
+}
+.cw-nav-btn:hover { background: var(--blue); color: #fff; border-color: var(--blue); }
+
+.cw-view-all {
+  display: inline-flex; align-items: center; gap: 3px;
+  border: none; background: none; cursor: pointer;
+  color: var(--blue); font-weight: 700; font-size: 13px;
+  transition: gap .18s ease;
+}
+.cw-view-all:hover { gap: 7px; }
+
+/* Slide tabs */
+.cw-tabs { display: flex; gap: 10px; margin-bottom: 18px; position: relative; z-index: 1; }
+.cw-tab {
+  display: inline-flex; align-items: center; gap: 7px;
+  padding: 8px 16px; border-radius: 10px;
+  border: 1px solid var(--line); background: #fff;
+  color: #6b7280; font-weight: 600; font-size: 13px;
+  cursor: pointer;
+  transition: background .18s ease, color .18s ease, border-color .18s ease;
+}
+.cw-tab:hover { background: #f8f9fb; }
+.cw-tab.active { background: #fff; font-weight: 700; }
+.cw-tab-badge {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 20px; height: 20px; padding: 0 6px; border-radius: 10px;
+  font-size: 11px; font-weight: 700;
+}
+
+/* Slider track */
+.cw-track {
+  position: relative;
+  z-index: 1;
+  min-height: 180px;
+}
+.cw-track.cw-exit-left  { animation: cwSlideOutLeft .34s ease forwards; }
+.cw-track.cw-exit-right { animation: cwSlideOutRight .34s ease forwards; }
+
+@keyframes cwSlideOutLeft {
+  to { opacity: 0; transform: translateX(-40px); }
+}
+@keyframes cwSlideOutRight {
+  to { opacity: 0; transform: translateX(40px); }
+}
+
+.cw-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 14px;
+  animation: cwSlideIn .4s cubic-bezier(.16,1,.3,1);
+}
+@keyframes cwSlideIn {
+  from { opacity: 0; transform: translateX(20px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+.cw-person-card {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 12px 14px;
+  padding: 14px 16px;
   border-radius: var(--radius);
-  background: linear-gradient(90deg, #fff7ed, #fffaf3);
-  border: 1px solid #fdead0;
-  transition: transform .18s ease, box-shadow .18s ease;
+  background: var(--card-bg, #fff);
+  border: 1px solid var(--card-border, var(--line));
+  transition: transform .2s ease, box-shadow .2s ease;
+  position: relative;
 }
-.birthday-row:hover {
-  transform: translateX(2px);
-  box-shadow: 0 6px 14px rgba(245, 158, 11, .12);
+.cw-person-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 12px 24px rgba(30, 55, 90, .1);
 }
-.birthday-avatar {
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #f59e0b, #f97316);
+.cw-person-avatar {
+  width: 44px; height: 44px; border-radius: 50%;
+  color: #fff; display: grid; place-items: center;
+  font-weight: 700; font-size: 14px; flex-shrink: 0;
+}
+.cw-person-copy { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.cw-person-copy strong { font-size: 14px; color: var(--navy); }
+.cw-person-role { font-size: 12px; color: var(--muted); }
+.cw-person-tag {
+  display: inline-flex; align-items: center; gap: 3px;
+  padding: 2px 8px; border-radius: 8px;
+  font-size: 11px; font-weight: 600;
+  width: fit-content;
+}
+.cw-confetti {
+  position: absolute; top: 8px; right: 10px;
+  font-size: 16px;
+}
+
+.cw-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 40px 20px;
+  border-radius: var(--radius);
+  background: rgba(255,255,255,.6);
+  color: var(--muted);
+  font-size: 14px;
+  font-weight: 500;
+}
+.cw-empty-icon { font-size: 28px; }
+
+/* Progress bar */
+.cw-progress {
+  height: 3px;
+  border-radius: 2px;
+  background: rgba(0,0,0,.05);
+  margin-top: 18px;
+  overflow: hidden;
+  position: relative;
+  z-index: 1;
+}
+.cw-progress-fill {
+  height: 100%;
+  border-radius: 2px;
+  animation: cwProgress 6s linear;
+}
+@keyframes cwProgress {
+  from { width: 0%; }
+  to   { width: 100%; }
+}
+
+/* ============================================================
+   HIGHLIGHT CARDS — Monthly Magazine + Employee of the Month
+   Split layout: illustration on one side, content on the other.
+   ============================================================ */
+.highlights-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+}
+.hl-card {
+  display: flex;
+  align-items: center;
+  border-radius: 16px;
+  overflow: hidden;
+  border: 1px solid rgba(148,163,184,.15);
+  box-shadow: 0 8px 24px rgba(15,23,42,.08);
+  transition: transform .25s ease, box-shadow .25s ease;
+  min-height: 220px;
+  padding: 0;
+  background: #fff;
+}
+.hl-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 16px 36px rgba(15,23,42,.12);
+}
+
+.hl-illustration {
+  flex: 0 0 28%;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: linear-gradient(180deg, rgba(255,255,255,.95), rgba(255,255,255,.78));
+}
+.hl-illustration img {
+  width: 90%;
+  max-width: 170px;
+  max-height: 210px;
+  object-fit: contain;
+  border-radius: 18px;
+  transition: transform .3s ease;
+}
+.hl-card:hover .hl-illustration img {
+  transform: scale(1.03);
+}
+.hl-illustration--blue { background: linear-gradient(135deg, #eef4ff, #f4f8ff); }
+.hl-illustration--warm { background: linear-gradient(135deg, #fff7e4, #fff6f0); }
+
+.hl-card.hl-magazine {
+  background: #f7fbff;
+}
+.hl-card.hl-employee {
+  background: #fff9f0;
+}
+
+.hl-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 12px;
+  padding: 28px 28px 28px 24px;
+}
+.hl-badge {
+  display: inline-flex; align-items: center; gap: 8px;
+  font-size: 12px; font-weight: 700;
+  padding: 8px 14px; border-radius: 999px;
+  width: fit-content;
+}
+.hl-badge--blue { background: #eaf2fe; color: var(--blue); }
+.hl-badge--warm { background: #fdf2e2; color: var(--orange); }
+
+.hl-title {
+  margin: 0;
+  font-size: clamp(24px, 2vw, 28px);
+  font-weight: 700;
+  color: var(--navy);
+  letter-spacing: -.02em;
+  line-height: 1.05;
+}
+.hl-title--emp { font-size: clamp(22px, 1.9vw, 26px); }
+.hl-desc {
+  margin: 0;
+  font-size: 14px;
+  color: var(--muted);
+  line-height: 1.7;
+  max-width: 520px;
+}
+.hl-quote {
+  margin: 0;
+  padding-left: 4px;
+  font-size: 14px;
+  color: var(--navy);
+  border-left: 3px solid rgba(96,165,250,.35);
+  opacity: .88;
+}
+.hl-meta {
+  display: flex; align-items: center; gap: 12px;
+  flex-wrap: wrap;
+}
+.hl-chip {
+  display: inline-flex; align-items: center;
+  padding: 6px 12px; border-radius: 999px;
+  background: #eef4ff; color: var(--blue);
+  font-size: 12px; font-weight: 700;
+}
+.hl-chip--warm { background: #fdf2e2; color: var(--orange); }
+.hl-link {
+  display: inline-flex; align-items: center; gap: 6px;
+  color: var(--blue); font-size: 13px; font-weight: 600;
+  text-decoration: none;
+  transition: gap .18s ease;
+}
+.hl-link:hover { gap: 8px; }
+
+.hl-stars {
+  display: inline-flex; align-items: center; gap: 8px;
+  font-size: 12px; font-weight: 600; color: var(--orange);
+}
+.hl-emp-row {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+.hl-emp-avatar,
+.hl-emp-photo {
+  width: 68px;
+  height: 68px;
+  border-radius: 18px;
+  flex-shrink: 0;
+}
+.hl-emp-avatar {
+  background: linear-gradient(135deg, #f59e0b, #fb923c);
   color: #fff;
   display: grid;
   place-items: center;
   font-weight: 700;
-  font-size: 13px;
-  flex-shrink: 0;
+  font-size: 18px;
 }
-.birthday-copy { display: flex; flex-direction: column; min-width: 0; }
-.birthday-copy strong { font-size: 13px; color: var(--navy); }
-.birthday-copy span { font-size: 11.5px; color: var(--muted); }
-.birthday-emoji { margin-left: auto; font-size: 18px; flex-shrink: 0; }
+.hl-emp-photo {
+  object-fit: cover;
+}
+.hl-link:hover { gap: 7px; }
+.hl-stars {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-size: 12px; font-weight: 600; color: var(--orange);
+}
 
-.birthday-empty {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 16px 14px;
-  border-radius: var(--radius);
-  background: #f4f7fb;
-  color: var(--muted);
-  font-size: 13px;
+.hl-emp-row { display: flex; align-items: center; gap: 14px; }
+.hl-emp-avatar {
+  width: 52px; height: 52px; border-radius: 50%;
+  background: linear-gradient(135deg, var(--orange), #f97316);
+  color: #fff; display: grid; place-items: center;
+  font-weight: 700; font-size: 15px; flex-shrink: 0;
 }
 
 /* ---------- Responsive ---------- */
 @media (max-width: 1024px) {
   .summary-grid { grid-template-columns: repeat(2, 1fr); }
-  .dashboard-feature-grid, .dashboard-content-admin .dashboard-admin-grid { grid-template-columns: 1fr; }
+  .highlights-grid, .dashboard-content-admin .dashboard-admin-grid { grid-template-columns: 1fr; }
+  .hl-card { min-height: 220px; }
+  .hl-illustration { flex: 0 0 30%; padding: 20px; }
 }
 @media (max-width: 600px) {
   .summary-grid { grid-template-columns: 1fr; }
   .form-grid { grid-template-columns: 1fr; }
   .dashboard-holiday-banner { flex-wrap: wrap; }
   .dashboard-holiday-banner .btn { margin-left: 0; }
+  .cw-header { flex-direction: column; align-items: flex-start; gap: 12px; }
+  .cw-header-right { width: 100%; justify-content: space-between; }
+  .cw-tabs { flex-wrap: wrap; }
+  .hl-card { flex-direction: column; min-height: auto; }
+  .hl-illustration { flex: none; width: 100%; padding: 24px; }
+  .hl-content { padding: 24px; }
 }
 
 /* ---------- Staggered reveal (runs once per mount) ----------
@@ -366,6 +637,9 @@
 .page-reveal > *:nth-child(5) { animation-delay: .28s; }
 .page-reveal > *:nth-child(6) { animation-delay: .34s; }
 .page-reveal > *:nth-child(7) { animation-delay: .40s; }
+.page-reveal > *:nth-child(8) { animation-delay: .46s; }
+.page-reveal > *:nth-child(9) { animation-delay: .52s; }
+.page-reveal > *:nth-child(10) { animation-delay: .58s; }
 
 @keyframes dashboardReveal {
   from { opacity: 0; transform: translateY(16px); }
@@ -383,4 +657,5 @@
 
 @media (prefers-reduced-motion: reduce) {
   .page-reveal > *, .summary-grid > * { animation: none; }
+  .cw-track, .cw-cards, .cw-progress-fill { animation: none !important; }
 }
