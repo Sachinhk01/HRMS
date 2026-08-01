@@ -193,23 +193,161 @@
   .dashboard-holiday-banner .btn { margin-left: 0; width: 100%; }
 }
 
-/* ---------- Dashboard content admin ---------- */
-.dashboard-content-admin .dashboard-admin-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 18px;
+/* ============================================================
+   HIGHLIGHTS EDITOR — manager/HR panel for Magazine + EOM
+   ============================================================ */
+.highlights-editor {
+  background: linear-gradient(160deg, #fbfcff 0%, #f8faff 100%);
 }
-.form-grid {
+.highlights-editor-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 22px;
+}
+.highlights-editor-head h2 {
+  margin: 4px 0 6px;
+  font-size: 19px;
+  font-weight: 800;
+  color: var(--navy);
+  letter-spacing: -.01em;
+}
+.highlights-editor-head p {
+  margin: 0;
+  max-width: 520px;
+  font-size: 13px;
+  color: var(--muted);
+  line-height: 1.6;
+}
+.highlights-editor-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  padding: 7px 13px;
+  border-radius: 999px;
+  background: #eefaf2;
+  color: var(--green);
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.highlights-editor-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  align-items: start;
+}
+
+.editor-card {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 22px;
+  border-radius: var(--radius-lg);
+  background: #fff;
+  border: 1px solid var(--line);
+  box-shadow: 0 4px 14px rgba(30, 55, 90, .04);
+  transition: box-shadow .2s ease, border-color .2s ease;
+}
+.editor-card:focus-within {
+  border-color: rgba(25, 103, 210, .28);
+  box-shadow: 0 10px 26px rgba(25, 103, 210, .1);
+}
+.editor-card--blue { border-top: 3px solid var(--blue); }
+.editor-card--warm { border-top: 3px solid var(--orange); }
+
+.editor-card-head {
+  display: flex;
+  align-items: center;
   gap: 12px;
 }
-.form-grid label {
-  display: flex; flex-direction: column; gap: 6px;
-  font-size: 12px; font-weight: 600; color: #4a5a78;
+.editor-card-icon {
+  width: 40px; height: 40px; border-radius: 12px;
+  display: grid; place-items: center; flex-shrink: 0;
 }
-.form-grid .full-span { grid-column: 1 / -1; }
-.form-grid h3 { margin: 0 0 4px; font-size: 14px; color: var(--navy); }
+.editor-card-icon--blue { background: #eaf2fe; color: var(--blue); }
+.editor-card-icon--warm { background: #fdf2e2; color: var(--orange); }
+.editor-card-head h3 { margin: 0; font-size: 15px; font-weight: 700; color: var(--navy); }
+.editor-card-head p { margin: 2px 0 0; font-size: 12px; color: var(--muted); }
+
+.editor-fields {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+.ef-field { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.ef-field.ef-full { grid-column: 1 / -1; }
+.ef-field > span {
+  font-size: 12px;
+  font-weight: 700;
+  color: #4a5a78;
+}
+.ef-field input,
+.ef-field select,
+.ef-field textarea {
+  border-color: #e2e7f2;
+}
+.ef-field textarea { resize: vertical; min-height: 64px; }
+
+/* PDF dropzone */
+.pdf-dropzone-wrap { width: 100%; }
+.pdf-dropzone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  text-align: center;
+  padding: 26px 16px;
+  border: 1.5px dashed #c7d4ec;
+  border-radius: var(--radius-sm);
+  background: #f8faff;
+  color: var(--blue);
+  cursor: pointer;
+  transition: border-color .18s ease, background .18s ease;
+}
+.pdf-dropzone:hover,
+.pdf-dropzone--active {
+  border-color: var(--blue);
+  background: #eef4ff;
+}
+.pdf-dropzone--busy { opacity: .65; cursor: wait; }
+.pdf-dropzone-title { font-size: 13px; font-weight: 700; color: var(--navy); margin-top: 4px; }
+.pdf-dropzone-sub { font-size: 11px; color: var(--muted); }
+.pdf-dropzone-error { margin: 6px 0 0; font-size: 11px; color: var(--red); font-weight: 600; }
+
+.pdf-file-chip {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: var(--radius-sm);
+  background: #eef4ff;
+  border: 1px solid #dbe6fb;
+}
+.pdf-file-icon {
+  width: 38px; height: 38px; border-radius: 10px;
+  background: #fff; color: var(--blue);
+  display: grid; place-items: center; flex-shrink: 0;
+}
+.pdf-file-meta { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1; }
+.pdf-file-meta strong {
+  font-size: 13px; color: var(--navy);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.pdf-file-meta span { font-size: 11px; color: var(--muted); }
+.pdf-file-actions { display: flex; gap: 6px; flex-shrink: 0; }
+.pdf-file-btn {
+  width: 30px; height: 30px; border-radius: 8px;
+  border: 1px solid #dbe6fb; background: #fff; color: var(--blue);
+  display: grid; place-items: center;
+  transition: background .15s ease, color .15s ease;
+}
+.pdf-file-btn:hover { background: var(--blue); color: #fff; }
+.pdf-file-btn--danger:hover { background: var(--red); color: #fff; }
 
 /* ---------- Quick actions ---------- */
 .quick-actions-panel { margin-top: 6px; }
@@ -606,13 +744,14 @@
 /* ---------- Responsive ---------- */
 @media (max-width: 1024px) {
   .summary-grid { grid-template-columns: repeat(2, 1fr); }
-  .highlights-grid, .dashboard-content-admin .dashboard-admin-grid { grid-template-columns: 1fr; }
+  .highlights-grid, .highlights-editor-grid { grid-template-columns: 1fr; }
   .hl-card { min-height: 220px; }
   .hl-illustration { flex: 0 0 30%; padding: 20px; }
 }
 @media (max-width: 600px) {
   .summary-grid { grid-template-columns: 1fr; }
-  .form-grid { grid-template-columns: 1fr; }
+  .editor-fields { grid-template-columns: 1fr; }
+  .highlights-editor-head { flex-direction: column; }
   .dashboard-holiday-banner { flex-wrap: wrap; }
   .dashboard-holiday-banner .btn { margin-left: 0; }
   .cw-header { flex-direction: column; align-items: flex-start; gap: 12px; }

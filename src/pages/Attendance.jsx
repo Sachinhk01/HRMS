@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   CalendarDays,
   ChevronLeft,
@@ -9,6 +10,18 @@ import {
   LogIn,
   LogOut,
   Play,
+  CheckCircle2,
+  XCircle,
+  Search,
+  Download,
+  CalendarCheck,
+  Timer,
+  Briefcase,
+  MapPin,
+  Sparkles,
+  TrendingUp,
+  Target,
+  Hourglass,
 } from 'lucide-react';
 import PageHeader from '../components/PageHeader';
 import Pagination from '../components/Pagination';
@@ -95,6 +108,40 @@ function formatLiveDate(date) {
   return date.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
 }
 
+const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+
+const STATUS_ICONS = {
+  PRESENT: CheckCircle2,
+  ABSENT: XCircle,
+  HALF_DAY: Hourglass,
+  LEAVE: CalendarDays,
+  HOLIDAY: Sparkles,
+  LATE: Clock3,
+  WEEKEND: CalendarCheck,
+  MISSED_CHECKOUT: XCircle,
+};
+
+const LEGEND = [
+  { code: 'P', label: 'Present', cls: 'present', icon: CheckCircle2 },
+  { code: 'A', label: 'Absent', cls: 'absent', icon: XCircle },
+  { code: 'HD', label: 'Half Day', cls: 'half', icon: Hourglass },
+  { code: 'H', label: 'Holiday', cls: 'holiday', icon: Sparkles },
+  { code: 'L', label: 'Leave', cls: 'leave', icon: CalendarDays },
+  { code: 'W', label: 'Weekend', cls: 'weekend', icon: CalendarCheck },
+];
+
+const easeOut = [0.16, 1, 0.3, 1];
+
+const fadeUp = {
+  hidden: { opacity: 0, y: 18 },
+  show: { opacity: 1, y: 0, transition: { duration: 0.5, ease: easeOut } },
+};
+
+const stagger = {
+  hidden: {},
+  show: { transition: { staggerChildren: 0.07, delayChildren: 0.04 } },
+};
+
 export default function Attendance() {
   const { user } = useAuth();
   const [currentTime, setCurrentTime] = useState(new Date());
@@ -115,6 +162,11 @@ export default function Attendance() {
   });
   const [historyPage, setHistoryPage] = useState(1);
   const canViewAll = user.role === 'HR_ADMIN' || user.role === 'MANAGER';
+
+  // ---- UI-only state (no logic impact) ----
+  const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState('ALL');
+  const [activeLegend, setActiveLegend] = useState(null);
 
   useEffect(() => {
     const clockTimer = window.setInterval(() => setCurrentTime(new Date()), 1000);
@@ -219,6 +271,33 @@ if (calendarResult.status === "fulfilled") {
   const hasCheckedOut = Boolean(dashboard?.checkedOut);
   const totalElapsedLabel = formatMinutesLabel((dashboard?.workingMinutes || 0) + (dashboard?.breakMinutes || 0));
 
+  // ---- UI-only derived views (do not touch data flow) ----
+  const filteredHistory = useMemo(() => {
+    let rows = historyItems;
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      rows = rows.filter((r) => String(r.attendanceDate || '').toLowerCase().includes(q));
+    }
+    if (statusFilter !== 'ALL') {
+      rows = rows.filter((r) => normalizeAttendanceStatus(r.attendanceStatus) === statusFilter);
+    }
+    return rows;
+  }, [historyItems, searchQuery, statusFilter]);
+
+  const progressPercent = useMemo(() => {
+    const mins = Number(dashboard?.workingMinutes || 0);
+    return Math.min(100, Math.round((mins / 480) * 100));
+  }, [dashboard?.workingMinutes]);
+
+  const ringColor =
+    state === ATTENDANCE_STATE.ON_BREAK ? '#f59e0b'
+    : state === ATTENDANCE_STATE.WORKING ? '#10b981'
+    : state === ATTENDANCE_STATE.CHECKED_OUT ? '#64748b'
+    : '#94a3b8';
+
+  const ringCircumference = 2 * Math.PI * 78;
+  const ringOffset = ringCircumference - (progressPercent / 100) * ringCircumference;
+
   async function handleLocationAwareAction(action, actionName) {
     setError('');
     setSuccessMessage('');
@@ -271,129 +350,420 @@ if (calendarResult.status === "fulfilled") {
     return handleLocationAwareAction(() => endBreak(), 'endBreak');
   }
 
+  const todayKey = dateKey(new Date().getFullYear(), new Date().getMonth(), new Date().getDate());
+
   return (
     <div className="page-stack attendance-page page-reveal">
-      <PageHeader eyebrow="Attendance" title="Track your workday" description="Check in, take breaks, check out and review monthly attendance." />
-
-      <div className="attendance-tabs" role="tablist">
-        <button type="button" className={activeTab === 'mark' ? 'active' : ''} onClick={() => setActiveTab('mark')}><Clock3 size={18} /> Mark Attendance</button>
-        <button type="button" className={activeTab === 'calendar' ? 'active' : ''} onClick={() => setActiveTab('calendar')}><CalendarDays size={18} /> Attendance Calendar</button>
-      </div>
-
-      {activeTab === 'mark' && (
-        <div className="attendance-layout">
-          <section className="panel mark-attendance">
-            <span className="eyebrow">Today</span>
-            <h2>Live Attendance</h2>
-            <div className="attendance-live-clock">
-              <strong>{formatLiveClock(currentTime)}</strong>
-              <span>{formatLiveDate(currentTime)}</span>
+      {/* ---------- Hero banner ---------- */}
+      <motion.section
+        className="attendance-hero"
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.6, ease: easeOut }}
+      >
+        <div className="attendance-hero-text">
+          <span className="eyebrow">Attendance</span>
+          <h1>Track Your Workday</h1>
+          <p>Monitor attendance, manage breaks and review work history.</p>
+          <div className="attendance-hero-stats">
+            <div className="hero-stat">
+              <span className="hero-stat-icon"><Clock3 size={16} /></span>
+              <div><strong>{displayDuration(dashboard?.workingHours)}</strong><small>Today</small></div>
             </div>
-            <div className={`attendance-ring ${state === ATTENDANCE_STATE.WORKING ? 'active' : ''} ${state === ATTENDANCE_STATE.ON_BREAK ? 'on-break' : ''}`}>
-              <Clock3 size={28} />
-              <strong>{displayDuration(dashboard?.workingHours)}</strong>
-              <span>{state === ATTENDANCE_STATE.ON_BREAK ? 'On break' : state === ATTENDANCE_STATE.CHECKED_OUT ? 'Checked out' : state === ATTENDANCE_STATE.WORKING ? 'Working' : 'Not checked in'}</span>
+            <div className="hero-stat">
+              <span className="hero-stat-icon"><CalendarCheck size={16} /></span>
+              <div><strong>{state === ATTENDANCE_STATE.WORKING ? 'Present' : state === ATTENDANCE_STATE.ON_BREAK ? 'On Break' : hasCheckedOut ? 'Checked Out' : 'Not In'}</strong><small>Status</small></div>
             </div>
-
-            <div className="attendance-time-grid">
-              <div><span>Worked time</span><strong>{displayDuration(dashboard?.workingHours)}</strong></div>
-              <div><span>Break time</span><strong>{displayDuration(dashboard?.breakHours)}</strong></div>
-              <div><span>Total elapsed</span><strong>{totalElapsedLabel}</strong></div>
+            <div className="hero-stat">
+              <span className="hero-stat-icon"><Timer size={16} /></span>
+              <div><strong>{totalElapsedLabel}</strong><small>Elapsed</small></div>
             </div>
-
-            <div className="location-line"><LocateFixed size={17} /><span>{locationText}</span></div>
-            {error && <div className="form-alert">{error}</div>}
-            {successMessage && <div className="success-alert">{successMessage}</div>}
-
-            <div className="attendance-action-grid">
-              {!hasCheckedIn && <button type="button" className="btn btn-primary" disabled={isSubmitting} onClick={() => handleCheckIn()}><LogIn size={18} /> Check In</button>}
-              {state === ATTENDANCE_STATE.WORKING && <button type="button" className="btn btn-warning-soft" disabled={isSubmitting} onClick={() => handleStartBreak()}><Coffee size={18} /> Start Break</button>}
-              {state === ATTENDANCE_STATE.ON_BREAK && <button type="button" className="btn btn-primary" disabled={isSubmitting} onClick={() => handleEndBreak()}><Play size={18} /> End Break</button>}
-              {state === ATTENDANCE_STATE.WORKING && <button type="button" className="btn btn-danger-soft" disabled={isSubmitting} onClick={() => handleCheckOut()}><LogOut size={18} /> Check Out</button>}
-              {hasCheckedOut && <p className="empty-inline">You're checked out for today.</p>}
-            </div>
-          </section>
-
-          <section className="panel">
-            <div className="panel-title attendance-history-title">
-              <h2>{canViewAll ? 'Attendance records' : 'My attendance history'}</h2>
-              <span className="eyebrow">{user.name}</span>
-            </div>
-            <div className="table-wrap">
-              <table>
-                <thead><tr><th>Date</th><th>Check in</th><th>Check out</th><th>Worked</th><th>Break</th><th>Status</th></tr></thead>
-                <tbody>
-                  {historyItems.map((record) => (
-                    <tr key={record.id}>
-                      <td>{record.attendanceDate}</td>
-                      <td>{displayTime(record.checkInTime)}</td>
-                      <td>{displayTime(record.checkOutTime)}</td>
-                      <td>{displayDuration(record.todayWorkingHours)}</td>
-                      <td>{displayDuration(record.todayBreakHours)}</td>
-                      <td><span className={`attendance-status status-${statusClass(record.attendanceStatus)}`}>{STATUS_LABELS[normalizeAttendanceStatus(record.attendanceStatus)] || record.attendanceStatus}</span></td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-              {!isLoading && !historyItems.length && <p className="empty-inline">No attendance records yet.</p>}
-              {isLoading && <p className="empty-inline">Loading attendance...</p>}
-            </div>
-            <Pagination page={historyPage} totalItems={historyTotalItems} pageSize={PAGE_SIZE} onPageChange={setHistoryPage} />
-          </section>
+          </div>
         </div>
-      )}
+        <div className="attendance-hero-illustration" aria-hidden="true">
+          <svg viewBox="0 0 320 200" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="250" cy="50" r="60" fill="#dbeafe" opacity="0.5" />
+            <circle cx="60" cy="160" r="44" fill="#bfdbfe" opacity="0.4" />
+            <rect x="120" y="50" width="130" height="100" rx="16" fill="#fff" stroke="#bfdbfe" strokeWidth="2" />
+            <circle cx="185" cy="92" r="30" fill="none" stroke="#2563eb" strokeWidth="4" />
+            <path d="M185 76 V92 L196 100" stroke="#2563eb" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
+            <rect x="140" y="120" width="30" height="6" rx="3" fill="#dbeafe" />
+            <rect x="180" y="120" width="50" height="6" rx="3" fill="#eef2ff" />
+            <circle cx="250" cy="150" r="14" fill="#10b981" opacity="0.8" />
+            <path d="M244 150 l4 5 l8 -9" stroke="#fff" strokeWidth="2.5" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </div>
+      </motion.section>
 
-      {activeTab === 'calendar' && (
-        <div className="attendance-calendar-layout">
-          <section className="panel attendance-calendar-panel">
-            <div className="calendar-toolbar">
-              <button type="button" className="calendar-nav-button" onClick={() => setVisibleMonth((current) => new Date(current.getFullYear(), current.getMonth() - 1, 1))}><ChevronLeft size={20} /></button>
-              <div><span className="eyebrow">Monthly overview</span><h2>{visibleMonth.toLocaleDateString([], { month: 'long', year: 'numeric' })}</h2></div>
-              <button type="button" className="calendar-nav-button" onClick={() => setVisibleMonth((current) => new Date(current.getFullYear(), current.getMonth() + 1, 1))}><ChevronRight size={20} /></button>
-            </div>
-
-            <div className="attendance-calendar">
-              {WEEKDAYS.map((weekday) => <div className="calendar-weekday" key={weekday}>{weekday}</div>)}
-              {calendarCells.map((cell, index) => {
-                if (!cell) return <div className={`calendar-day empty ${index % 7 === 0 ? 'sunday-column' : ''}`} key={`empty-${index}`} />;
-                const dayEntry = recordsByDate.get(cell.key);
-                const code = dayEntry ? statusCode(dayEntry.status) : '';
-                return (
-                  <button
-                    type="button"
-                    key={cell.key}
-                    className={`calendar-day ${cell.isSunday ? 'sunday sunday-column' : ''} ${selectedDate === cell.key ? 'selected' : ''} ${dayEntry ? `status-${statusClass(dayEntry.status)}` : ''}`}
-                    onClick={() => setSelectedDate(cell.key)}
-                  >
-                    <span>{cell.day}</span>
-                    {code && <i className={`attendance-marker status-${statusClass(dayEntry.status)}`}>{code}</i>}
-                  </button>
-                );
-              })}
-            </div>
-            <div className="attendance-legend enhanced">
-              <span><i className="legend-marker present">P</i>Present</span>
-              <span><i className="legend-marker absent">A</i>Absent</span>
-              <span><i className="legend-marker half">HD</i>Half Day</span>
-              <span><i className="legend-marker holiday">H</i>Holiday</span>
-              <span><i className="legend-marker casual">L</i>Leave</span>
-              <span><i className="legend-marker sick">W</i>Weekend</span>
-            </div>
-          </section>
-
-          <aside className="panel selected-attendance-panel">
-            <span className="eyebrow">Selected day</span>
-            <h2>{selectedDate || 'Choose a date'}</h2>
-            {selectedEntry ? (
-              <div className="selected-attendance-details">
-                <div><span>Status</span><strong>{STATUS_LABELS[selectedEntry.status] || selectedEntry.status}</strong></div>
-              </div>
-            ) : (
-              <p className="empty-inline">No attendance recorded for this date.</p>
+      {/* ---------- Segmented tabs ---------- */}
+      <motion.div
+        className="attendance-seg"
+        role="tablist"
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.45, ease: easeOut, delay: 0.1 }}
+      >
+        <div className="attendance-seg-track">
+          <AnimatePresence>
+            {activeTab === 'mark' && (
+              <motion.div
+                className="attendance-seg-indicator"
+                layoutId="seg-indicator"
+                initial={false}
+                transition={{ type: 'spring', stiffness: 400, damping: 32 }}
+              />
             )}
-          </aside>
+          </AnimatePresence>
+          <button
+            type="button"
+            className={`attendance-seg-btn ${activeTab === 'mark' ? 'active' : ''}`}
+            onClick={() => setActiveTab('mark')}
+            role="tab"
+            aria-selected={activeTab === 'mark'}
+          >
+            <Clock3 size={17} /> Mark Attendance
+          </button>
+          <AnimatePresence>
+            {activeTab === 'calendar' && (
+              <motion.div
+                className="attendance-seg-indicator"
+                layoutId="seg-indicator"
+                initial={false}
+                transition={{ type: 'spring', stiffness: 400, damping: 32 }}
+              />
+            )}
+          </AnimatePresence>
+          <button
+            type="button"
+            className={`attendance-seg-btn ${activeTab === 'calendar' ? 'active' : ''}`}
+            onClick={() => setActiveTab('calendar')}
+            role="tab"
+            aria-selected={activeTab === 'calendar'}
+          >
+            <CalendarDays size={17} /> Attendance Calendar
+          </button>
         </div>
-      )}
+      </motion.div>
+
+      {/* ---------- Toasts ---------- */}
+      <AnimatePresence>
+        {error && (
+          <motion.div
+            className="toast toast-error"
+            initial={{ opacity: 0, y: -24, scale: 0.96 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -24, scale: 0.96 }}
+            transition={{ duration: 0.3, ease: easeOut }}
+          >
+            <XCircle size={18} /> {error}
+          </motion.div>
+        )}
+      </AnimatePresence>
+      <AnimatePresence>
+        {successMessage && (
+          <motion.div
+            className="toast toast-success"
+            initial={{ opacity: 0, y: -24, scale: 0.96 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -24, scale: 0.96 }}
+            transition={{ duration: 0.3, ease: easeOut }}
+            onAnimationComplete={() => {
+              if (successMessage) window.setTimeout(() => setSuccessMessage(''), 3500);
+            }}
+          >
+            <CheckCircle2 size={18} /> {successMessage}
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ---------- MARK ATTENDANCE TAB ---------- */}
+      <AnimatePresence mode="wait">
+        {activeTab === 'mark' && (
+          <motion.div
+            key="mark-tab"
+            className="attendance-layout"
+            initial="hidden"
+            animate="show"
+            exit={{ opacity: 0, y: 10, transition: { duration: 0.2 } }}
+            variants={stagger}
+          >
+            {/* Live attendance card */}
+            <motion.section className="panel live-attendance-card" variants={fadeUp}>
+              <div className="live-att-header">
+                <span className="eyebrow">Today</span>
+                <h2>Live Attendance</h2>
+              </div>
+
+              <div className="live-clock">
+                <strong>{formatLiveClock(currentTime)}</strong>
+                <span>{formatLiveDate(currentTime)}</span>
+              </div>
+
+              {/* Animated circular progress ring */}
+              <div className="ring-wrap">
+                <svg className="ring-svg" viewBox="0 0 180 180">
+                  <circle cx="90" cy="90" r="78" fill="none" stroke="#eef2f7" strokeWidth="12" />
+                  <motion.circle
+                    cx="90" cy="90" r="78" fill="none"
+                    stroke={ringColor} strokeWidth="12" strokeLinecap="round"
+                    strokeDasharray={ringCircumference}
+                    initial={{ strokeDashoffset: ringCircumference }}
+                    animate={{ strokeDashoffset: ringOffset }}
+                    transition={{ duration: 0.9, ease: easeOut }}
+                    transform="rotate(-90 90 90)"
+                  />
+                </svg>
+                <div className="ring-center">
+                  <Clock3 size={26} color={ringColor} />
+                  <strong>{displayDuration(dashboard?.workingHours)}</strong>
+                  <span style={{ color: ringColor }}>
+                    {state === ATTENDANCE_STATE.ON_BREAK ? 'On break'
+                      : state === ATTENDANCE_STATE.CHECKED_OUT ? 'Checked out'
+                      : state === ATTENDANCE_STATE.WORKING ? 'Working'
+                      : 'Not checked in'}
+                  </span>
+                  <small>{progressPercent}% of 8h day</small>
+                </div>
+              </div>
+
+              {/* Three stat cards */}
+              <div className="live-stat-grid">
+                <div className="live-stat">
+                  <span className="live-stat-icon green"><Briefcase size={16} /></span>
+                  <strong>{displayDuration(dashboard?.workingHours)}</strong>
+                  <small>Worked</small>
+                </div>
+                <div className="live-stat">
+                  <span className="live-stat-icon orange"><Coffee size={16} /></span>
+                  <strong>{displayDuration(dashboard?.breakHours)}</strong>
+                  <small>Break</small>
+                </div>
+                <div className="live-stat">
+                  <span className="live-stat-icon blue"><Timer size={16} /></span>
+                  <strong>{totalElapsedLabel}</strong>
+                  <small>Total</small>
+                </div>
+              </div>
+
+              <div className="location-line"><LocateFixed size={16} /><span>{locationText}</span></div>
+
+              <div className="attendance-action-grid">
+                {!hasCheckedIn && (
+                  <motion.button type="button" className="btn btn-gradient btn-ripple" disabled={isSubmitting} onClick={() => handleCheckIn()} whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}>
+                    <LogIn size={18} /> Check In
+                  </motion.button>
+                )}
+                {state === ATTENDANCE_STATE.WORKING && (
+                  <motion.button type="button" className="btn btn-warm-soft btn-ripple" disabled={isSubmitting} onClick={() => handleStartBreak()} whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}>
+                    <Coffee size={18} /> Start Break
+                  </motion.button>
+                )}
+                {state === ATTENDANCE_STATE.ON_BREAK && (
+                  <motion.button type="button" className="btn btn-gradient btn-ripple" disabled={isSubmitting} onClick={() => handleEndBreak()} whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}>
+                    <Play size={18} /> End Break
+                  </motion.button>
+                )}
+                {state === ATTENDANCE_STATE.WORKING && (
+                  <motion.button type="button" className="btn btn-danger-soft btn-ripple" disabled={isSubmitting} onClick={() => handleCheckOut()} whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}>
+                    <LogOut size={18} /> Check Out
+                  </motion.button>
+                )}
+                {hasCheckedOut && <p className="empty-inline">You're checked out for today.</p>}
+              </div>
+            </motion.section>
+
+            {/* History table */}
+            <motion.section className="panel history-panel" variants={fadeUp}>
+              <div className="panel-title attendance-history-title">
+                <h2>{canViewAll ? 'Attendance records' : 'My attendance history'}</h2>
+                <span className="eyebrow">{user.name}</span>
+              </div>
+
+              <div className="history-toolbar">
+                <label className="history-search">
+                  <Search size={15} />
+                  <input
+                    type="text"
+                    placeholder="Search by date..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                  />
+                </label>
+                <select className="compact-select" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+                  <option value="ALL">All statuses</option>
+                  {Object.keys(STATUS_LABELS).map((s) => <option key={s} value={s}>{STATUS_LABELS[s]}</option>)}
+                </select>
+                <button type="button" className="btn btn-soft btn-export" title="Export (UI placeholder)">
+                  <Download size={15} /> Export
+                </button>
+              </div>
+
+              <div className="table-wrap">
+                <table className="history-table">
+                  <thead>
+                    <tr><th>Date</th><th>Check in</th><th>Check out</th><th>Worked</th><th>Break</th><th>Status</th></tr>
+                  </thead>
+                  <tbody>
+                    {isLoading && Array.from({ length: 4 }).map((_, i) => (
+                      <tr key={`sk-${i}`} className="skeleton-row">
+                        <td colSpan={6}><div className="skeleton-bar" /></td>
+                      </tr>
+                    ))}
+                    {!isLoading && filteredHistory.map((record, i) => {
+                      const SIcon = STATUS_ICONS[normalizeAttendanceStatus(record.attendanceStatus)] || Clock3;
+                      return (
+                        <motion.tr
+                          key={record.id}
+                          initial={{ opacity: 0, y: 8 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ duration: 0.3, delay: i * 0.04, ease: easeOut }}
+                        >
+                          <td>{record.attendanceDate}</td>
+                          <td>{displayTime(record.checkInTime)}</td>
+                          <td>{displayTime(record.checkOutTime)}</td>
+                          <td>{displayDuration(record.todayWorkingHours)}</td>
+                          <td>{displayDuration(record.todayBreakHours)}</td>
+                          <td>
+                            <span className={`status-pill status-${statusClass(record.attendanceStatus)}`}>
+                              <SIcon size={12} /> {STATUS_LABELS[normalizeAttendanceStatus(record.attendanceStatus)] || record.attendanceStatus}
+                            </span>
+                          </td>
+                        </motion.tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+                {!isLoading && !filteredHistory.length && (
+                  <div className="empty-state">
+                    <CalendarCheck size={32} />
+                    <p>No attendance records found.</p>
+                  </div>
+                )}
+              </div>
+              <Pagination page={historyPage} totalItems={historyTotalItems} pageSize={PAGE_SIZE} onPageChange={setHistoryPage} />
+            </motion.section>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ---------- CALENDAR TAB ---------- */}
+      <AnimatePresence mode="wait">
+        {activeTab === 'calendar' && (
+          <motion.div
+            key="calendar-tab"
+            className="attendance-calendar-layout"
+            initial="hidden"
+            animate="show"
+            exit={{ opacity: 0, y: 10, transition: { duration: 0.2 } }}
+            variants={stagger}
+          >
+            <motion.section className="panel attendance-calendar-panel" variants={fadeUp}>
+              <div className="calendar-toolbar">
+                <div className="calendar-toolbar-left">
+                  <button type="button" className="calendar-nav-button" onClick={() => setVisibleMonth((c) => new Date(c.getFullYear(), c.getMonth() - 1, 1))} aria-label="Previous month"><ChevronLeft size={20} /></button>
+                  <div className="calendar-title-block">
+                    <span className="eyebrow">Monthly overview</span>
+                    <h2>{visibleMonth.toLocaleDateString([], { month: 'long', year: 'numeric' })}</h2>
+                  </div>
+                  <button type="button" className="calendar-nav-button" onClick={() => setVisibleMonth((c) => new Date(c.getFullYear(), c.getMonth() + 1, 1))} aria-label="Next month"><ChevronRight size={20} /></button>
+                </div>
+                <div className="calendar-toolbar-right">
+                  <select
+                    className="compact-select month-select"
+                    value={visibleMonth.getMonth()}
+                    onChange={(e) => setVisibleMonth((c) => new Date(c.getFullYear(), Number(e.target.value), 1))}
+                  >
+                    {MONTH_NAMES.map((m, i) => <option key={m} value={i}>{m}</option>)}
+                  </select>
+                  <select
+                    className="compact-select year-select"
+                    value={visibleMonth.getFullYear()}
+                    onChange={(e) => setVisibleMonth((c) => new Date(Number(e.target.value), c.getMonth(), 1))}
+                  >
+                    {Array.from({ length: 7 }, (_, i) => new Date().getFullYear() - 3 + i).map((y) => <option key={y} value={y}>{y}</option>)}
+                  </select>
+                  <button type="button" className="btn btn-soft btn-today" onClick={() => setVisibleMonth(() => new Date(new Date().getFullYear(), new Date().getMonth(), 1))}>
+                    <Target size={14} /> Today
+                  </button>
+                </div>
+              </div>
+
+              <div className="attendance-calendar">
+                {WEEKDAYS.map((weekday) => <div className="calendar-weekday" key={weekday}>{weekday}</div>)}
+                {calendarCells.map((cell, index) => {
+                  if (!cell) return <div className="calendar-day empty" key={`empty-${index}`} />;
+                  const dayEntry = recordsByDate.get(cell.key);
+                  const code = dayEntry ? statusCode(dayEntry.status) : '';
+                  const SIcon = dayEntry ? STATUS_ICONS[dayEntry.status] : null;
+                  const isToday = cell.key === todayKey;
+                  const dimmed = activeLegend && dayEntry && dayEntry.status !== activeLegend && dayEntry.status !== 'WEEKEND';
+                  return (
+                    <motion.button
+                      type="button"
+                      key={cell.key}
+                      className={`calendar-day ${cell.isSunday ? 'sunday' : ''} ${selectedDate === cell.key ? 'selected' : ''} ${dayEntry ? `status-${statusClass(dayEntry.status)}` : ''} ${isToday ? 'is-today' : ''} ${dimmed ? 'dimmed' : ''}`}
+                      onClick={() => setSelectedDate(cell.key)}
+                      initial={{ opacity: 0, scale: 0.9 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      transition={{ duration: 0.25, delay: Math.min(index * 0.012, 0.3), ease: easeOut }}
+                      whileHover={{ scale: 1.05 }}
+                      title={dayEntry ? `${cell.key} — ${STATUS_LABELS[dayEntry.status] || dayEntry.status}` : cell.key}
+                    >
+                      <span className="cal-day-num">{cell.day}</span>
+                      {SIcon && <SIcon size={13} className="cal-day-icon" />}
+                      {code && <i className={`attendance-marker status-${statusClass(dayEntry.status)}`}>{code}</i>}
+                    </motion.button>
+                  );
+                })}
+              </div>
+
+              {/* Legend pills */}
+              <div className="legend-pills">
+                {LEGEND.map((item) => {
+                  const LIcon = item.icon;
+                  const active = activeLegend === item.cls || activeLegend === null;
+                  return (
+                    <button
+                      key={item.code}
+                      className={`legend-pill ${item.cls} ${active ? 'active' : 'inactive'}`}
+                      onClick={() => setActiveLegend((cur) => (cur === item.cls ? null : item.cls))}
+                    >
+                      <LIcon size={13} /> {item.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </motion.section>
+
+            {/* Selected day panel */}
+            <motion.aside className="panel selected-attendance-panel" variants={fadeUp}>
+              <span className="eyebrow">Selected day</span>
+              <h2>{selectedDate || 'Choose a date'}</h2>
+              {selectedEntry ? (
+                <div className="selected-attendance-details">
+                  <div className="sad-row">
+                    <span><CheckCircle2 size={14} /> Status</span>
+                    <span className={`status-pill status-${statusClass(selectedEntry.status)}`}>{STATUS_LABELS[selectedEntry.status] || selectedEntry.status}</span>
+                  </div>
+                  <div className="sad-row"><span><LogIn size={14} /> Check in</span><strong>—</strong></div>
+                  <div className="sad-row"><span><LogOut size={14} /> Check out</span><strong>—</strong></div>
+                  <div className="sad-row"><span><Briefcase size={14} /> Working hours</span><strong>—</strong></div>
+                  <div className="sad-row"><span><Coffee size={14} /> Break time</span><strong>—</strong></div>
+                  <div className="sad-row"><span><TrendingUp size={14} /> Overtime</span><strong>—</strong></div>
+                  <div className="sad-row"><span><MapPin size={14} /> Location</span><strong>—</strong></div>
+                  <div className="sad-row"><span><Sparkles size={14} /> Remarks</span><strong>—</strong></div>
+                </div>
+              ) : (
+                <div className="empty-state">
+                  <CalendarDays size={32} />
+                  <p>No attendance found.</p>
+                  <small>This day has no recorded attendance.</small>
+                </div>
+              )}
+            </motion.aside>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

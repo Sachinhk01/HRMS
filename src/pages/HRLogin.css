@@ -1,0 +1,50 @@
+/* ===== HR Login — amber-tinted variant ===== */
+
+.hrms-login--hr {
+  --color-primary: #d97706;
+  --color-primary-600: #b45309;
+  --color-primary-700: #92400e;
+  --color-deep: #78350f;
+}
+
+.hrms-login--hr .hrms-login__bg {
+  background:
+    radial-gradient(ellipse 70% 50% at 18% 0%, rgba(217, 119, 6, 0.16) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 45% at 90% 8%, rgba(120, 53, 15, 0.14) 0%, transparent 55%),
+    linear-gradient(180deg, #fce8d0 0%, #fdf0e0 38%, var(--color-bg) 72%, var(--color-bg) 100%);
+}
+
+.hrms-login--hr .hrms-login__aside-bg {
+  background:
+    radial-gradient(ellipse 90% 70% at 25% 15%, rgba(217, 119, 6, 0.18) 0%, transparent 60%),
+    radial-gradient(ellipse 70% 60% at 80% 90%, rgba(120, 53, 15, 0.15) 0%, transparent 55%),
+    linear-gradient(160deg, #fce8d0 0%, #fbdcb8 50%, #f5cea3 100%);
+}
+
+.hrms-login--hr .hrms-login__brand-mark {
+  background: linear-gradient(145deg, #d97706, #78350f);
+  box-shadow: 0 4px 12px rgba(217, 119, 6, 0.3);
+}
+
+.hrms-login--hr .hrms-login__card-lock {
+  background: linear-gradient(145deg, rgba(217, 119, 6, 0.1), rgba(120, 53, 15, 0.06));
+}
+
+.hrms-login--hr .hrms-login__floatcard-icon {
+  background: rgba(217, 119, 6, 0.1);
+  color: #d97706;
+}
+
+.hrms-login--hr .hrms-btn--primary {
+  background: linear-gradient(145deg, #d97706, #b45309);
+  box-shadow: 0 1px 2px rgba(217, 119, 6, 0.24), 0 4px 14px rgba(217, 119, 6, 0.22);
+}
+
+.hrms-login--hr .hrms-btn--primary:hover {
+  box-shadow: 0 2px 4px rgba(217, 119, 6, 0.28), 0 10px 24px rgba(217, 119, 6, 0.3);
+}
+
+.hrms-login--hr .hrms-login__back:hover {
+  background: var(--color-white);
+  color: #d97706;
+}

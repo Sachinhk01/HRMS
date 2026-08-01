@@ -3,7 +3,7 @@ import { getSection, setSection } from './localStorageService';
 const MAGAZINE_KEY = 'monthlyMagazine';
 const EMPLOYEE_KEY = 'employeeOfMonth';
 
-const emptyMagazine = { title: '', month: '', description: '', coverUrl: '', documentUrl: '', updatedAt: '' };
+const emptyMagazine = { title: '', month: '', description: '', coverUrl: '', documentUrl: '', documentName: '', documentSize: 0, updatedAt: '' };
 const emptyEmployee = { employeeId: '', employeeName: '', designation: '', department: '', month: '', message: '', photoUrl: '', updatedAt: '' };
 
 export function getMonthlyMagazine() {
@@ -20,7 +20,14 @@ export function saveMonthlyMagazine(actor, data) {
     updatedAt: new Date().toISOString(),
     updatedBy: actor.id,
   };
-  setSection(MAGAZINE_KEY, item);
+  try {
+    setSection(MAGAZINE_KEY, item);
+  } catch (error) {
+    if (error?.name === 'QuotaExceededError') {
+      throw new Error('This browser storage is full — the PDF is too large to save locally. Try a smaller file (this limit goes away once the backend upload endpoint is live).');
+    }
+    throw error;
+  }
   return item;
 }
 

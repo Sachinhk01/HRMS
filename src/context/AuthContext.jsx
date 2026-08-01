@@ -96,6 +96,23 @@ export function AuthProvider({ children }) {
     return safeUser;
   };
 
+  // ==========================
+  // Forgot / Reset Password
+  // ==========================
+  const forgotPassword = async ({ email }) => {
+    if (!email) {
+      throw new Error('Email is required.');
+    }
+    await api.post('/auth/forgot-password', { email });
+  };
+
+  const resetPassword = async ({ token, password }) => {
+    if (!token || !password) {
+      throw new Error('Token and new password are required.');
+    }
+    await api.post('/auth/reset-password', { token, password });
+  };
+
   const updateUser = (next) => {
     localStorage.setItem('hrms-user', JSON.stringify(next));
     setUser(next);
@@ -108,13 +125,15 @@ export function AuthProvider({ children }) {
     setUser(null);
   };
 
-  const value = useMemo(
+const value = useMemo(
     () => ({
       user,
       login,
       registerLocalAccount,
       logout,
       updateUser,
+      forgotPassword,
+      resetPassword,
     }),
     [user]
   );

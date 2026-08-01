@@ -61,7 +61,7 @@ function buildFallbackEmployees() {
   return fallback;
 }
 
-function normalizeEmployeeName(member) {
+export function normalizeEmployeeName(member) {
   return member?.name || `${member?.firstName || ''} ${member?.lastName || ''}`.trim() || 'Employee';
 }
 

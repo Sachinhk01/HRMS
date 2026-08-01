@@ -2,8 +2,11 @@ import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { useAuth } from './context/AuthContext';
 import { ROUTE_ROLES } from './config';
 import AppLayout from './layouts/AppLayout';
-
-import Login, { LoginPortal } from './pages/Login';
+import LandingHero from './pages/LandingHero';
+import EmployeeLogin from './pages/EmployeeLogin';
+import ManagerLogin from './pages/ManagerLogin';
+import HRLogin from './pages/HRLogin';
+import ForgotPassword from './pages/ForgotPassword';
 import Dashboard from './pages/Dashboard';
 import Attendance from './pages/Attendance';
 import Leave from './pages/Leave';
@@ -45,11 +48,19 @@ export default function App() {
     <Routes>
       <Route
         path="/login"
-        element={user ? <Navigate to="/dashboard" replace /> : <LoginPortal />}
+        element={user ? <Navigate to="/dashboard" replace /> : <EmployeeLogin />}
       />
       <Route
-        path="/login/:roleKey"
-        element={user ? <Navigate to="/dashboard" replace /> : <Login />}
+        path="/login/manager"
+        element={user ? <Navigate to="/dashboard" replace /> : <ManagerLogin />}
+      />
+      <Route
+        path="/login/hr-admin"
+        element={user ? <Navigate to="/dashboard" replace /> : <HRLogin />}
+      />
+      <Route
+        path="/forgot-password"
+        element={user ? <Navigate to="/dashboard" replace /> : <ForgotPassword />}
       />
 
       <Route element={<ProtectedRoute />}>
@@ -70,7 +81,7 @@ export default function App() {
         <Route path="/access-denied" element={<AccessDenied />} />
       </Route>
 
-      <Route path="/" element={<Navigate to={user ? '/dashboard' : '/login'} replace />} />
+      <Route path="/" element={user ? <Navigate to="/dashboard" replace /> : <LandingHero />} />
       <Route path="*" element={<NotFound />} />
     </Routes>
   );

@@ -1,13 +1,14 @@
+import { Link } from 'react-router-dom';
 import logo from '../assets/hourlyrecruit-logo-clean.png';
 
-export default function Logo({ compact = false }) {
+export default function Logo({ size = 34, linkTo = '/' }) {
   return (
-    <div className={`brand brand-image ${compact ? 'brand--compact' : ''}`}>
+    <Link to={linkTo} className="hrms-logo-link" aria-label="Go to homepage">
       <img
         src={logo}
-        alt="HourlyRecruit Tech Labs"
-        style={{ height: compact ? 100 : 120, width: 'auto' }}
+        alt="MyHourly HRMS"
+        style={{ height: size, width: 'auto', display: 'block' }}
       />
-    </div>
+    </Link>
   );
 }

@@ -1,0 +1,481 @@
+/* ===== Employee Login shell ===== */
+
+.hrms-login {
+  position: relative;
+  min-height: 100vh;
+  background: var(--color-bg);
+  overflow: hidden;
+  display: flex;
+}
+
+.hrms-login__bg {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 70% 50% at 18% 0%, rgba(29, 78, 216, 0.16) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 45% at 90% 8%, rgba(23, 37, 84, 0.14) 0%, transparent 55%),
+    linear-gradient(180deg, #e0e9fb 0%, #eef3fc 38%, var(--color-bg) 72%, var(--color-bg) 100%);
+  z-index: 0;
+}
+
+.hrms-login__shield {
+  position: fixed;
+  top: 22px;
+  right: 24px;
+  z-index: 60;
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border-radius: var(--radius-md);
+  color: var(--color-navy-700);
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid var(--color-slate-200);
+  transition: background var(--transition-base), border-color var(--transition-base),
+    color var(--transition-base);
+}
+
+.hrms-login__shield:hover {
+  background: var(--color-white);
+  border-color: var(--color-slate-300);
+  color: var(--color-primary);
+}
+
+.hrms-login__shield svg {
+  width: 19px;
+  height: 19px;
+}
+
+.hrms-login__shield-dot {
+  position: absolute;
+  top: 9px;
+  right: 10px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--color-emerald);
+  box-shadow: 0 0 0 2px var(--color-white);
+}
+
+.hrms-login__cols {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  width: 100%;
+  min-height: 100vh;
+}
+
+.hrms-login__aside {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 64px 56px;
+  overflow: hidden;
+}
+
+.hrms-login__aside-bg {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 90% 70% at 25% 15%, rgba(29, 78, 216, 0.18) 0%, transparent 60%),
+    radial-gradient(ellipse 70% 60% at 80% 90%, rgba(23, 37, 84, 0.15) 0%, transparent 55%),
+    linear-gradient(160deg, #e0e8fb 0%, #d4e0f9 50%, #c9d6f5 100%);
+  z-index: 0;
+}
+
+.hrms-login__aside-content {
+  position: relative;
+  z-index: 1;
+  max-width: 420px;
+  width: 100%;
+}
+
+.hrms-login__brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 800;
+  font-size: 17px;
+  letter-spacing: -0.02em;
+  color: var(--color-navy);
+  margin-bottom: 56px;
+}
+
+.hrms-login__brand-mark {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  background: linear-gradient(145deg, var(--color-primary), var(--color-deep));
+  color: var(--color-white);
+  flex-shrink: 0;
+  box-shadow: 0 4px 12px rgba(29, 78, 216, 0.3);
+}
+
+.hrms-login__brand-mark svg {
+  width: 17px;
+  height: 17px;
+}
+
+.hrms-login__headline {
+  font-size: clamp(30px, 4vw, 42px);
+  line-height: 1.1;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  color: var(--color-navy);
+  margin-bottom: 20px;
+}
+
+.hrms-login__headline em {
+  font-style: normal;
+  background: linear-gradient(120deg, var(--color-primary), var(--color-deep));
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+}
+
+.hrms-login__subtext {
+  font-size: 16px;
+  line-height: 1.6;
+  color: var(--color-slate-500);
+  font-weight: 400;
+  margin-bottom: 48px;
+  max-width: 360px;
+}
+
+.hrms-login__floatcard-wrap {
+  position: relative;
+  width: 300px;
+}
+
+.hrms-login__floatcard {
+  background: var(--color-white);
+  border-radius: var(--radius-xl);
+  border: 1px solid var(--color-slate-200);
+  box-shadow: var(--shadow-xl);
+  will-change: transform;
+  cursor: pointer;
+}
+
+.hrms-login__floatcard-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 20px 0;
+}
+
+.hrms-login__floatcard-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-slate-500);
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.hrms-login__floatcard-icon {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 9px;
+  background: var(--color-emerald-50);
+  color: var(--color-emerald);
+}
+
+.hrms-login__floatcard-icon svg {
+  width: 16px;
+  height: 16px;
+}
+
+.hrms-login__floatcard-body {
+  padding: 12px 20px 20px;
+}
+
+.hrms-login__floatcard-title {
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--color-navy);
+  line-height: 1.2;
+  margin-bottom: 4px;
+}
+
+.hrms-login__floatcard-meta {
+  font-size: 13.5px;
+  color: var(--color-slate-500);
+  font-weight: 500;
+  margin-bottom: 16px;
+}
+
+.hrms-login__floatcard-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 11px;
+  border-radius: 999px;
+  font-size: 12.5px;
+  font-weight: 600;
+  background: var(--color-emerald-50);
+  color: var(--color-emerald);
+}
+
+.hrms-login__floatcard-status svg {
+  width: 13px;
+  height: 13px;
+}
+
+.hrms-login__form-side {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 64px 56px;
+}
+
+.hrms-login__card {
+  width: 100%;
+  max-width: 400px;
+  background: var(--color-white);
+  border: 1px solid var(--color-slate-200);
+  border-radius: var(--radius-2xl);
+  box-shadow: var(--shadow-lg);
+  padding: 40px 36px;
+}
+
+.hrms-login__card-head {
+  text-align: center;
+  margin-bottom: 32px;
+}
+
+.hrms-login__card-lock {
+  display: inline-grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: linear-gradient(145deg, rgba(29, 78, 216, 0.1), rgba(23, 37, 84, 0.06));
+  color: var(--color-primary);
+  margin-bottom: 16px;
+}
+
+.hrms-login__card-lock svg {
+  width: 20px;
+  height: 20px;
+}
+
+.hrms-login__card-title {
+  font-size: 24px;
+  font-weight: 800;
+  letter-spacing: -0.025em;
+  color: var(--color-navy);
+  margin-bottom: 6px;
+}
+
+.hrms-login__card-sub {
+  font-size: 14px;
+  color: var(--color-slate-500);
+  font-weight: 500;
+}
+
+.hrms-login__form {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.hrms-field {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.hrms-field__label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-navy-700);
+  letter-spacing: -0.01em;
+}
+
+.hrms-field__wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 14px;
+  border: 1px solid var(--color-slate-200);
+  border-radius: var(--radius-md);
+  background: var(--color-bg);
+  transition: border-color var(--transition-base), box-shadow var(--transition-base);
+}
+
+.hrms-field__wrap:focus-within {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px rgba(29, 78, 216, 0.14);
+}
+
+.hrms-field__wrap > svg {
+  width: 18px;
+  height: 18px;
+  color: var(--color-slate-400);
+  flex-shrink: 0;
+}
+
+.hrms-field__wrap input {
+  flex: 1;
+  border: none;
+  background: transparent;
+  outline: none;
+  font-family: var(--font-sans);
+  font-size: 14.5px;
+  color: var(--color-navy);
+  padding: 12px 0;
+}
+
+.hrms-field__wrap input::placeholder {
+  color: var(--color-slate-400);
+}
+
+.hrms-field__toggle {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 7px;
+  color: var(--color-slate-400);
+  transition: color var(--transition-base), background var(--transition-base);
+  flex-shrink: 0;
+}
+
+.hrms-field__toggle:hover {
+  color: var(--color-navy);
+  background: var(--color-slate-100);
+}
+
+.hrms-field__toggle svg {
+  width: 18px;
+  height: 18px;
+}
+
+.hrms-login__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.hrms-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  font-size: 13.5px;
+  color: var(--color-navy-700);
+  font-weight: 500;
+  cursor: pointer;
+  user-select: none;
+}
+
+.hrms-check input {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.hrms-check__box {
+  display: inline-grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 5px;
+  border: 1.5px solid var(--color-slate-300);
+  background: var(--color-white);
+  transition: background var(--transition-base), border-color var(--transition-base);
+}
+
+.hrms-check__box::after {
+  content: '';
+  width: 9px;
+  height: 9px;
+  border-radius: 2px;
+  background: var(--color-white);
+  transform: scale(0);
+  transition: transform 0.15s ease;
+}
+
+.hrms-check input:checked + .hrms-check__box {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+}
+
+.hrms-check input:checked + .hrms-check__box::after {
+  transform: scale(1);
+}
+
+.hrms-login__forgot {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--color-primary);
+  transition: color var(--transition-base);
+}
+
+.hrms-login__forgot:hover {
+  color: var(--color-primary-700);
+}
+
+.hrms-btn--block {
+  width: 100%;
+  padding: 13px 24px;
+  font-size: 15px;
+  margin-top: 4px;
+}
+
+@media (max-width: 960px) {
+  .hrms-login__cols {
+    grid-template-columns: 1fr;
+  }
+
+  .hrms-login__aside {
+    padding: 56px 40px 40px;
+  }
+
+  .hrms-login__brand {
+    margin-bottom: 32px;
+  }
+
+  .hrms-login__subtext {
+    margin-bottom: 32px;
+  }
+
+  .hrms-login__floatcard-wrap {
+    display: none;
+  }
+
+  .hrms-login__form-side {
+    padding: 40px 32px 64px;
+  }
+}
+
+@media (max-width: 640px) {
+  .hrms-login__aside {
+    padding: 48px 24px 32px;
+  }
+
+  .hrms-login__form-side {
+    padding: 32px 20px 56px;
+  }
+
+  .hrms-login__card {
+    padding: 32px 24px;
+  }
+
+  .hrms-login__shield {
+    top: 16px;
+    right: 16px;
+  }
+}

@@ -17,10 +17,12 @@ import {
   Timer,
   Target,
   ChevronRight,
+  Sparkles,
 } from "lucide-react";
 import SummaryCard from '../components/SummaryCard';
+import PdfDropzone from '../components/PdfDropzone';
 import { useAuth } from '../context/AuthContext';
-import { getEmployees, getBirthdaysToday } from '../services/employeeService';
+import { getEmployees, getBirthdaysToday, normalizeEmployeeName } from '../services/employeeService';
 import { getAttendanceDashboard, getAttendanceHistory } from '../services/attendanceService';
 import { getMyLeaveBalances, getTeamLeaveRequests } from '../services/leaveService';
 import { announcementStore, eventStore, postStore } from '../services/contentService';
@@ -67,6 +69,11 @@ export default function Dashboard() {
   const [magazine, setMagazine] = useState(getMonthlyMagazine());
   const [employeeOfMonth, setEmployeeOfMonth] = useState(getEmployeeOfMonth());
   const [message, setMessage] = useState('');
+  const [magazineFile, setMagazineFile] = useState({
+    url: getMonthlyMagazine()?.documentUrl || '',
+    name: getMonthlyMagazine()?.documentName || '',
+    size: getMonthlyMagazine()?.documentSize || 0,
+  });
   const [employees, setEmployees] = useState([]);
   const [employeesLoading, setEmployeesLoading] = useState(true);
 
@@ -115,7 +122,7 @@ useEffect(() => {
       }
     }
 
-    loadBirthdays();
+    // loadBirthdays();
     window.addEventListener('focus', loadBirthdays);
     return () => {
       cancelled = true;
@@ -305,8 +312,13 @@ useEffect(() => {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
     try {
-      const next = saveMonthlyMagazine(user, Object.fromEntries(form.entries()));
+      const next = saveMonthlyMagazine(user, {
+        ...Object.fromEntries(form.entries()),
+        documentName: magazineFile.name,
+        documentSize: magazineFile.size,
+      });
       setMagazine(next);
+      setMagazineFile({ url: next.documentUrl || '', name: next.documentName || '', size: next.documentSize || 0 });
       setMessage('Monthly magazine updated.');
     } catch (error) { setMessage(error.message); }
   }
@@ -314,13 +326,13 @@ useEffect(() => {
   function updateEmployeeOfMonth(event) {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
-    const selected = employees.find((item) => item.id === form.get('employeeId'));
+    const selected = employees.find((item) => String(item.id) === form.get('employeeId'));
     try {
       const next = saveEmployeeOfMonth(user, {
         ...Object.fromEntries(form.entries()),
-        employeeName: selected?.name || form.get('employeeName'),
-        designation: selected?.designation || '',
-        department: selected?.department || '',
+        employeeName: selected ? normalizeEmployeeName(selected) : '',
+        designation: selected?.designationName || selected?.jobTitle || '',
+        department: selected?.departmentName || '',
       });
       setEmployeeOfMonth(next);
       setMessage('Employee of the Month updated.');
@@ -386,27 +398,94 @@ useEffect(() => {
       {/* Redesigned Monthly Magazine + Employee of the Month cards */}
       <HighlightCards magazine={magazine} employeeOfMonth={employeeOfMonth} />
 
-      {['HR_ADMIN', 'MANAGER'].includes(role) && (
-        <section className="panel dashboard-content-admin">
-          <div className="panel-title"><h2>Dashboard highlights management</h2></div>
-          {message && <div className={message.includes('updated') ? 'success-alert' : 'form-alert'}>{message}</div>}
-          <div className="dashboard-admin-grid">
-            <form className="form-grid" onSubmit={updateMagazine}>
-              <h3 className="full-span">Monthly magazine</h3>
-              <label>Title<input name="title" defaultValue={magazine?.title || ''} required /></label>
-              <label>Month<input name="month" type="month" defaultValue={magazine?.month || ''} /></label>
-              <label className="full-span">Description<textarea name="description" rows="3" defaultValue={magazine?.description || ''} /></label>
-              <label>Cover image URL<input name="coverUrl" type="url" defaultValue={magazine?.coverUrl || ''} /></label>
-              <label>Magazine document URL<input name="documentUrl" type="url" defaultValue={magazine?.documentUrl || ''} /></label>
-              <button className="btn btn-primary full-span"><Save size={17} /> Save magazine</button>
+      {['MANAGER'].includes(role) && (
+        <section className="panel highlights-editor">
+          <div className="highlights-editor-head">
+            <div>
+              <span className="eyebrow">Manager tools</span>
+              <h2>Dashboard highlights</h2>
+              <p>Whatever you publish here replaces last month's — every employee sees it the moment you save.</p>
+            </div>
+            <div className="highlights-editor-badge"><Sparkles size={14} /> Live this month</div>
+          </div>
+
+          {message && (
+            <div className={message.includes('updated') ? 'success-alert' : 'form-alert'}>{message}</div>
+          )}
+
+          <div className="highlights-editor-grid">
+            <form className="editor-card editor-card--blue" onSubmit={updateMagazine}>
+              <div className="editor-card-head">
+                <div className="editor-card-icon editor-card-icon--blue"><BookOpen size={18} /></div>
+                <div>
+                  <h3>Monthly Magazine</h3>
+                  <p>PDF opens or downloads for every employee on their dashboard</p>
+                </div>
+              </div>
+
+              <div className="editor-fields">
+                <label className="ef-field ef-full">
+                  <span>Title</span>
+                  <input name="title" defaultValue={magazine?.title || ''} placeholder="e.g. MyHourly Times — August Edition" required />
+                </label>
+                <label className="ef-field">
+                  <span>Edition month</span>
+                  <input name="month" type="month" defaultValue={magazine?.month || ''} />
+                </label>
+                <label className="ef-field">
+                  <span>Cover image URL</span>
+                  <input name="coverUrl" type="url" defaultValue={magazine?.coverUrl || ''} placeholder="https://…" />
+                </label>
+                <label className="ef-field ef-full">
+                  <span>Description</span>
+                  <textarea name="description" rows="3" defaultValue={magazine?.description || ''} placeholder="What's inside this edition?" />
+                </label>
+                <div className="ef-field ef-full">
+                  <span>Magazine PDF</span>
+                  <PdfDropzone
+                    url={magazineFile.url}
+                    fileName={magazineFile.name}
+                    fileSize={magazineFile.size}
+                    onChange={(next) => setMagazineFile(next)}
+                  />
+                </div>
+              </div>
+
+              <button className="btn btn-primary btn-block"><Save size={17} /> Save &amp; publish magazine</button>
             </form>
-            <form className="form-grid" onSubmit={updateEmployeeOfMonth}>
-              <h3 className="full-span">Employee of the Month</h3>
-              <label className="full-span">Employee<select name="employeeId" defaultValue={employeeOfMonth?.employeeId || ''} required><option value="">Select employee</option>{employees.map((employee) => <option key={employee.id} value={employee.id}>{employee.name}</option>)}</select></label>
-              <label>Month<input name="month" type="month" defaultValue={employeeOfMonth?.month || ''} required /></label>
-              <label>Photo URL<input name="photoUrl" type="url" defaultValue={employeeOfMonth?.photoUrl || ''} /></label>
-              <label className="full-span">Recognition message<textarea name="message" rows="4" defaultValue={employeeOfMonth?.message || ''} /></label>
-              <button className="btn btn-primary full-span"><Award size={17} /> Publish recognition</button>
+
+            <form className="editor-card editor-card--warm" onSubmit={updateEmployeeOfMonth}>
+              <div className="editor-card-head">
+                <div className="editor-card-icon editor-card-icon--warm"><Award size={18} /></div>
+                <div>
+                  <h3>Employee of the Month</h3>
+                  <p>Featured on every dashboard alongside the magazine</p>
+                </div>
+              </div>
+
+              <div className="editor-fields">
+                <label className="ef-field ef-full">
+                  <span>Employee</span>
+                  <select name="employeeId" defaultValue={employeeOfMonth?.employeeId || ''} required>
+                    <option value="">Select employee</option>
+                    {employees.map((employee) => <option key={employee.id} value={employee.id}>{normalizeEmployeeName(employee)}</option>)}
+                  </select>
+                </label>
+                <label className="ef-field">
+                  <span>Month</span>
+                  <input name="month" type="month" defaultValue={employeeOfMonth?.month || ''} required />
+                </label>
+                <label className="ef-field">
+                  <span>Photo URL</span>
+                  <input name="photoUrl" type="url" defaultValue={employeeOfMonth?.photoUrl || ''} placeholder="https://… (optional)" />
+                </label>
+                <label className="ef-field ef-full">
+                  <span>Recognition message</span>
+                  <textarea name="message" rows="4" defaultValue={employeeOfMonth?.message || ''} placeholder="Why they earned it this month" />
+                </label>
+              </div>
+
+              <button className="btn btn-primary btn-block"><Award size={17} /> Publish recognition</button>
             </form>
           </div>
         </section>

@@ -14,7 +14,6 @@ import {
   UserRound,
   Users,
   UserSearch,
-  X,
 } from 'lucide-react';
 import Logo from './Logo';
 import { useAuth } from '../context/AuthContext';
@@ -77,14 +76,6 @@ export default function Sidebar({ open, onClose }) {
             aria-label="Go to dashboard"
           >
             <Logo compact />
-          </button>
-          <button
-            type="button"
-            className="icon-btn mobile-only"
-            onClick={onClose}
-            aria-label="Close navigation"
-          >
-            <X size={20} />
           </button>
         </div>
 

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Bell, ChevronDown, LogOut, Menu, MessageSquare, Search, UserRound } from 'lucide-react';
+import { Bell, ChevronDown, LogOut, Menu, Search, UserRound } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { getUnreadCount } from '../services/notificationService';
@@ -45,7 +45,6 @@ export default function TopBar({ onMenu }) {
         <Link className={`icon-btn${unreadCount > 0 ? ' notification-dot' : ''}`} to="/notifications" aria-label="Notifications">
           <Bell size={19} />
         </Link>
-        <button className="icon-btn subtle" aria-label="Messages"><MessageSquare size={19} /></button>
         <div className="profile-menu" ref={menuRef}>
           <button type="button" className="profile-trigger" onClick={() => setOpen((value) => !value)} aria-expanded={open} aria-haspopup="menu">
             <div className="avatar">{user?.initials}</div>
