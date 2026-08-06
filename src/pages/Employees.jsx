@@ -3,11 +3,15 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   Search, LayoutGrid, List, Phone, Mail, Eye, X,
   Briefcase, Building2, CalendarDays, IdCard, Users, AlertTriangle, RotateCw,
+  UserPlus, CheckCircle2, Loader2, ChevronRight, ChevronLeft,
 } from 'lucide-react';
 import PageHeader from '../components/PageHeader';
 import Pagination from '../components/Pagination';
 import usePagination from '../hooks/usePagination';
-import { getEmployees } from '../services/employeeService';
+import { useAuth } from '../context/AuthContext';
+import {
+  getEmployees, createEmployee, getDepartments, getDesignations, getJobTitles, getEmployeeDropdown,
+} from '../services/employeeService';
 import './Employees.css';
 
 const DEPT_COLORS = {
@@ -21,7 +25,28 @@ const easeOut = [0.16, 1, 0.3, 1];
 const fadeUp = { hidden: { opacity: 0, y: 18 }, show: { opacity: 1, y: 0, transition: { duration: 0.5, ease: easeOut } } };
 const stagger = { hidden: {}, show: { transition: { staggerChildren: 0.06, delayChildren: 0.04 } } };
 
+// Roles allowed to see the "Add Employee" action. Mirrors the backend's
+// @PreAuthorize on POST /admin/users/register and /admin/employee-profile/{userId}.
+const CAN_CREATE_ROLES = ['SUPER_ADMIN', 'HR_ADMIN', 'MANAGER'];
+
+const ROLE_OPTIONS = ['EMPLOYEE', 'HR_ADMIN', 'MANAGER', 'PAYROLL_ADMIN'];
+const GENDER_OPTIONS = ['MALE', 'FEMALE'];
+const EMPLOYMENT_TYPE_OPTIONS = ['FULL_TIME', 'PART_TIME', 'CONTRACT', 'INTERN'];
+
+const EMPTY_FORM = {
+  // Step 1 — account
+  username: '', email: '', password: '', role: 'EMPLOYEE',
+  // Step 2 — profile
+  firstName: '', lastName: '', phoneNumber: '', gender: '', dateOfBirth: '',
+  dateOfJoining: '', employmentType: '', departmentId: '', designationId: '',
+  jobTitleId: '', reportingManagerId: '',
+};
+
 export default function Employees() {
+  const { user } = useAuth();
+  const userRole = user?.roles?.[0] || user?.role;
+  const canCreate = CAN_CREATE_ROLES.includes(userRole);
+
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState('');
@@ -31,6 +56,24 @@ export default function Employees() {
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [view, setView] = useState('grid');
   const [drawerEmp, setDrawerEmp] = useState(null);
+  const [successMsg, setSuccessMsg] = useState('');
+
+  // ---------- Add Employee modal state ----------
+  const [showAdd, setShowAdd] = useState(false);
+  const [addStep, setAddStep] = useState(1); // 1 = account, 2 = profile
+  const [form, setForm] = useState(EMPTY_FORM);
+  const [formErr, setFormErr] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+
+  // Each lookup list is fetched and tracked independently, so one failing
+  // request (e.g. a 403 on a role-gated endpoint) doesn't blank out the others.
+  const [departments, setDepartments] = useState([]);
+  const [designations, setDesignations] = useState([]);
+  const [jobTitles, setJobTitles] = useState([]);
+  const [managers, setManagers] = useState([]);
+  const [deptLoading, setDeptLoading] = useState(false);
+  const [desigLoading, setDesigLoading] = useState(false);
+  const [titleLoading, setTitleLoading] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -48,8 +91,8 @@ export default function Employees() {
 
   useEffect(() => { load(); }, [load]);
 
-  const departments = useMemo(() => Array.from(new Set(rows.map((e) => e.departmentName).filter(Boolean))), [rows]);
-  const designations = useMemo(() => Array.from(new Set(rows.map((e) => e.designationName).filter(Boolean))), [rows]);
+  const departmentNames = useMemo(() => Array.from(new Set(rows.map((e) => e.departmentName).filter(Boolean))), [rows]);
+  const designationNames = useMemo(() => Array.from(new Set(rows.map((e) => e.designationName).filter(Boolean))), [rows]);
 
   const filtered = useMemo(() => {
     let list = rows;
@@ -65,6 +108,175 @@ export default function Employees() {
 
   const { page, setPage, pageItems, pageSize } = usePagination(filtered, view === 'grid' ? 9 : 8);
 
+  // ---------- Add Employee: load departments + managers when the modal opens ----------
+  useEffect(() => {
+    if (!showAdd) return;
+    let cancelled = false;
+
+    (async () => {
+      setDeptLoading(true);
+      try {
+        const list = await getDepartments();
+        if (!cancelled) setDepartments(list || []);
+      } catch (error) {
+        if (!cancelled) {
+          setDepartments([]);
+          setFormErr(error?.response?.data?.message || error.message || 'Failed to load departments. Check that you have permission and the server is reachable.');
+        }
+      } finally {
+        if (!cancelled) setDeptLoading(false);
+      }
+
+      try {
+        const list = await getEmployeeDropdown();
+        if (!cancelled) setManagers(list || []);
+      } catch {
+        if (!cancelled) setManagers([]); // reporting manager is optional — fail silently
+      }
+    })();
+
+    return () => { cancelled = true; };
+  }, [showAdd]);
+
+  // ---------- Add Employee: fetch designations whenever the chosen department changes ----------
+  useEffect(() => {
+    if (!form.departmentId) { setDesignations([]); return; }
+    let cancelled = false;
+
+    (async () => {
+      setDesigLoading(true);
+      try {
+        const list = await getDesignations(form.departmentId);
+        if (!cancelled) setDesignations(list || []);
+      } catch (error) {
+        if (!cancelled) {
+          setDesignations([]);
+          setFormErr(error?.response?.data?.message || error.message || 'Failed to load designations for that department.');
+        }
+      } finally {
+        if (!cancelled) setDesigLoading(false);
+      }
+    })();
+
+    return () => { cancelled = true; };
+  }, [form.departmentId]);
+
+  // ---------- Add Employee: fetch job titles whenever the chosen designation changes ----------
+  useEffect(() => {
+    if (!form.designationId) { setJobTitles([]); return; }
+    let cancelled = false;
+
+    (async () => {
+      setTitleLoading(true);
+      try {
+        const list = await getJobTitles(form.designationId);
+        if (!cancelled) setJobTitles(list || []);
+      } catch (error) {
+        if (!cancelled) {
+          setJobTitles([]);
+          setFormErr(error?.response?.data?.message || error.message || 'Failed to load job titles for that designation.');
+        }
+      } finally {
+        if (!cancelled) setTitleLoading(false);
+      }
+    })();
+
+    return () => { cancelled = true; };
+  }, [form.designationId]);
+
+  const openAddModal = useCallback(() => {
+    setForm(EMPTY_FORM);
+    setFormErr('');
+    setAddStep(1);
+    setDepartments([]);
+    setDesignations([]);
+    setJobTitles([]);
+    setManagers([]);
+    setShowAdd(true);
+  }, []);
+
+  const closeAddModal = useCallback(() => {
+    if (submitting) return;
+    setShowAdd(false);
+    setForm(EMPTY_FORM);
+    setFormErr('');
+    setAddStep(1);
+  }, [submitting]);
+
+  const updateField = (key) => (e) => {
+    const value = e?.target ? e.target.value : e;
+    setForm((f) => ({ ...f, [key]: value }));
+  };
+
+  function validateStep1() {
+    if (!form.username.trim() || form.username.trim().length < 3) return 'Username must be at least 3 characters.';
+    if (!/^\S+@\S+\.\S+$/.test(form.email)) return 'Enter a valid email address.';
+    if (!form.password || form.password.length < 6) return 'Password must be at least 6 characters.';
+    if (!form.role) return 'Select a role.';
+    return '';
+  }
+
+  function validateStep2() {
+    if (!form.firstName.trim()) return 'First name is required.';
+    if (!/^[6-9]\d{9}$/.test(form.phoneNumber)) return 'Enter a valid 10-digit Indian mobile number.';
+    if (!form.gender) return 'Select a gender.';
+    if (!form.dateOfBirth) return 'Date of birth is required.';
+    if (!form.dateOfJoining) return 'Date of joining is required.';
+    if (!form.employmentType) return 'Select an employment type.';
+    if (!form.departmentId) return 'Select a department.';
+    if (!form.designationId) return 'Select a designation.';
+    if (!form.jobTitleId) return 'Select a job title.';
+    return '';
+  }
+
+  function goNext() {
+    const error = validateStep1();
+    if (error) { setFormErr(error); return; }
+    setFormErr('');
+    setAddStep(2);
+  }
+
+  function goBack() {
+    setFormErr('');
+    setAddStep(1);
+  }
+
+  async function handleSubmit(e) {
+    e.preventDefault();
+    const error = validateStep2();
+    if (error) { setFormErr(error); return; }
+    setFormErr('');
+    setSubmitting(true);
+    try {
+      await createEmployee({
+        username: form.username.trim(),
+        email: form.email.trim(),
+        password: form.password,
+        role: form.role,
+        firstName: form.firstName.trim(),
+        lastName: form.lastName.trim(),
+        phoneNumber: form.phoneNumber.trim(),
+        gender: form.gender,
+        dateOfBirth: form.dateOfBirth,
+        dateOfJoining: form.dateOfJoining,
+        employmentType: form.employmentType,
+        departmentId: Number(form.departmentId),
+        designationId: Number(form.designationId),
+        jobTitleId: Number(form.jobTitleId),
+        reportingManagerId: form.reportingManagerId ? Number(form.reportingManagerId) : undefined,
+      });
+      setShowAdd(false);
+      setForm(EMPTY_FORM);
+      setAddStep(1);
+      setSuccessMsg(`${form.firstName} ${form.lastName} was added successfully.`);
+      load();
+    } catch (error) {
+      setFormErr(error?.response?.data?.message || error.message || 'Failed to create employee. Please check the details and try again.');
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
   return (
     <div className="page-stack employees-page page-reveal">
       {/* ---------- Hero banner ---------- */}
@@ -73,6 +285,11 @@ export default function Employees() {
           <span className="eyebrow">Organization</span>
           <h1>Employees</h1>
           <p>Browse your organization and view employee information.</p>
+          {canCreate && (
+            <button className="btn btn-primary emp-add-btn" onClick={openAddModal}>
+              <UserPlus size={16} /> Add Employee
+            </button>
+          )}
         </div>
         <div className="emp-hero-illustration" aria-hidden="true">
           <svg viewBox="0 0 320 200" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -89,6 +306,20 @@ export default function Employees() {
           </svg>
         </div>
       </motion.section>
+
+      {/* ---------- Success toast ---------- */}
+      <AnimatePresence>
+        {successMsg && (
+          <motion.div
+            className="toast toast-success"
+            initial={{ opacity: 0, y: -24, scale: 0.96 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -24, scale: 0.96 }}
+            transition={{ duration: 0.3, ease: easeOut }}
+            onAnimationComplete={() => { if (successMsg) window.setTimeout(() => setSuccessMsg(''), 3500); }}
+          >
+            <CheckCircle2 size={18} /> {successMsg}
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* ---------- Error banner (real API failure, not mock fallback) ---------- */}
       <AnimatePresence>
@@ -112,11 +343,11 @@ export default function Employees() {
         </label>
         <select className="compact-select" value={deptFilter} onChange={(e) => setDeptFilter(e.target.value)}>
           <option value="ALL">All departments</option>
-          {departments.map((d) => <option key={d} value={d}>{d}</option>)}
+          {departmentNames.map((d) => <option key={d} value={d}>{d}</option>)}
         </select>
         <select className="compact-select" value={desigFilter} onChange={(e) => setDesigFilter(e.target.value)}>
           <option value="ALL">All designations</option>
-          {designations.map((d) => <option key={d} value={d}>{d}</option>)}
+          {designationNames.map((d) => <option key={d} value={d}>{d}</option>)}
         </select>
         <select className="compact-select" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
           <option value="ALL">All status</option>
@@ -238,6 +469,162 @@ export default function Employees() {
               <div className="emp-modal-footer">
                 <button className="btn btn-soft" style={{ width: '100%' }} onClick={() => setDrawerEmp(null)}>Close</button>
               </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ---------- Add Employee modal ---------- */}
+      <AnimatePresence>
+        {showAdd && (
+          <motion.div className="emp-modal-overlay" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={closeAddModal}>
+            <motion.div
+              className="emp-modal-card emp-add-card"
+              initial={{ opacity: 0, scale: 0.94, y: 16 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.94, y: 16 }}
+              transition={{ duration: 0.25, ease: easeOut }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="emp-modal-head">
+                <div>
+                  <span className="eyebrow">Step {addStep} of 2 · {addStep === 1 ? 'Account details' : 'Employee profile'}</span>
+                  <h2>Add Employee</h2>
+                </div>
+                <button className="emp-modal-close" onClick={closeAddModal}><X size={18} /></button>
+              </div>
+
+              <form onSubmit={addStep === 1 ? (e) => { e.preventDefault(); goNext(); } : handleSubmit}>
+                <div className="emp-modal-body emp-form-body">
+                  {formErr && (
+                    <div className="form-alert"><AlertTriangle size={15} /> {formErr}</div>
+                  )}
+
+                  {addStep === 1 && (
+                    <div className="emp-form-grid">
+                      <label className="form-field">
+                        <span>Username</span>
+                        <input type="text" value={form.username} onChange={updateField('username')} placeholder="e.g. anagha.k" required />
+                      </label>
+                      <label className="form-field">
+                        <span>Email</span>
+                        <input type="email" value={form.email} onChange={updateField('email')} placeholder="name@company.com" required />
+                      </label>
+                      <label className="form-field">
+                        <span>Temporary password</span>
+                        <input type="password" value={form.password} onChange={updateField('password')} placeholder="Min. 6 characters" required />
+                      </label>
+                      <label className="form-field">
+                        <span>Role</span>
+                        <select value={form.role} onChange={updateField('role')} required>
+                          {ROLE_OPTIONS.map((r) => <option key={r} value={r}>{r.replace('_', ' ')}</option>)}
+                        </select>
+                      </label>
+                    </div>
+                  )}
+
+                  {addStep === 2 && (
+                    <div className="emp-form-grid">
+                      <label className="form-field">
+                        <span>First name</span>
+                        <input type="text" value={form.firstName} onChange={updateField('firstName')} required />
+                      </label>
+                      <label className="form-field">
+                        <span>Last name</span>
+                        <input type="text" value={form.lastName} onChange={updateField('lastName')} />
+                      </label>
+                      <label className="form-field">
+                        <span>Phone number</span>
+                        <input type="tel" value={form.phoneNumber} onChange={updateField('phoneNumber')} placeholder="10-digit mobile" required />
+                      </label>
+                      <label className="form-field">
+                        <span>Gender</span>
+                        <select value={form.gender} onChange={updateField('gender')} required>
+                          <option value="">Select</option>
+                          {GENDER_OPTIONS.map((g) => <option key={g} value={g}>{g[0] + g.slice(1).toLowerCase()}</option>)}
+                        </select>
+                      </label>
+                      <label className="form-field">
+                        <span>Date of birth</span>
+                        <input type="date" value={form.dateOfBirth} onChange={updateField('dateOfBirth')} required />
+                      </label>
+                      <label className="form-field">
+                        <span>Date of joining</span>
+                        <input type="date" value={form.dateOfJoining} onChange={updateField('dateOfJoining')} required />
+                      </label>
+                      <label className="form-field">
+                        <span>Employment type</span>
+                        <select value={form.employmentType} onChange={updateField('employmentType')} required>
+                          <option value="">Select</option>
+                          {EMPLOYMENT_TYPE_OPTIONS.map((t) => <option key={t} value={t}>{t.replace('_', ' ')}</option>)}
+                        </select>
+                      </label>
+                      <label className="form-field">
+                        <span>Department {deptLoading && <small>(loading…)</small>}</span>
+                        <select
+                          value={form.departmentId}
+                          onChange={(e) => setForm((f) => ({ ...f, departmentId: e.target.value, designationId: '', jobTitleId: '' }))}
+                          disabled={deptLoading}
+                          required
+                        >
+                          <option value="">{deptLoading ? 'Loading…' : departments.length ? 'Select' : 'No departments found'}</option>
+                          {departments.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
+                        </select>
+                      </label>
+                      <label className="form-field">
+                        <span>Designation {desigLoading && <small>(loading…)</small>}</span>
+                        <select
+                          value={form.designationId}
+                          onChange={(e) => setForm((f) => ({ ...f, designationId: e.target.value, jobTitleId: '' }))}
+                          disabled={!form.departmentId || desigLoading}
+                          required
+                        >
+                          <option value="">
+                            {!form.departmentId ? 'Select a department first' : desigLoading ? 'Loading…' : designations.length ? 'Select' : 'No designations found'}
+                          </option>
+                          {designations.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
+                        </select>
+                      </label>
+                      <label className="form-field">
+                        <span>Job title {titleLoading && <small>(loading…)</small>}</span>
+                        <select
+                          value={form.jobTitleId}
+                          onChange={updateField('jobTitleId')}
+                          disabled={!form.designationId || titleLoading}
+                          required
+                        >
+                          <option value="">
+                            {!form.designationId ? 'Select a designation first' : titleLoading ? 'Loading…' : jobTitles.length ? 'Select' : 'No job titles found'}
+                          </option>
+                          {jobTitles.map((j) => <option key={j.id} value={j.id}>{j.name}</option>)}
+                        </select>
+                      </label>
+                      <label className="form-field">
+                        <span>Reporting manager <small>(optional)</small></span>
+                        <select value={form.reportingManagerId} onChange={updateField('reportingManagerId')}>
+                          <option value="">None</option>
+                          {managers.map((m) => <option key={m.id} value={m.id}>{m.employeeName} ({m.employeeCode})</option>)}
+                        </select>
+                      </label>
+                    </div>
+                  )}
+                </div>
+
+                <div className="emp-modal-footer emp-form-footer">
+                  {addStep === 2 ? (
+                    <>
+                      <button type="button" className="btn btn-soft" onClick={goBack} disabled={submitting}><ChevronLeft size={15} /> Back</button>
+                      <button type="submit" className="btn btn-primary" disabled={submitting}>
+                        {submitting ? <><Loader2 className="spin" size={15} /> Creating…</> : <>Create Employee</>}
+                      </button>
+                    </>
+                  ) : (
+                    <button type="submit" className="btn btn-primary" style={{ width: '100%' }}>
+                      Continue <ChevronRight size={15} />
+                    </button>
+                  )}
+                </div>
+              </form>
             </motion.div>
           </motion.div>
         )}

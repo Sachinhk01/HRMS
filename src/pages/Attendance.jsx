@@ -217,13 +217,21 @@ export default function Attendance() {
     ),
   ]);
 
+const failures = [];
+
 if (dashboardResult.status === "fulfilled") {
   setDashboard(dashboardResult.value);
+} else {
+  failures.push(`dashboard (${dashboardResult.reason?.message || 'request failed'})`);
 }
 
 if (historyResult.status === "fulfilled") {
   setHistoryItems(historyResult.value?.content || []);
   setHistoryTotalItems(historyResult.value?.totalElements ?? 0);
+} else {
+  setHistoryItems([]);
+  setHistoryTotalItems(0);
+  failures.push(`history (${historyResult.reason?.message || 'request failed'})`);
 }
 
 if (calendarResult.status === "fulfilled") {
@@ -233,8 +241,22 @@ if (calendarResult.status === "fulfilled") {
       status: normalizeAttendanceStatus(entry.attendanceStatus),
     }))
   );
+} else {
+  setCalendarEntries([]);
+  failures.push(`calendar (${calendarResult.reason?.message || 'request failed'})`);
 }
 
+// Promise.allSettled never rejects, so a failed call would otherwise be
+// silently dropped (e.g. history staying empty with no indication why).
+// Surface it the same way a thrown error would be.
+if (failures.length) {
+  setError(`Failed to load: ${failures.join(', ')}.`);
+  console.error('Attendance load failures:', {
+    dashboard: dashboardResult.status === 'rejected' ? dashboardResult.reason : null,
+    history: historyResult.status === 'rejected' ? historyResult.reason : null,
+    calendar: calendarResult.status === 'rejected' ? calendarResult.reason : null,
+  });
+}
 
     } catch (loadError) {
       setError(loadError.message || 'Unable to load attendance details.');

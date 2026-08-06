@@ -136,18 +136,26 @@ export async function createEmployee({ username, email, password, role, ...profi
   return profile;
 }
 
-// ---- Master data (for dropdowns) ----
-export async function getDepartments({ page = 0, size = 100 } = {}) {
-  const { data } = await api.get("/departments", { params: { page, size } });
-  return data.data.content;
+// ---- Master data (for dropdowns) — via LookupController, active-only, server-side cascading ----
+export async function getDepartments() {
+  const { data } = await api.get("/lookups/departments");
+  return data.data; // [{ id, name }]
 }
 
-export async function getDesignations({ page = 0, size = 100 } = {}) {
-  const { data } = await api.get("/designations", { params: { page, size } });
-  return data.data.content;
+export async function getDesignations(departmentId) {
+  // LookupController's designations endpoint currently binds departmentId via
+  // @RequestParam even though the path also declares {departmentId} — sending
+  // both keeps this working whether or not that controller gets fixed to use
+  // @PathVariable.
+  const { data } = await api.get(`/lookups/departments/${departmentId}/designations`, {
+    params: { departmentId },
+  });
+  return data.data; // [{ id, name }]
 }
 
-export async function getJobTitles({ page = 0, size = 100 } = {}) {
-  const { data } = await api.get("/job-titles", { params: { page, size } });
-  return data.data.content;
+export async function getJobTitles(designationId) {
+  const { data } = await api.get(`/lookups/designations/${designationId}/job-titles`, {
+    params: { designationId },
+  });
+  return data.data; // [{ id, name }]
 }
