@@ -35,7 +35,6 @@ export const ROLE_MENUS = {
     ['/attendance', 'Attendance'],
     ['/performance', 'Performance'],
     ['/employees', 'Employees'],
-    ['/candidates', 'Candidates'],
     ['/profile', 'Profile'],
   ],
 

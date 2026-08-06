@@ -13,7 +13,6 @@ import {
   HeartHandshake,
   CircleDollarSign,
   Search,
-  Download,
   X,
   AlertTriangle,
   CalendarRange,
@@ -166,6 +165,8 @@ export default function Leave() {
     [balances, leaveTypes, formLeaveTypeId]
   );
 
+  const hasPreviewData = Boolean(formLeaveTypeId || formFrom || formTo);
+
   const submit = async (event) => {
     event.preventDefault();
     const formEl = event.currentTarget;
@@ -218,9 +219,9 @@ export default function Leave() {
 
   const SUMMARY_CARDS = [
     { icon: WalletCards, label: 'Total Allowance', value: summary.allowance, suffix: ' days', tone: 'blue', desc: 'Annual entitlement' },
-    { icon: CheckCircle2, label: 'Leaves Taken', value: summary.taken, suffix: ' days', tone: 'green', desc: 'Used this year' },
-    { icon: CalendarDays, label: 'Leaves Left', value: summary.left, suffix: ' days', tone: 'orange', desc: 'Available to use' },
-    { icon: Clock3, label: 'Pending Requests', value: summary.pending, suffix: ' days', tone: 'pink', desc: 'Awaiting decision' },
+    { icon: CheckCircle2, label: 'Leaves Taken', value: summary.taken, suffix: ' days', tone: 'blue', desc: 'Used this year' },
+    { icon: CalendarDays, label: 'Leaves Left', value: summary.left, suffix: ' days', tone: 'blue', desc: 'Available to use' },
+    { icon: Clock3, label: 'Pending Requests', value: summary.pending, suffix: ' days', tone: 'amber', desc: 'Awaiting decision' },
   ];
 
   return (
@@ -234,25 +235,52 @@ export default function Leave() {
       >
         <div className="leave-hero-text">
           <span className="eyebrow">Leave Management</span>
-          <h1>Leave Management</h1>
+          <h1>Plan your time away</h1>
           <p>Apply for leave, monitor balances and track approval progress.</p>
         </div>
         <div className="leave-hero-illustration" aria-hidden="true">
-          <svg viewBox="0 0 320 200" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <circle cx="250" cy="55" r="58" fill="#dbeafe" opacity="0.5" />
-            <circle cx="60" cy="160" r="42" fill="#bfdbfe" opacity="0.4" />
-            <rect x="110" y="40" width="140" height="120" rx="18" fill="#fff" stroke="#bfdbfe" strokeWidth="2" />
-            <rect x="128" y="58" width="104" height="10" rx="5" fill="#e0edff" />
-            <rect x="128" y="78" width="70" height="8" rx="4" fill="#eef4ff" />
-            <rect x="128" y="94" width="90" height="8" rx="4" fill="#eef4ff" />
-            {/* Palm tree */}
-            <path d="M150 150 Q150 120 165 110" stroke="#16a34a" strokeWidth="3" fill="none" strokeLinecap="round" />
-            <path d="M165 110 Q150 100 140 108 M165 110 Q180 100 190 108 M165 110 Q165 96 175 92 M165 110 Q155 96 150 92" stroke="#16a34a" strokeWidth="2.5" fill="none" strokeLinecap="round" />
+          <svg viewBox="0 0 320 220" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <linearGradient id="cardGrad" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stopColor="#ffffff" />
+                <stop offset="100%" stopColor="#f4f8ff" />
+              </linearGradient>
+              <linearGradient id="planeGrad" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stopColor="#3b82f6" />
+                <stop offset="100%" stopColor="#2563eb" />
+              </linearGradient>
+            </defs>
+            <circle cx="256" cy="46" r="46" fill="#dbeafe" opacity="0.55" />
+            <circle cx="46" cy="176" r="34" fill="#bfdbfe" opacity="0.4" />
+
+            {/* Calendar card */}
+            <rect x="86" y="52" width="150" height="122" rx="20" fill="url(#cardGrad)" stroke="#bfdbfe" strokeWidth="1.5" />
+            <rect x="86" y="52" width="150" height="30" rx="20" fill="#2563eb" />
+            <rect x="86" y="70" width="150" height="12" fill="#2563eb" />
+            <circle cx="108" cy="67" r="4" fill="#fff" />
+            <circle cx="126" cy="67" r="4" fill="#fff" opacity="0.7" />
+            <rect x="104" y="96" width="16" height="16" rx="4" fill="#eef4ff" />
+            <rect x="128" y="96" width="16" height="16" rx="4" fill="#eef4ff" />
+            <rect x="152" y="96" width="16" height="16" rx="4" fill="#dbeafe" />
+            <rect x="176" y="96" width="16" height="16" rx="4" fill="#eef4ff" />
+            <rect x="200" y="96" width="16" height="16" rx="4" fill="#eef4ff" />
+            <rect x="104" y="120" width="16" height="16" rx="4" fill="#eef4ff" />
+            <rect x="128" y="120" width="16" height="16" rx="4" fill="#2563eb" />
+            <rect x="152" y="120" width="16" height="16" rx="4" fill="#2563eb" />
+            <rect x="176" y="120" width="16" height="16" rx="4" fill="#eef4ff" />
+            <rect x="200" y="120" width="16" height="16" rx="4" fill="#eef4ff" />
+            <rect x="104" y="144" width="112" height="14" rx="7" fill="#eef4ff" />
+
+            {/* Palm tree accent */}
+            <path d="M56 178 Q56 150 70 140" stroke="#16a34a" strokeWidth="3" fill="none" strokeLinecap="round" />
+            <path d="M70 140 Q56 130 46 138 M70 140 Q84 130 94 138 M70 140 Q70 126 80 122 M70 140 Q60 126 55 122" stroke="#16a34a" strokeWidth="2.5" fill="none" strokeLinecap="round" />
+
             {/* Sun */}
-            <circle cx="220" cy="120" r="12" fill="#fbbf24" />
+            <circle cx="252" cy="148" r="13" fill="#fbbf24" />
+
             {/* Plane */}
-            <path d="M210 50 L240 44 L246 48 L240 52 L210 56 L206 54 Z" fill="#2563eb" />
-            <path d="M218 50 L222 40 L226 40 L224 50" fill="#3b82f6" />
+            <path d="M226 42 L266 34 L274 40 L266 46 L226 54 Z" fill="url(#planeGrad)" />
+            <path d="M238 42 L244 28 L250 28 L246 42" fill="#60a5fa" />
           </svg>
         </div>
       </motion.section>
@@ -302,7 +330,6 @@ export default function Leave() {
           const theme = themeFor(balance.leaveType);
           const TIcon = theme.icon;
           const pct = balance.allocatedLeaves ? Math.min(100, (balance.usedLeaves / balance.allocatedLeaves) * 100) : 0;
-          const remainingPct = balance.allocatedLeaves ? Math.min(100, (balance.remainingLeaves / balance.allocatedLeaves) * 100) : 0;
           return (
             <motion.div
               key={balance.id}
@@ -316,10 +343,6 @@ export default function Leave() {
                 <div className="lb-name">
                   <strong>{balance.leaveType}</strong>
                   <span>{balance.remainingLeaves} days remaining</span>
-                </div>
-                <div className="lb-ring" style={{ '--p': `${remainingPct}` }}>
-                  <svg viewBox="0 0 40 40"><circle cx="20" cy="20" r="16" fill="none" stroke="#eef2f7" strokeWidth="4" /><circle cx="20" cy="20" r="16" fill="none" stroke={theme.color} strokeWidth="4" strokeLinecap="round" strokeDasharray="100.5" strokeDashoffset={100.5 - (remainingPct / 100) * 100.5} transform="rotate(-90 20 20)" /></svg>
-                  <small>{Math.round(remainingPct)}%</small>
                 </div>
               </div>
               <div className="lb-progress">
@@ -384,18 +407,22 @@ export default function Leave() {
             {/* Preview summary */}
             <div className="lf-preview full-span">
               <div className="lf-preview-head"><CalendarRange size={15} /> Request preview</div>
-              <div className="lf-preview-grid">
-                <div><span>Type</span><strong>{leaveTypes.find((t) => Number(t.id) === Number(formLeaveTypeId))?.name || '—'}</strong></div>
-                <div><span>From</span><strong>{formFrom || '—'}</strong></div>
-                <div><span>To</span><strong>{formTo || '—'}</strong></div>
-                <div><span>Estimated days</span><strong className="lf-est">{estimatedDays || '—'}</strong></div>
-                <div><span>Remaining balance</span><strong>{selectedBalance ? `${selectedBalance.remainingLeaves} days` : '—'}</strong></div>
-              </div>
+              {hasPreviewData ? (
+                <div className="lf-preview-grid">
+                  <div><span>Type</span><strong>{leaveTypes.find((t) => Number(t.id) === Number(formLeaveTypeId))?.name || '—'}</strong></div>
+                  <div><span>From</span><strong>{formFrom || '—'}</strong></div>
+                  <div><span>To</span><strong>{formTo || '—'}</strong></div>
+                  <div><span>Estimated days</span><strong className="lf-est">{estimatedDays || '—'}</strong></div>
+                  <div><span>Remaining balance</span><strong>{selectedBalance ? `${selectedBalance.remainingLeaves} days` : '—'}</strong></div>
+                </div>
+              ) : (
+                <p className="lf-preview-empty">Fill in the form to see your request preview here.</p>
+              )}
             </div>
 
             <motion.button
               type="submit"
-              className="btn btn-gradient btn-ripple full-span"
+              className="btn btn-gradient btn-ripple leave-submit-btn"
               disabled={submitting}
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
@@ -426,7 +453,6 @@ export default function Leave() {
               <option value="REJECTED">Rejected</option>
               <option value="CANCELLED">Cancelled</option>
             </select>
-            <button type="button" className="btn btn-soft btn-export" title="Export (UI placeholder)"><Download size={15} /> Export</button>
           </div>
 
           <div className="table-wrap">

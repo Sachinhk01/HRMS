@@ -1,8 +1,8 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Search, LayoutGrid, List, Phone, Mail, MessageSquare, Eye, X,
-  Briefcase, Building2, CalendarDays, IdCard, Users,
+  Search, LayoutGrid, List, Phone, Mail, Eye, X,
+  Briefcase, Building2, CalendarDays, IdCard, Users, AlertTriangle, RotateCw,
 } from 'lucide-react';
 import PageHeader from '../components/PageHeader';
 import Pagination from '../components/Pagination';
@@ -24,6 +24,7 @@ const stagger = { hidden: {}, show: { transition: { staggerChildren: 0.06, delay
 export default function Employees() {
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [err, setErr] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [deptFilter, setDeptFilter] = useState('ALL');
   const [desigFilter, setDesigFilter] = useState('ALL');
@@ -31,18 +32,21 @@ export default function Employees() {
   const [view, setView] = useState('grid');
   const [drawerEmp, setDrawerEmp] = useState(null);
 
-  useEffect(() => {
-    let cancelled = false;
-    async function load() {
-      try {
-        const result = await getEmployees({ size: 100 });
-        if (!cancelled) setRows(result?.content || []);
-      } catch { if (!cancelled) setRows([]); }
-      finally { if (!cancelled) setLoading(false); }
+  const load = useCallback(async () => {
+    setLoading(true);
+    setErr('');
+    try {
+      const result = await getEmployees({ size: 100 });
+      setRows(result?.content || []);
+    } catch (error) {
+      setRows([]);
+      setErr(error?.response?.data?.message || error.message || 'Failed to load employees from the server.');
+    } finally {
+      setLoading(false);
     }
-    load();
-    return () => { cancelled = true; };
   }, []);
+
+  useEffect(() => { load(); }, [load]);
 
   const departments = useMemo(() => Array.from(new Set(rows.map((e) => e.departmentName).filter(Boolean))), [rows]);
   const designations = useMemo(() => Array.from(new Set(rows.map((e) => e.designationName).filter(Boolean))), [rows]);
@@ -75,18 +79,30 @@ export default function Employees() {
             <circle cx="250" cy="55" r="56" fill="#dbeafe" opacity="0.5" />
             <circle cx="60" cy="155" r="40" fill="#bfdbfe" opacity="0.4" />
             <rect x="100" y="50" width="140" height="120" rx="18" fill="#fff" stroke="#bfdbfe" strokeWidth="2" />
-            {/* Team avatars */}
             <circle cx="140" cy="90" r="14" fill="#2563eb" />
             <rect x="126" y="102" width="28" height="18" rx="9" fill="#2563eb" />
             <circle cx="200" cy="90" r="14" fill="#0891b2" />
             <rect x="186" y="102" width="28" height="18" rx="9" fill="#0891b2" />
             <circle cx="170" cy="130" r="14" fill="#16a34a" />
             <rect x="156" y="142" width="28" height="18" rx="9" fill="#16a34a" />
-            {/* Building */}
             <rect x="120" y="150" width="100" height="14" rx="4" fill="#e0edff" />
           </svg>
         </div>
       </motion.section>
+
+      {/* ---------- Error banner (real API failure, not mock fallback) ---------- */}
+      <AnimatePresence>
+        {err && (
+          <motion.div
+            className="toast toast-error"
+            style={{ position: 'static', transform: 'none', width: '100%', justifyContent: 'space-between' }}
+            initial={{ opacity: 0, y: -12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -12 }}
+          >
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}><AlertTriangle size={18} /> {err}</span>
+            <button className="btn btn-small btn-soft" onClick={load}><RotateCw size={14} /> Retry</button>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* ---------- Toolbar ---------- */}
       <motion.div className="emp-toolbar" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, ease: easeOut }}>
@@ -138,12 +154,16 @@ export default function Employees() {
                 </div>
                 <div className="emp-card-actions">
                   <button className="btn btn-small btn-soft" onClick={() => setDrawerEmp(emp)}><Eye size={14} /> View</button>
-                  <button className="icon-btn" title="Message (UI)"><MessageSquare size={15} /></button>
-                  <button className="icon-btn" title="Call (UI)"><Phone size={15} /></button>
-                  <button className="icon-btn" title="Email (UI)"><Mail size={15} /></button>
                 </div>
               </motion.article>
             ))}
+            {!loading && !err && !filtered.length && (
+              <div className="empty-state" style={{ gridColumn: '1 / -1' }}>
+                <Users size={32} />
+                <p>No employees found.</p>
+                <small>Try adjusting your filters.</small>
+              </div>
+            )}
           </motion.div>
         ) : (
           <motion.section className="panel" key="list" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
@@ -168,7 +188,7 @@ export default function Employees() {
                   ))}
                 </tbody>
               </table>
-              {!loading && !filtered.length && <div className="empty-state"><Users size={32} /><p>No employees found.</p><small>Try adjusting your filters.</small></div>}
+              {!loading && !err && !filtered.length && <div className="empty-state"><Users size={32} /><p>No employees found.</p><small>Try adjusting your filters.</small></div>}
             </div>
           </motion.section>
         )}
@@ -176,40 +196,50 @@ export default function Employees() {
 
       <Pagination page={page} totalItems={filtered.length} pageSize={pageSize} onPageChange={setPage} />
 
-      {/* ---------- Profile preview drawer ---------- */}
+      {/* ---------- Profile preview modal (centered card) ---------- */}
       <AnimatePresence>
         {drawerEmp && (
-          <>
-            <motion.div className="drawer-overlay" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setDrawerEmp(null)} />
-            <motion.aside className="detail-drawer" initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }} transition={{ type: 'spring', stiffness: 360, damping: 38 }}>
-              <div className="drawer-head">
-                <span className="eyebrow">Employee preview</span>
-                <h2>{drawerEmp.firstName} {drawerEmp.lastName}</h2>
-                <button className="drawer-close" onClick={() => setDrawerEmp(null)}><X size={20} /></button>
+          <motion.div className="emp-modal-overlay" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setDrawerEmp(null)}>
+            <motion.div
+              className="emp-modal-card"
+              initial={{ opacity: 0, scale: 0.94, y: 16 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.94, y: 16 }}
+              transition={{ duration: 0.25, ease: easeOut }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="emp-modal-head">
+                <div>
+                  <span className="eyebrow">Employee preview</span>
+                  <h2>{drawerEmp.firstName} {drawerEmp.lastName}</h2>
+                </div>
+                <button className="emp-modal-close" onClick={() => setDrawerEmp(null)}><X size={18} /></button>
               </div>
-              <div className="drawer-body">
-                <div className="drawer-emp">
+
+              <div className="emp-modal-body">
+                <div className="emp-modal-person">
                   <span className="emp-avatar lg" style={{ background: `linear-gradient(135deg, ${deptColor(drawerEmp.departmentName)}, ${deptColor(drawerEmp.departmentName)}cc)` }}>{initials(`${drawerEmp.firstName} ${drawerEmp.lastName}`)}</span>
                   <div>
                     <strong>{drawerEmp.firstName} {drawerEmp.lastName}</strong>
                     <small>{drawerEmp.designationName || '—'}</small>
                   </div>
                 </div>
-                <div className="drawer-grid">
-                  <div className="dg-item"><IdCard size={15} /><span>Employee code</span><strong>{drawerEmp.employeeCode || '—'}</strong></div>
-                  <div className="dg-item"><Building2 size={15} /><span>Department</span><strong>{drawerEmp.departmentName || '—'}</strong></div>
-                  <div className="dg-item"><Briefcase size={15} /><span>Designation</span><strong>{drawerEmp.designationName || '—'}</strong></div>
-                  <div className="dg-item"><Mail size={15} /><span>Email</span><strong>{drawerEmp.email || '—'}</strong></div>
-                  <div className="dg-item"><Phone size={15} /><span>Phone</span><strong>{drawerEmp.phone || '—'}</strong></div>
-                  <div className="dg-item"><CalendarDays size={15} /><span>Status</span><strong>{drawerEmp.active ? 'Active' : 'Inactive'}</strong></div>
+
+                <div className="emp-info-grid emp-info-grid-3">
+                  <div className="emp-info-item"><IdCard size={14} /><span>Employee code</span><strong>{drawerEmp.employeeCode || '—'}</strong></div>
+                  <div className="emp-info-item"><Building2 size={14} /><span>Department</span><strong>{drawerEmp.departmentName || '—'}</strong></div>
+                  <div className="emp-info-item"><Briefcase size={14} /><span>Designation</span><strong>{drawerEmp.designationName || '—'}</strong></div>
+                  <div className="emp-info-item"><Mail size={14} /><span>Email</span><strong className="truncate">{drawerEmp.email || '—'}</strong></div>
+                  <div className="emp-info-item"><Phone size={14} /><span>Phone</span><strong>{drawerEmp.phone || '—'}</strong></div>
+                  <div className="emp-info-item"><CalendarDays size={14} /><span>Status</span><strong>{drawerEmp.active ? 'Active' : 'Inactive'}</strong></div>
                 </div>
               </div>
-              <div className="drawer-footer">
-                <button className="btn btn-soft" onClick={() => setDrawerEmp(null)}>Close</button>
-                <button className="btn btn-gradient"><Eye size={16} /> Full profile</button>
+
+              <div className="emp-modal-footer">
+                <button className="btn btn-soft" style={{ width: '100%' }} onClick={() => setDrawerEmp(null)}>Close</button>
               </div>
-            </motion.aside>
-          </>
+            </motion.div>
+          </motion.div>
         )}
       </AnimatePresence>
     </div>

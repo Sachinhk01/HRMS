@@ -14,8 +14,8 @@
   align-items: center;
   justify-content: space-between;
   gap: 24px;
-  min-height: 220px;
-  padding: 32px 36px;
+  min-height: 190px;
+  padding: 28px 32px;
   border-radius: 22px;
   overflow: hidden;
   background: linear-gradient(135deg, #f4f8ff 0%, #eaf1ff 50%, #eef4ff 100%);
@@ -27,27 +27,27 @@
   content: '';
   position: absolute;
   top: -60px; right: -40px;
-  width: 220px; height: 220px;
-  background: radial-gradient(circle, rgba(37, 99, 235, .14), transparent 70%);
+  width: 200px; height: 200px;
+  background: radial-gradient(circle, rgba(37, 99, 235, .12), transparent 70%);
   pointer-events: none;
 }
-.leave-hero-text { position: relative; z-index: 1; max-width: 58%; }
+.leave-hero-text { position: relative; z-index: 1; max-width: 56%; }
 .leave-hero-text .eyebrow {
   display: block; font-size: 12px; font-weight: 700; color: #2563eb;
-  text-transform: uppercase; letter-spacing: .05em; margin-bottom: 6px;
+  text-transform: uppercase; letter-spacing: .06em; margin-bottom: 8px;
 }
 .leave-hero-text h1 {
-  margin: 0 0 8px; font-size: clamp(26px, 3vw, 34px); font-weight: 800;
+  margin: 0 0 8px; font-size: clamp(24px, 2.6vw, 30px); font-weight: 800;
   color: #0f172a; letter-spacing: -.02em;
 }
 .leave-hero-text p { margin: 0; font-size: 14px; color: #64748b; }
-.leave-hero-illustration { flex-shrink: 0; width: 320px; max-width: 40%; }
+.leave-hero-illustration { flex-shrink: 0; width: 260px; max-width: 38%; }
 .leave-hero-illustration svg { width: 100%; height: auto; display: block; }
 
 @media (max-width: 768px) {
   .leave-hero { flex-direction: column; text-align: center; padding: 24px; }
   .leave-hero-text { max-width: 100%; }
-  .leave-hero-illustration { width: 220px; max-width: 70%; }
+  .leave-hero-illustration { width: 200px; max-width: 65%; }
 }
 
 /* ---------- Toasts (shared style with Attendance) ---------- */
@@ -130,11 +130,9 @@
 .leave-overview-card strong { font-size: 24px; font-weight: 800; color: #0f172a; }
 .leave-overview-card small { font-size: 11px; color: #94a3b8; }
 
+/* Reduced palette: brand blue for neutral stats, amber only for pending/attention */
 .tone-blue .loc-icon { background: #dbeafe; color: #2563eb; }
-.tone-green .loc-icon { background: #dcfce7; color: #16a34a; }
-.tone-orange .loc-icon { background: #fef3c7; color: #d97706; }
-.tone-pink .loc-icon { background: #fce7f3; color: #db2777; }
-.tone-red .loc-icon { background: #fee2e2; color: #dc2626; }
+.tone-amber .loc-icon { background: #fef3c7; color: #d97706; }
 
 /* ---------- Leave balance cards ---------- */
 .leave-balance-grid {
@@ -172,14 +170,6 @@
 .lb-name { flex: 1; display: flex; flex-direction: column; gap: 2px; }
 .lb-name strong { font-size: 15px; font-weight: 800; color: #0f172a; }
 .lb-name span { font-size: 12px; color: #64748b; }
-.lb-ring {
-  position: relative; width: 44px; height: 44px;
-  display: grid; place-items: center;
-}
-.lb-ring svg { width: 100%; height: 100%; }
-.lb-ring small {
-  position: absolute; font-size: 10px; font-weight: 700; color: var(--lb-color, #2563eb);
-}
 
 .lb-progress {
   height: 8px; border-radius: 999px;
@@ -204,7 +194,13 @@
   gap: 14px;
 }
 .lf-field { display: flex; flex-direction: column; gap: 6px; position: relative; }
-.lf-field.full-span { grid-column: 1 / -1; }
+
+/* FIX: this used to be scoped as .lf-field.full-span, so elements without
+   the lf-field class (the preview box, the submit button) never spanned
+   the full grid width — they fell into the 2-column grid side by side,
+   and the button stretched to match the preview card's height. */
+.full-span { grid-column: 1 / -1; }
+
 .lf-label {
   display: inline-flex; align-items: center; gap: 6px;
   font-size: 12px; font-weight: 700; color: #475569;
@@ -242,13 +238,20 @@
 .lf-preview {
   border: 1px dashed #cbd5e1;
   border-radius: 14px;
-  padding: 14px 16px;
+  padding: 16px 18px;
   background: #f8fafc;
+  min-height: 76px;
 }
 .lf-preview-head {
   display: inline-flex; align-items: center; gap: 6px;
   font-size: 12px; font-weight: 700; color: #2563eb;
   margin-bottom: 10px;
+}
+.lf-preview-empty {
+  margin: 0;
+  font-size: 13px;
+  color: #94a3b8;
+  font-style: italic;
 }
 .lf-preview-grid {
   display: grid;
@@ -297,7 +300,6 @@
 }
 .btn-outline-danger:hover { background: #fef2f2; border-color: #fca5a5; }
 .btn-small { padding: 9px 16px; font-size: 13px; }
-.btn-export { padding: 10px 16px; font-size: 13px; }
 .btn-ripple { position: relative; overflow: hidden; }
 .btn-spinner {
   width: 16px; height: 16px; border-radius: 50%;
@@ -305,6 +307,14 @@
   animation: spin .7s linear infinite; display: inline-block;
 }
 @keyframes spin { to { transform: rotate(360deg); } }
+
+/* Submit button: now a normal full-width button on its own row,
+   sized to its content instead of stretching to match the preview card. */
+.leave-submit-btn {
+  margin-top: 4px;
+  height: 50px;
+  font-size: 15px;
+}
 
 /* ---------- History table ---------- */
 .leave-toolbar {

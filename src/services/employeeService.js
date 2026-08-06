@@ -1,65 +1,4 @@
 import api from "./api";
-import { getSection, setSection } from "./localStorageService";
-
-function buildFallbackEmployees() {
-  const stored = getSection('employees');
-  if (Array.isArray(stored) && stored.length) return stored;
-
-  const currentUser = JSON.parse(localStorage.getItem('hrms-user') || 'null');
-  const today = new Date();
-
-  const formatDate = (date) => {
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
-  };
-
-  const fallback = [
-    {
-      id: 'demo-current',
-      employeeCode: 'EMP-001',
-      firstName: currentUser?.firstName || 'Aditi',
-      lastName: currentUser?.lastName || 'Patel',
-      name: currentUser?.name || 'Aditi Patel',
-      email: currentUser?.email || 'aditi@example.com',
-      dateOfBirth: formatDate(today),
-      departmentName: 'People Ops',
-      designationName: 'HR Lead',
-      jobTitle: 'HR Lead',
-      active: true,
-    },
-    {
-      id: 'demo-next-1',
-      employeeCode: 'EMP-002',
-      firstName: 'Rahul',
-      lastName: 'Verma',
-      name: 'Rahul Verma',
-      email: 'rahul@example.com',
-      dateOfBirth: formatDate(new Date(today.getFullYear(), today.getMonth(), today.getDate() + 3)),
-      departmentName: 'Engineering',
-      designationName: 'Frontend Engineer',
-      jobTitle: 'Frontend Engineer',
-      active: true,
-    },
-    {
-      id: 'demo-next-2',
-      employeeCode: 'EMP-003',
-      firstName: 'Neha',
-      lastName: 'Singh',
-      name: 'Neha Singh',
-      email: 'neha@example.com',
-      dateOfBirth: formatDate(new Date(today.getFullYear(), today.getMonth(), today.getDate() + 12)),
-      departmentName: 'Design',
-      designationName: 'Product Designer',
-      jobTitle: 'Product Designer',
-      active: true,
-    },
-  ];
-
-  setSection('employees', fallback);
-  return fallback;
-}
 
 export function normalizeEmployeeName(member) {
   return member?.name || `${member?.firstName || ''} ${member?.lastName || ''}`.trim() || 'Employee';
@@ -71,7 +10,6 @@ function normalizeEmployeeDate(member) {
 
 function normalizeBirthdayList(list, days = 30) {
   const today = new Date();
-  const cutoff = new Date(today.getFullYear(), today.getMonth(), today.getDate() + days);
 
   return (list || [])
     .filter((member) => normalizeEmployeeDate(member))
@@ -93,41 +31,31 @@ function normalizeBirthdayList(list, days = 30) {
 }
 
 // ---- Employees ----
+// NOTE: no mock/localStorage fallback here on purpose. If the API call
+// fails, the error propagates to the caller so the UI can show a real
+// error state instead of silently swapping in fake data.
 export async function getEmployees({ page = 0, size = 50, search = "", sortBy = "employeeCode", sortDirection = "asc" } = {}) {
-  try {
-    const { data } = await api.get("/employees", {
-      params: { page, size, search, sortBy, sortDirection },
-    });
+  const { data } = await api.get("/employees", {
+    params: { page, size, search, sortBy, sortDirection },
+  });
 
-    const payload = data?.data ?? data;
-    const content = Array.isArray(payload?.content)
-      ? payload.content
-      : Array.isArray(payload)
-        ? payload
-        : [];
+  const payload = data?.data ?? data;
+  const content = Array.isArray(payload?.content)
+    ? payload.content
+    : Array.isArray(payload)
+      ? payload
+      : [];
 
-    return {
-      ...(payload && typeof payload === 'object' ? payload : {}),
-      content,
-      page,
-      size: content.length || size,
-      totalElements: content.length,
-      totalPages: 1,
-      first: true,
-      last: true,
-    };
-  } catch {
-    const fallback = buildFallbackEmployees();
-    return {
-      content: fallback,
-      page,
-      size: fallback.length,
-      totalElements: fallback.length,
-      totalPages: 1,
-      first: true,
-      last: true,
-    };
-  }
+  return {
+    ...(payload && typeof payload === 'object' ? payload : {}),
+    content,
+    page,
+    size: content.length || size,
+    totalElements: payload?.totalElements ?? content.length,
+    totalPages: payload?.totalPages ?? 1,
+    first: payload?.first ?? true,
+    last: payload?.last ?? true,
+  };
 }
 
 export async function getEmployeeById(id) {
@@ -167,9 +95,7 @@ export async function getProfilePhotoUrl(employeeId) {
 export async function uploadMyProfilePhoto(file) {
   const formData = new FormData();
   formData.append("file", file);
-  const { data } = await api.put("/employees/profile-photo", formData, {
-    headers: { "Content-Type": "multipart/form-data" },
-  });
+  const { data } = await api.put("/employees/profile-photo", formData);
   return data.data;
 }
 
@@ -194,9 +120,7 @@ export async function registerUser({ username, email, password, role }) {
 export async function createEmployeeProfile(userId, payload) {
   const formData = new FormData();
   formData.append("request", new Blob([JSON.stringify(payload)], { type: "application/json" }));
-  const { data } = await api.post(`/admin/employee-profile/${userId}`, formData, {
-    headers: { "Content-Type": "multipart/form-data" },
-  });
+  const { data } = await api.post(`/admin/employee-profile/${userId}`, formData);
   return data.data;
 }
 

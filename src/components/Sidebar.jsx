@@ -69,14 +69,7 @@ export default function Sidebar({ open, onClose }) {
 
       <aside className={`sidebar ${open ? 'sidebar--open' : ''}`}>
         <div className="sidebar-head">
-          <button
-            type="button"
-            className="sidebar-logo-btn"
-            onClick={goToDashboard}
-            aria-label="Go to dashboard"
-          >
-            <Logo compact />
-          </button>
+          <Logo size={75} linkTo="/dashboard" />
         </div>
 
         <nav className="sidebar-nav" aria-label="Main navigation">
