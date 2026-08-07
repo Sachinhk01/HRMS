@@ -153,7 +153,7 @@ export function EmployeeLogin() {
                 <span className="hrms-field__wrap">
                   <Mail />
                   <input
-                    type="email"
+                    type="text"
                     placeholder="name@company.com"
                     autoComplete="email"
                     value={email}
