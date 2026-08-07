@@ -1,49 +1,58 @@
 import { useEffect, useMemo, useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import {
-  Heart, MessageCircle, PartyPopper, Pin, Send, Trash2, Users,
-  Share2, Bookmark, MoreHorizontal, ImagePlus, Smile, CalendarClock,
-  Gift, Cake, Award, Sparkles, UserPlus, Megaphone, CalendarDays, Star,
-  X, ChevronLeft, ChevronRight,
+  Heart, MessageCircle, PartyPopper, Share2, Bookmark,
+  Gift, Cake, Award, Sparkles, UserPlus, Megaphone, CalendarDays, Send,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import PageHeader from '../components/PageHeader';
 import Pagination from '../components/Pagination';
 import usePagination, { sortRecent } from '../hooks/usePagination';
 import { useAuth } from '../context/AuthContext';
-import { announcementStore, ensureAutomaticCelebrations, eventStore, postStore } from '../services/contentService';
-import { getEmployees } from '../services/employeeService';
+import { getNotifications } from '../services/notificationService';
 import './CelebrationWall.css';
 
-const types = ['ALL', 'BIRTHDAY', 'WORK ANNIVERSARY', 'FESTIVAL', 'NEW JOINER', 'KUDOS'];
+// Filter tabs — must contain 'ALL' plus exact backend NotificationType values for calendar events
+const types = ['ALL', 'BIRTHDAY', 'WORK_ANNIVERSARY', 'HOLIDAY', 'GENERAL', 'APPROVED'];
 
+// Keys match backend NotificationType enum exactly
 const CATEGORY_META = {
-  BIRTHDAY: { icon: Cake, color: '#db2777', bg: '#fce7f3', soft: '#fdf2f8', label: 'Birthday' },
-  'WORK ANNIVERSARY': { icon: Award, color: '#0891b2', bg: '#cffafe', soft: '#ecfeff', label: 'Work Anniversary' },
-  FESTIVAL: { icon: Sparkles, color: '#d97706', bg: '#fef3c7', soft: '#fffbeb', label: 'Festival' },
-  'NEW JOINER': { icon: UserPlus, color: '#16a34a', bg: '#dcfce7', soft: '#f0fdf4', label: 'New Joiner' },
-  KUDOS: { icon: Star, color: '#2563eb', bg: '#dbeafe', soft: '#eff6ff', label: 'Kudos' },
+  BIRTHDAY:         { icon: Cake,      color: '#db2777', bg: '#fce7f3', soft: '#fdf2f8', label: 'Birthday' },
+  WORK_ANNIVERSARY: { icon: Award,     color: '#0891b2', bg: '#cffafe', soft: '#ecfeff', label: 'Work Anniversary' },
+  HOLIDAY:          { icon: Sparkles,  color: '#059669', bg: '#d1fae5', soft: '#ecfdf5', label: 'Holiday' },
+  LEAVE_APPLIED:    { icon: CalendarDays, color: '#7c3aed', bg: '#ede9fe', soft: '#f5f3ff', label: 'Leave' },
+  LEAVE_MANAGER_APPROVED: { icon: Award, color: '#16a34a', bg: '#dcfce7', soft: '#f0fdf4', label: 'Leave Approved' },
+  LEAVE_HR_APPROVED: { icon: Award,   color: '#16a34a', bg: '#dcfce7', soft: '#f0fdf4', label: 'Leave Approved' },
+  LEAVE_REJECTED:   { icon: CalendarDays, color: '#dc2626', bg: '#fee2e2', soft: '#fef2f2', label: 'Leave Rejected' },
+  LATE_CHECK_IN:    { icon: CalendarDays, color: '#d97706', bg: '#fef3c7', soft: '#fffbeb', label: 'Late Check-in' },
+  ABSENT:           { icon: UserPlus,  color: '#dc2626', bg: '#fee2e2', soft: '#fef2f2', label: 'Absent' },
+  MISSED_CHECKOUT:  { icon: CalendarDays, color: '#d97706', bg: '#fef3c7', soft: '#fffbeb', label: 'Missed Checkout' },
+  ANNOUNCEMENT:     { icon: Megaphone, color: '#2563eb', bg: '#dbeafe', soft: '#eff6ff', label: 'Announcement' },
+  APPROVED:         { icon: Award,     color: '#059669', bg: '#d1fae5', soft: '#ecfdf5', label: 'Approved' },
+  GENERAL:          { icon: PartyPopper, color: '#2563eb', bg: '#dbeafe', soft: '#eff6ff', label: 'General' },
 };
 
-function categoryMeta(type) {
-  return CATEGORY_META[type] || { icon: PartyPopper, color: '#2563eb', bg: '#dbeafe', soft: '#eff6ff', label: type || 'Celebration' };
+function categoryMeta(type = '') {
+  const normalized = (type || '').toUpperCase().replace(/_/g, ' ');
+  return CATEGORY_META[type] || CATEGORY_META[normalized] || { icon: PartyPopper, color: '#2563eb', bg: '#dbeafe', soft: '#eff6ff', label: type || 'Celebration' };
 }
 
 function initials(name = '') {
   return name.split(' ').map((p) => p[0]).join('').slice(0, 2).toUpperCase();
 }
 
-function TaggedMessage({ post }) {
-  return (
-    <span className="post-message">
-      {post.message}
-      {post.tagAll ? (
-        <span className="member-tag all-members-tag"><Users size={13} /> All Employees</span>
-      ) : (post.taggedMembers || []).map((member) => (
-        <Link className="member-tag" key={member.id} to={`/profile?user=${member.id}`}>@{member.name}</Link>
-      ))}
-    </span>
-  );
+function normalizeNotificationToPost(item) {
+  // All fields come directly from backend NotificationResponse JSON
+  return {
+    id: item.id,
+    type: item.notificationType || 'GENERAL',
+    title: item.title || '',
+    message: item.message || '',
+    createdAt: item.createdAt || new Date().toISOString(),
+    images: item.attachmentUrls || [],
+    isRead: Boolean(item.isRead),
+    priority: item.priority || 'LOW',
+  };
 }
 
 const easeOut = [0.16, 1, 0.3, 1];
@@ -55,92 +64,102 @@ const stagger = { hidden: {}, show: { transition: { staggerChildren: 0.07, delay
 
 export default function CelebrationWall() {
   const { user } = useAuth();
-  const [posts, setPosts] = useState(postStore.all());
+  const [notifications, setNotifications] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
   const [active, setActive] = useState('ALL');
-  const [text, setText] = useState('');
-  const [type, setType] = useState('BIRTHDAY');
-  const [tagIds, setTagIds] = useState([]);
-  const [tagAll, setTagAll] = useState(false);
-  const [memberSearch, setMemberSearch] = useState('');
-  const [imageText, setImageText] = useState('');
+  const [likedPosts, setLikedPosts] = useState({});
+  const [commentsState, setCommentsState] = useState({});
   const [commentDrafts, setCommentDrafts] = useState({});
-  const isHr = user.role === 'HR_ADMIN';
-  const [members, setMembers] = useState([]);
 
-  useEffect(() => {
-    let cancelled = false;
-    async function loadMembers() {
-      try {
-        const result = await getEmployees({ size: 100 });
-        const normalized = (result?.content || [])
-          .filter((member) => member.id !== user.id && member.active !== false)
-          .map((member) => ({
-            ...member,
-            name: `${member.firstName} ${member.lastName || ''}`.trim(),
-            dob: member.dateOfBirth,
-          }));
-        if (!cancelled) setMembers(normalized);
-        if (!cancelled && isHr && ensureAutomaticCelebrations(user, normalized).length) {
-          setPosts(postStore.all());
-        }
-      } catch (error) {
-        if (!cancelled) setMembers([]);
-      }
+  const loadData = async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const res = await getNotifications({ page: 0, size: 100 });
+      setNotifications(res?.content || []);
+    } catch (err) {
+      setError(err.message || 'Failed to load celebrations.');
+    } finally {
+      setLoading(false);
     }
-    loadMembers();
-    return () => { cancelled = true; };
-  }, []);
-
-  useEffect(() => {
-    let cancelled = false;
-    async function loadMembers() {
-      try {
-        const result = await getEmployees({ size: 100 });
-        const normalized = (result?.content || [])
-          .filter((member) => member.id !== user.id && member.active !== false)
-          .map((member) => ({
-            ...member,
-            name: `${member.firstName} ${member.lastName || ''}`.trim(),
-            dob: member.dateOfBirth,
-          }));
-        if (!cancelled) setMembers(normalized);
-        if (!cancelled && isHr && ensureAutomaticCelebrations(user, normalized).length) {
-          setPosts(postStore.all());
-        }
-      } catch (error) {
-        if (!cancelled) setMembers([]);
-      }
-    }
-    loadMembers();
-    return () => { cancelled = true; };
-  }, []);
-
-  const filteredMembers = members.filter((member) => {
-    const term = memberSearch.trim().toLowerCase();
-    return !term || member.name?.toLowerCase().includes(term) || member.email?.toLowerCase().includes(term);
-  });
-
-  const visible = useMemo(() => {
-    const filtered = active === 'ALL' ? posts : posts.filter((item) => item.type === active);
-    return sortRecent(filtered).sort((a, b) => Number(Boolean(b.pinned)) - Number(Boolean(a.pinned)));
-  }, [posts, active]);
-
-  const { page, setPage, pageItems, pageSize } = usePagination(visible, 5);
-
-  const refresh = () => setPosts(postStore.all());
-  const publish = () => {
-    if (!text.trim()) return;
-    const taggedMembers = (tagAll ? members : members.filter((member) => tagIds.includes(member.id))).map(({ id, name, email }) => ({ id, name, email }));
-    const images = imageText.split(/[,\n]/).map((value) => value.trim()).filter(Boolean).slice(0, 6);
-    postStore.create(user, { type, title: type, message: text.trim(), taggedMembers, tagAll, images });
-    refresh(); setText(''); setTagIds([]); setTagAll(false); setMemberSearch(''); setImageText(''); setPage(1);
   };
-  const announcements = sortRecent(announcementStore.all()).slice(0, 4);
-  const events = sortRecent(eventStore.all()).slice(0, 4);
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const { celebrationFeed, upcomingEvents, announcements } = useMemo(() => {
+    const rawFeed = [];
+    const rawUpcoming = [];
+    const rawAnnouncements = [];
+
+    const now = new Date();
+    const endOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+
+    (notifications || []).forEach((item) => {
+      if (item.notificationType === 'ANNOUNCEMENT') {
+        rawAnnouncements.push({
+          id: item.id,
+          title: item.title,
+          message: item.message,
+          createdAt: item.createdAt,
+        });
+        return;
+      }
+
+      const post = normalizeNotificationToPost(item);
+      const dateVal = new Date(post.eventDate || post.createdAt);
+
+      if (dateVal > endOfToday) {
+        rawUpcoming.push(post);
+      } else {
+        rawFeed.push(post);
+      }
+    });
+
+    return {
+      celebrationFeed: sortRecent(rawFeed),
+      upcomingEvents: sortRecent(rawUpcoming),
+      announcements: sortRecent(rawAnnouncements).slice(0, 4),
+    };
+  }, [notifications]);
+
+  const visibleFeed = useMemo(() => {
+    if (active === 'ALL') return celebrationFeed;
+    // active is the raw backend NotificationType string (e.g. WORK_ANNIVERSARY)
+    return celebrationFeed.filter((item) => item.type === active);
+  }, [celebrationFeed, active]);
+
+  const { page, setPage, pageItems, pageSize } = usePagination(visibleFeed, 5);
+
+  const toggleLike = (postId) => {
+    setLikedPosts((prev) => ({ ...prev, [postId]: !prev[postId] }));
+  };
+
+  const handleAddComment = (postId) => {
+    const text = commentDrafts[postId]?.trim();
+    if (!text) return;
+    const newComment = {
+      id: `c-${Date.now()}`,
+      userName: user.name,
+      message: text,
+      createdAt: new Date().toISOString(),
+    };
+    setCommentsState((prev) => ({
+      ...prev,
+      [postId]: [...(prev[postId] || []), newComment],
+    }));
+    setCommentDrafts((prev) => ({ ...prev, [postId]: '' }));
+  };
 
   return (
     <div className="page-stack celebration-page page-reveal">
-      <PageHeader eyebrow="People & Culture" title="Celebration Wall" description={isHr ? 'Create posts, tag members, add images, pin highlights and celebrate together.' : 'View, like and comment on company celebrations.'} />
+      <PageHeader
+        eyebrow="People & Culture"
+        title="Celebration Wall"
+        description="View company celebrations, milestones, birthdays, anniversaries, and achievements."
+      />
 
       {/* ---------- Hero banner ---------- */}
       <motion.section
@@ -183,108 +202,6 @@ export default function CelebrationWall() {
 
       <div className="celebration-layout">
         <div className="feed-column">
-          {/* ---------- HR Composer ---------- */}
-          <AnimatePresence>
-            {isHr && (
-              <motion.section
-                className="panel composer"
-                initial="hidden"
-                animate="show"
-                variants={stagger}
-              >
-                <div className="composer-head">
-                  <span className="composer-avatar">{initials(user.name)}</span>
-                  <div className="composer-head-text">
-                    <strong>Share a celebration</strong>
-                    <span>Recognize your team and spread joy</span>
-                  </div>
-                </div>
-
-                <div className="composer-row">
-                  <div className="composer-type-select">
-                    <select value={type} onChange={(event) => setType(event.target.value)}>
-                      {types.slice(1).map((item) => <option key={item}>{item}</option>)}
-                    </select>
-                  </div>
-                  <input
-                    className="composer-input"
-                    value={text}
-                    onChange={(event) => setText(event.target.value)}
-                    placeholder="Write a birthday wish or celebration post..."
-                  />
-                </div>
-
-                {/* Tagging panel */}
-                <div className="tagging-panel">
-                  <div className="tagging-title">
-                    <Users size={16} />
-                    <strong>Tag members</strong>
-                    <span>{tagAll ? `All ${members.length} selected` : `${tagIds.length} selected`}</span>
-                  </div>
-                  <div className="tagging-controls">
-                    <label className={tagAll ? 'tag-chip tag-all-chip selected' : 'tag-chip tag-all-chip'}>
-                      <input type="checkbox" checked={tagAll} onChange={(event) => { const checked = event.target.checked; setTagAll(checked); if (checked) setTagIds([]); }} />
-                      <Users size={14} /><span>All Employees</span>
-                    </label>
-                    <input
-                      className="member-search"
-                      type="search"
-                      value={memberSearch}
-                      onChange={(event) => setMemberSearch(event.target.value)}
-                      placeholder="Search members..."
-                      disabled={tagAll}
-                    />
-                  </div>
-                  <div className="tag-chip-list">
-                    {filteredMembers.map((member) => (
-                      <label className={tagIds.includes(member.id) ? 'tag-chip selected' : 'tag-chip'} key={member.id}>
-                        <input
-                          type="checkbox"
-                          disabled={tagAll}
-                          checked={tagIds.includes(member.id)}
-                          onChange={() => {
-                            setTagAll(false);
-                            setTagIds((current) => current.includes(member.id) ? current.filter((id) => id !== member.id) : [...current, member.id]);
-                          }}
-                        />
-                        <span className="tag-chip-avatar">{initials(member.name)}</span>
-                        <span>@{member.name}</span>
-                      </label>
-                    ))}
-                    {!filteredMembers.length && <span className="tag-empty">No members found.</span>}
-                  </div>
-                </div>
-
-                {/* Image URL field */}
-                <label className="image-url-field">
-                  <span className="iuf-label"><ImagePlus size={14} /> Image URLs <small>(comma or new-line separated, up to 6)</small></span>
-                  <textarea
-                    value={imageText}
-                    onChange={(event) => setImageText(event.target.value)}
-                    placeholder="https://.../photo-1.jpg, https://.../photo-2.jpg"
-                  />
-                </label>
-
-                {/* Composer footer */}
-                <div className="composer-footer">
-                  <div className="composer-tools">
-                    <button type="button" className="composer-tool" title="Emoji (UI)"><Smile size={18} /></button>
-                    <button type="button" className="composer-tool" title="Schedule (UI)"><CalendarClock size={18} /></button>
-                    <button type="button" className="composer-tool" title="Save draft (UI)">Save Draft</button>
-                  </div>
-                  <motion.button
-                    className="btn btn-gradient btn-ripple"
-                    onClick={publish}
-                    whileHover={{ scale: 1.03 }}
-                    whileTap={{ scale: 0.97 }}
-                  >
-                    <Send size={17} /> Publish
-                  </motion.button>
-                </div>
-              </motion.section>
-            )}
-          </AnimatePresence>
-
           {/* ---------- Filter pills ---------- */}
           <motion.div
             className="filter-pills"
@@ -309,128 +226,121 @@ export default function CelebrationWall() {
           </motion.div>
 
           {/* ---------- Feed ---------- */}
-          <motion.div className="feed-list" initial="hidden" animate="show" variants={stagger}>
-            {pageItems.map((post) => {
-              const meta = categoryMeta(post.type);
-              const TIcon = meta.icon;
-              return (
-                <motion.article
-                  className={post.pinned ? 'panel post-card pinned-post' : 'panel post-card'}
-                  key={post.id}
-                  variants={fadeUp}
-                  whileHover={{ y: -4 }}
-                >
-                  {/* Post head */}
-                  <div className="post-head">
-                    <span className="post-avatar">{initials(post.createdByName)}</span>
-                    <div className="post-head-info">
-                      <strong>{post.createdByName}</strong>
-                      <span>{new Date(post.createdAt).toLocaleString()}</span>
+          {loading && <p className="empty-inline">Loading celebrations...</p>}
+          {!loading && error && <p className="form-error">{error}</p>}
+
+          {!loading && !error && (
+            <motion.div className="feed-list" initial="hidden" animate="show" variants={stagger}>
+              {pageItems.map((post) => {
+                const meta = categoryMeta(post.type);
+                const TIcon = meta.icon;
+                const isLiked = Boolean(likedPosts[post.id]);
+                const comments = commentsState[post.id] || [];
+
+                return (
+                  <motion.article
+                    className="panel post-card"
+                    key={post.id}
+                    variants={fadeUp}
+                    whileHover={{ y: -4 }}
+                  >
+                    {/* Post head */}
+                    <div className="post-head">
+                      <span className="post-avatar">{initials(post.title || meta.label)}</span>
+                      <div className="post-head-info">
+                        <strong>{post.title}</strong>
+                        <span>{new Date(post.createdAt).toLocaleString()}</span>
+                      </div>
+                      <span className="post-category-badge" style={{ background: meta.bg, color: meta.color }}>
+                        <TIcon size={13} /> {meta.label}
+                      </span>
                     </div>
-                    <span className="post-category-badge" style={{ background: meta.bg, color: meta.color }}>
-                      <TIcon size={13} /> {meta.label}
-                    </span>
-                    {post.pinned && <span className="pinned-label"><Pin size={13} /> Pinned</span>}
-                    {isHr && (
-                      <div className="post-admin-actions">
-                        <button className="icon-btn" title="Pin post" onClick={() => { postStore.togglePin(user, post.id); refresh(); }}><Pin size={16} /></button>
-                        <button className="icon-btn danger" onClick={() => { postStore.remove(user, post.id); refresh(); }}><Trash2 size={16} /></button>
-                        <button className="icon-btn" title="More"><MoreHorizontal size={16} /></button>
+
+                    {/* Thumbnail / content */}
+                    <div className="post-thumbnail" style={{ background: meta.soft, borderColor: meta.bg }}>
+                      <TIcon size={32} style={{ color: meta.color }} />
+                      <strong>{post.title}</strong>
+                      {post.message && <span className="post-message">{post.message}</span>}
+                    </div>
+
+                    {/* Actions */}
+                    <div className="post-actions">
+                      <motion.button
+                        className={isLiked ? 'active liked' : ''}
+                        onClick={() => toggleLike(post.id)}
+                        whileTap={{ scale: 0.9 }}
+                      >
+                        <Heart size={17} /> {isLiked ? 1 : 0} Like
+                      </motion.button>
+                      <button><MessageCircle size={17} /> {comments.length} Comments</button>
+                      <button className="ghost"><Share2 size={16} /> Share</button>
+                      <button className="ghost"><Bookmark size={16} /></button>
+                    </div>
+
+                    {/* Comments */}
+                    {comments.length > 0 && (
+                      <div className="comment-list">
+                        {comments.slice(-3).map((comment) => (
+                          <div className="comment-item" key={comment.id}>
+                            <span className="comment-avatar">{initials(comment.userName)}</span>
+                            <div className="comment-body">
+                              <strong>{comment.userName}</strong>
+                              <span>{comment.message}</span>
+                            </div>
+                          </div>
+                        ))}
                       </div>
                     )}
-                  </div>
 
-                  {/* Thumbnail / content */}
-                  <div className="post-thumbnail" style={{ background: meta.soft, borderColor: meta.bg }}>
-                    <TIcon size={32} style={{ color: meta.color }} />
-                    <strong>{post.title}</strong>
-                    <TaggedMessage post={post} />
-                  </div>
-
-                  {/* Image grid */}
-                  {!!post.images?.length && (
-                    <div className={`post-image-grid count-${Math.min(post.images.length, 4)}`}>
-                      {post.images.map((src, index) => (
-                        <img
-                          src={src}
-                          alt={`${post.title} ${index + 1}`}
-                          key={`${src}-${index}`}
-                          onError={(event) => { event.currentTarget.style.display = 'none'; }}
-                        />
-                      ))}
+                    {/* Comment composer */}
+                    <div className="comment-composer">
+                      <span className="comment-avatar">{initials(user.name)}</span>
+                      <input
+                        value={commentDrafts[post.id] || ''}
+                        onChange={(event) => setCommentDrafts((current) => ({ ...current, [post.id]: event.target.value }))}
+                        placeholder="Write a comment..."
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') handleAddComment(post.id);
+                        }}
+                      />
+                      <motion.button
+                        className="icon-btn primary"
+                        onClick={() => handleAddComment(post.id)}
+                        whileTap={{ scale: 0.9 }}
+                      >
+                        <Send size={16} />
+                      </motion.button>
                     </div>
-                  )}
+                  </motion.article>
+                );
+              })}
+              {!visibleFeed.length && (
+                <section className="panel empty-state">
+                  <PartyPopper size={36} />
+                  <p>No celebration posts yet.</p>
+                  <small>Celebrations and company milestones will appear here.</small>
+                </section>
+              )}
+            </motion.div>
+          )}
 
-                  {/* Actions */}
-                  <div className="post-actions">
-                    <motion.button
-                      className={(post.likes || []).some((like) => like.userId === user.id) ? 'active liked' : ''}
-                      onClick={() => { postStore.toggleLike(user, post.id); refresh(); }}
-                      whileTap={{ scale: 0.9 }}
-                    >
-                      <Heart size={17} size={17} /> {post.likes?.length || 0} Like
-                    </motion.button>
-                    <button><MessageCircle size={17} /> {post.comments?.length || 0} Comments</button>
-                    <button className="ghost"><Share2 size={16} /> Share</button>
-                    <button className="ghost"><Bookmark size={16} /></button>
-                  </div>
-
-                  {/* Comments */}
-                  <div className="comment-list">
-                    {(post.comments || []).slice(-3).map((comment) => (
-                      <div className="comment-item" key={comment.id}>
-                        <span className="comment-avatar">{initials(comment.userName)}</span>
-                        <div className="comment-body">
-                          <strong>{comment.userName}</strong>
-                          <span>{comment.message}</span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-
-                  {/* Comment composer */}
-                  <div className="comment-composer">
-                    <span className="comment-avatar">{initials(user.name)}</span>
-                    <input
-                      value={commentDrafts[post.id] || ''}
-                      onChange={(event) => setCommentDrafts((current) => ({ ...current, [post.id]: event.target.value }))}
-                      placeholder="Write a comment..."
-                    />
-                    <motion.button
-                      className="icon-btn primary"
-                      onClick={() => {
-                        const value = commentDrafts[post.id];
-                        if (!value?.trim()) return;
-                        postStore.addComment(user, post.id, value);
-                        setCommentDrafts((current) => ({ ...current, [post.id]: '' }));
-                        refresh();
-                      }}
-                      whileTap={{ scale: 0.9 }}
-                    >
-                      <Send size={16} />
-                    </motion.button>
-                  </div>
-                </motion.article>
-              );
-            })}
-            {!visible.length && (
-              <section className="panel empty-state">
-                <PartyPopper size={36} />
-                <p>No celebration posts yet.</p>
-                <small>Be the first to celebrate a teammate!</small>
-              </section>
-            )}
-          </motion.div>
-
-          <Pagination page={page} totalItems={visible.length} pageSize={pageSize} onPageChange={setPage} />
+          <Pagination page={page} totalItems={visibleFeed.length} pageSize={pageSize} onPageChange={setPage} />
         </div>
 
         {/* ---------- Right sidebar ---------- */}
         <aside className="celebration-side">
           {/* Announcements widget */}
-          <motion.section className="panel side-widget" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.5, ease: easeOut, delay: 0.1 }} whileHover={{ y: -4 }}>
+          <motion.section
+            className="panel side-widget"
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.5, ease: easeOut, delay: 0.1 }}
+            whileHover={{ y: -4 }}
+          >
             <div className="side-widget-head">
-              <span className="side-widget-icon" style={{ background: '#dbeafe', color: '#2563eb' }}><Megaphone size={18} /></span>
+              <span className="side-widget-icon" style={{ background: '#dbeafe', color: '#2563eb' }}>
+                <Megaphone size={18} />
+              </span>
               <h2>Announcements</h2>
             </div>
             {announcements.map((item) => (
@@ -443,24 +353,40 @@ export default function CelebrationWall() {
           </motion.section>
 
           {/* Events widget */}
-          <motion.section className="panel side-widget" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.5, ease: easeOut, delay: 0.18 }} whileHover={{ y: -4 }}>
+          <motion.section
+            className="panel side-widget"
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.5, ease: easeOut, delay: 0.18 }}
+            whileHover={{ y: -4 }}
+          >
             <div className="side-widget-head">
-              <span className="side-widget-icon" style={{ background: '#dcfce7', color: '#16a34a' }}><CalendarDays size={18} /></span>
+              <span className="side-widget-icon" style={{ background: '#dcfce7', color: '#16a34a' }}>
+                <CalendarDays size={18} />
+              </span>
               <h2>Upcoming events</h2>
             </div>
-            {events.map((item) => (
+            {upcomingEvents.map((item) => (
               <div className="side-content" key={item.id}>
                 <strong>{item.title}</strong>
-                <span>{item.date}{item.location ? ` • ${item.location}` : ''}</span>
+                <span>{item.message || new Date(item.eventDate || item.createdAt).toLocaleDateString()}</span>
               </div>
             ))}
-            {!events.length && <p className="empty-inline">No events.</p>}
+            {!upcomingEvents.length && <p className="empty-inline">No upcoming events.</p>}
           </motion.section>
 
           {/* Quick links widget */}
-          <motion.section className="panel side-widget" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.5, ease: easeOut, delay: 0.26 }} whileHover={{ y: -4 }}>
+          <motion.section
+            className="panel side-widget"
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.5, ease: easeOut, delay: 0.26 }}
+            whileHover={{ y: -4 }}
+          >
             <div className="side-widget-head">
-              <span className="side-widget-icon" style={{ background: '#fef3c7', color: '#d97706' }}><Gift size={18} /></span>
+              <span className="side-widget-icon" style={{ background: '#fef3c7', color: '#d97706' }}>
+                <Gift size={18} />
+              </span>
               <h2>Quick Links</h2>
             </div>
             <div className="quick-links">

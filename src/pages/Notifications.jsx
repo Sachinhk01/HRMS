@@ -91,7 +91,7 @@ export default function Notifications() {
               <div className={`notification-icon ${meta.tone}`}><Icon size={19} /></div>
               <div className="notification-body">
                 <strong>{item.title}</strong>
-                <span>{item.message}</span>
+                {item.message && <span>{item.message}</span>}
               </div>
               <small className="notification-time">
                 {item.createdAt ? new Date(item.createdAt).toLocaleString() : ''}

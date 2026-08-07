@@ -24,7 +24,7 @@ import PageHeader from '../components/PageHeader';
 import Pagination from '../components/Pagination';
 import StatusBadge from '../components/StatusBadge';
 import usePagination, { sortRecent } from '../hooks/usePagination';
-import { getTeamLeaveRequests, managerLeaveAction } from '../services/leaveService';
+import { getAllLeaveRequests, getTeamLeaveRequests, managerLeaveAction } from '../services/leaveService';
 import './LeaveApprovals.css';
 
 const easeOut = [0.16, 1, 0.3, 1];
@@ -58,10 +58,15 @@ export default function LeaveApprovals() {
     setLoading(true);
     setErr('');
     try {
-      const teamRequests = await getTeamLeaveRequests();
-      setRows((teamRequests || []).filter((r) => r.status === 'PENDING'));
+      let requests = [];
+      try {
+        requests = await getAllLeaveRequests();
+      } catch {
+        requests = await getTeamLeaveRequests();
+      }
+      setRows(Array.isArray(requests) ? requests : []);
     } catch (error) {
-      setErr(error.message || 'Failed to load pending leave requests.');
+      setErr(error.message || 'Failed to load leave requests.');
     } finally {
       setLoading(false);
     }
@@ -87,13 +92,13 @@ export default function LeaveApprovals() {
 
   const { page, setPage, pageItems, pageSize } = usePagination(filteredOrdered, 6);
 
-  // Summary cards (UI-only derived)
+  // Summary cards derived from real backend data
   const summary = useMemo(() => {
-    const pending = ordered.length;
-    const approvedToday = 0; // backend doesn't expose historical; placeholder
-    const rejectedToday = 0;
-    const avgTime = '—';
-    return { pending, approvedToday, rejectedToday, avgTime };
+    const pending = ordered.filter((r) => String(r.status || '').toUpperCase() === 'PENDING').length;
+    const approved = ordered.filter((r) => String(r.status || '').toUpperCase() === 'APPROVED').length;
+    const rejected = ordered.filter((r) => String(r.status || '').toUpperCase() === 'REJECTED').length;
+    const total = ordered.length;
+    return { pending, approved, rejected, total };
   }, [ordered]);
 
   const decide = async (id, action, reason) => {
@@ -124,10 +129,10 @@ export default function LeaveApprovals() {
   }
 
   const SUMMARY_CARDS = [
-    { icon: Clock3, label: 'Pending Requests', value: summary.pending, tone: 'orange', desc: 'Awaiting your decision' },
-    { icon: CheckCircle2, label: 'Approved Today', value: summary.approvedToday, tone: 'green', desc: 'Decisions this day' },
-    { icon: XCircle, label: 'Rejected Today', value: summary.rejectedToday, tone: 'red', desc: 'Declined this day' },
-    { icon: Timer, label: 'Avg Approval Time', value: summary.avgTime, tone: 'blue', desc: 'Across recent requests' },
+    { icon: Clock3, label: 'Pending Requests', value: summary.pending, tone: 'orange', desc: 'Awaiting decision' },
+    { icon: CheckCircle2, label: 'Approved Requests', value: summary.approved, tone: 'green', desc: 'Total approved' },
+    { icon: XCircle, label: 'Rejected Requests', value: summary.rejected, tone: 'red', desc: 'Total rejected' },
+    { icon: Timer, label: 'Total Requests', value: summary.total, tone: 'blue', desc: 'Across all employees' },
   ];
 
   return (

@@ -635,7 +635,7 @@ if (failures.length) {
                       const SIcon = STATUS_ICONS[normalizeAttendanceStatus(record.attendanceStatus)] || Clock3;
                       return (
                         <motion.tr
-                          key={record.id}
+                          key={record.AttendanceId ?? `row-${i}`}
                           initial={{ opacity: 0, y: 8 }}
                           animate={{ opacity: 1, y: 0 }}
                           transition={{ duration: 0.3, delay: i * 0.04, ease: easeOut }}

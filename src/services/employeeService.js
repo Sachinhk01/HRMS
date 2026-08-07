@@ -75,10 +75,20 @@ export async function getMyProfile() {
 
 export async function getBirthdaysToday() {
   try {
-    const { data } = await api.get("/employees/birthdays-today");
-    return data.data || [];
+    const res = await getEmployees({ size: 100 });
+    const employees = res.content || [];
+    const today = new Date();
+    const currentMonth = today.getMonth();
+    const currentDate = today.getDate();
+
+    return employees.filter((member) => {
+      const dobStr = member?.dateOfBirth || member?.dob;
+      if (!dobStr) return false;
+      const dob = new Date(dobStr);
+      return dob.getMonth() === currentMonth && dob.getDate() === currentDate;
+    });
   } catch (error) {
-    console.error("Failed to fetch today's birthdays:", error);
+    console.warn("Could not fetch birthdays from employees list:", error);
     return [];
   }
 }

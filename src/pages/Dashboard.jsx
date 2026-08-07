@@ -23,9 +23,9 @@ import SummaryCard from '../components/SummaryCard';
 import PdfDropzone from '../components/PdfDropzone';
 import { useAuth } from '../context/AuthContext';
 import { getEmployees, getBirthdaysToday, normalizeEmployeeName } from '../services/employeeService';
+import { getNotifications } from '../services/notificationService';
 import { getAttendanceDashboard, getAttendanceHistory } from '../services/attendanceService';
 import { getMyLeaveBalances, getTeamLeaveRequests } from '../services/leaveService';
-import { announcementStore, eventStore, postStore } from '../services/contentService';
 import { getEmployeeOfMonth, getMonthlyMagazine, saveEmployeeOfMonth, saveMonthlyMagazine } from '../services/dashboardContentService';
 import { getHolidays, getUpcomingHolidays } from '../services/holidayService';
 import welcomePersonImg from '../assets/illustrations/welcome-person.png';
@@ -59,7 +59,7 @@ function formatHolidayDate(value) {
 export default function Dashboard() {
   const { user } = useAuth();
   const nav = useNavigate();
-  const role = user.role;
+  const role = user?.role || user?.roles?.[0] || 'EMPLOYEE';
 
   const greeting = useMemo(() => {
     const hour = new Date().getHours();
@@ -113,8 +113,35 @@ useEffect(() => {
     async function loadBirthdays() {
       setBirthdayLoading(true);
       try {
-        const list = await getBirthdaysToday({ days: 30 });
-        if (!cancelled) setBirthdayEmployees(Array.isArray(list) ? list : []);
+        const [empResult, notifResult] = await Promise.allSettled([
+          getBirthdaysToday(),
+          getNotifications({ page: 0, size: 50 }),
+        ]);
+
+        if (cancelled) return;
+
+        const employeeList = empResult.status === 'fulfilled' && Array.isArray(empResult.value) ? empResult.value : [];
+        const notifContent = notifResult.status === 'fulfilled' ? (notifResult.value?.content || []) : [];
+
+        // Extract BIRTHDAY type notifications from backend GET /notifications
+        const birthdayNotifs = notifContent
+          .filter((n) => n.notificationType === 'BIRTHDAY')
+          .map((n) => ({
+            id: `notif-${n.id}`,
+            name: n.title || 'Happy Birthday 🎉',
+            dateOfBirth: n.createdAt,
+            designation: n.message || 'Birthday Celebration',
+          }));
+
+        // Merge employee birthdays & notification birthdays without duplicates
+        const combined = [...employeeList];
+        birthdayNotifs.forEach((bn) => {
+          if (!combined.some((item) => item.id === bn.id || item.name === bn.name)) {
+            combined.push(bn);
+          }
+        });
+
+        setBirthdayEmployees(combined);
       } catch {
         if (!cancelled) setBirthdayEmployees([]);
       } finally {
@@ -122,7 +149,7 @@ useEffect(() => {
       }
     }
 
-    // loadBirthdays();
+    loadBirthdays();
     window.addEventListener('focus', loadBirthdays);
     return () => {
       cancelled = true;
@@ -268,7 +295,7 @@ useEffect(() => {
     cards = [
       [Clock3, 'Attendance', attendanceLoading ? '...' : (isCheckedInToday ? 'Marked' : 'Not marked'), 'Today', 'green', '/attendance'],
       [CalendarDays, 'Leaves left', leaveLoading ? '...' : leaveSummary.left, `${leaveLoading ? '...' : leaveSummary.taken} days taken`, 'pink', '/leave'],
-      [PartyPopper, 'Celebrations', postStore.all().length, 'Published posts', 'orange', '/celebrations'],
+      [PartyPopper, 'Celebrations', 'View', 'Company wall', 'orange', '/celebrations'],
       [UserRound, 'Profile', 'Update', 'Personal details', 'teal', '/profile'],
     ];
     links = [
@@ -281,8 +308,8 @@ useEffect(() => {
     cards = [
       [Users, 'Employees', employees.length, 'Total users', 'green', '/employees'],
       [Clock3, 'My Attendance', attendanceLoading ? '...' : (isCheckedInToday ? 'Marked' : 'Not marked'), 'Check in / out', 'teal', '/attendance'],
-      [Megaphone, 'Announcements', announcementStore.all().length, 'Published', 'orange', '/announcements'],
-      [CalendarRange, 'Events', eventStore.all().length, 'Created', 'pink', '/events'],
+      [Megaphone, 'Announcements', 'View', 'Published', 'orange', '/announcements'],
+      [CalendarRange, 'Events', 'View', 'Created', 'pink', '/events'],
     ];
     links = [
       { label: "Employees", path: "/employees", icon: Users },

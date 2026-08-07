@@ -4,7 +4,7 @@ import api from './api';
  * Fetch the logged-in employee's notifications (paginated).
  * Returns the unwrapped PageResponse<NotificationResponse>: { content, page, size, totalElements, totalPages, first, last }
  */
-export async function getNotifications({ page = 0, size = 10 } = {}) {
+export async function getNotifications({ page = 0, size = 100 } = {}) {
   const { data } = await api.get('/notifications', { params: { page, size } });
   return data.data;
 }
@@ -24,7 +24,63 @@ export async function markAllNotificationsRead() {
   return data.data;
 }
 
-export async function createAnnouncement({ title, message }) {
-  const { data } = await api.post('/notifications/announcement', { title, message });
+export async function createAnnouncement({ title, message, attachments = [] }) {
+  const formData = new FormData();
+  const requestBlob = new Blob([JSON.stringify({ title, message })], { type: 'application/json' });
+  formData.append('request', requestBlob);
+
+  if (Array.isArray(attachments) && attachments.length > 0) {
+    attachments.forEach((file) => {
+      formData.append('attachments', file);
+    });
+  }
+
+  const { data } = await api.post('/notifications/announcement', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  });
   return data.data;
 }
+
+/**
+ * Read title, message, and date directly from the backend NotificationResponse JSON.
+ * Backend stores plain strings in title and message — no JSON-within-JSON needed.
+ * Fields: id, title, message, notificationType, priority, referenceType, referenceId,
+ *         attachmentUrls, isRead, createdAt
+ */
+export function parseNotificationContent(item = {}) {
+  return {
+    title: item.title || '',
+    message: item.message || '',
+    date: item.createdAt || null,
+    attachmentUrls: item.attachmentUrls || [],
+  };
+}
+
+/**
+ * Utility: Separate celebration notifications into Today/Past feed vs Upcoming events.
+ * Compares item.eventDate or item.createdAt against current date.
+ */
+export function splitCelebrationFeedAndEvents(notifications = []) {
+  const now = new Date();
+  const endOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+
+  const celebrationFeed = [];
+  const upcomingEvents = [];
+
+  notifications.forEach((item) => {
+    // Exclude ANNOUNCEMENT type from celebration views
+    if (item.notificationType === 'ANNOUNCEMENT') return;
+
+    const parsed = parseNotificationContent(item);
+    const itemDate = parsed.date ? new Date(parsed.date) : now;
+
+    if (itemDate > endOfToday) {
+      upcomingEvents.push(item);
+    } else {
+      celebrationFeed.push(item);
+    }
+  });
+
+  return { celebrationFeed, upcomingEvents };
+}
+

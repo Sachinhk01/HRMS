@@ -34,7 +34,7 @@ function RoleRoute({ children }) {
   const { pathname } = useLocation();
 
   const allowed = ROUTE_ROLES[pathname] || [];
-  const userRole = user?.roles?.[0];
+  const userRole = user?.role || user?.roles?.[0];
 
   return allowed.includes(userRole)
     ? children

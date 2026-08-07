@@ -107,14 +107,19 @@ export default function Leave() {
     setLoading(true);
     setErr('');
     try {
-      const [requestsData, balancesData, typesData] = await Promise.all([
+      const [requestsRes, balancesRes, typesRes] = await Promise.allSettled([
         getMyLeaveRequests(),
         getMyLeaveBalances(),
         getActiveLeaveTypes(),
       ]);
-      setRows(requestsData || []);
-      setBalances(balancesData || []);
-      setLeaveTypes(typesData || []);
+
+      const requestsData = requestsRes.status === 'fulfilled' ? requestsRes.value : [];
+      const balancesData = balancesRes.status === 'fulfilled' ? balancesRes.value : [];
+      const typesData = typesRes.status === 'fulfilled' ? typesRes.value : [];
+
+      setRows(Array.isArray(requestsData) ? requestsData : []);
+      setBalances(Array.isArray(balancesData) ? balancesData : []);
+      setLeaveTypes(Array.isArray(typesData) ? typesData : []);
     } catch (error) {
       setErr(error.message || 'Failed to load leave data.');
     } finally {
@@ -122,7 +127,7 @@ export default function Leave() {
     }
   };
 
-  useEffect(() => { load(); }, [user.id]);
+  useEffect(() => { load(); }, [user?.id]);
 
   const ordered = useMemo(() => sortRecent(rows, 'startDate'), [rows]);
 
@@ -142,12 +147,18 @@ export default function Leave() {
   const { page, setPage, pageItems, pageSize } = usePagination(filteredOrdered, 5);
 
   const summary = useMemo(() => {
-    const allowance = balances.reduce((sum, b) => sum + (b.allocatedLeaves || 0), 0);
-    const taken = balances.reduce((sum, b) => sum + (b.usedLeaves || 0), 0);
-    const left = balances.reduce((sum, b) => sum + (b.remainingLeaves || 0), 0);
-    const pending = rows
-      .filter((r) => r.status === 'PENDING')
-      .reduce((sum, r) => sum + (r.totalDays || 0), 0);
+    const list = Array.isArray(balances) ? balances : [];
+    const allowance = list.reduce((sum, b) => sum + (Number(b.allocatedLeaves ?? b.allocated ?? 0) || 0), 0);
+    const taken = list.reduce((sum, b) => sum + (Number(b.usedLeaves ?? b.used ?? 0) || 0), 0);
+    const left = list.reduce((sum, b) => {
+      const rem = b.remainingLeaves ?? b.remaining;
+      const val = rem !== undefined && rem !== null ? Number(rem) : (Number(b.allocatedLeaves || 0) - Number(b.usedLeaves || 0));
+      return sum + (val || 0);
+    }, 0);
+    const pendingList = Array.isArray(rows) ? rows : [];
+    const pending = pendingList
+      .filter((r) => String(r.status || '').toUpperCase() === 'PENDING')
+      .reduce((sum, r) => sum + (Number(r.totalDays ?? r.days ?? 0) || 0), 0);
     return { allowance, taken, left, pending };
   }, [balances, rows]);
 
@@ -160,10 +171,16 @@ export default function Leave() {
     return Math.round((b - a) / 86400000) + 1;
   }, [formFrom, formTo]);
 
-  const selectedBalance = useMemo(
-    () => balances.find((b) => String(b.leaveType).toUpperCase().includes(String(leaveTypes.find((t) => Number(t.id) === Number(formLeaveTypeId))?.name || '').toUpperCase())),
-    [balances, leaveTypes, formLeaveTypeId]
-  );
+  const selectedBalance = useMemo(() => {
+    if (!formLeaveTypeId || !Array.isArray(balances)) return null;
+    const selectedType = Array.isArray(leaveTypes) ? leaveTypes.find((t) => Number(t.id) === Number(formLeaveTypeId)) : null;
+    const typeName = String(selectedType?.name || '').toUpperCase();
+    return balances.find(
+      (b) =>
+        Number(b.leaveTypeId) === Number(formLeaveTypeId) ||
+        (typeName && String(b.leaveType || '').toUpperCase().includes(typeName))
+    );
+  }, [balances, leaveTypes, formLeaveTypeId]);
 
   const hasPreviewData = Boolean(formLeaveTypeId || formFrom || formTo);
 
@@ -381,7 +398,7 @@ export default function Leave() {
             <label className="lf-field full-span">
               <span className="lf-label"><FileText size={14} /> Leave type</span>
               <div className="lf-select-wrap">
-                <select name="leaveTypeId" required defaultValue="" value={formLeaveTypeId} onChange={(e) => setFormLeaveTypeId(e.target.value)}>
+                <select name="leaveTypeId" required value={formLeaveTypeId} onChange={(e) => setFormLeaveTypeId(e.target.value)}>
                   <option value="" disabled>Select leave type</option>
                   {leaveTypes.map((type) => <option key={type.id} value={type.id}>{type.name}</option>)}
                 </select>

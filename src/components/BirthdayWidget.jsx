@@ -40,15 +40,17 @@ export default function BirthdayWidget({ employees = [], onViewAll }) {
   const [isAnimating, setIsAnimating] = useState(false);
   const timerRef = useRef(null);
 
-  const todaysBirthdays = employees.filter((e) => isBirthdayToday(e.dateOfBirth || e.dob));
+  const getDob = (e) => e?.dateOfBirth || e?.dob || e?.createdAt;
+
+  const todaysBirthdays = employees.filter((e) => isBirthdayToday(getDob(e)));
   const upcomingBirthdays = employees
     .filter((e) => {
-      const days = getDaysUntilBirthday(e.dateOfBirth || e.dob);
+      const days = getDaysUntilBirthday(getDob(e));
       return days !== null && days > 0 && days <= 30;
     })
     .sort((a, b) => {
-      const da = getDaysUntilBirthday(a.dateOfBirth || a.dob);
-      const db = getDaysUntilBirthday(b.dateOfBirth || b.dob);
+      const da = getDaysUntilBirthday(getDob(a));
+      const db = getDaysUntilBirthday(getDob(b));
       return da - db;
     })
     .slice(0, 10);
@@ -167,8 +169,9 @@ export default function BirthdayWidget({ employees = [], onViewAll }) {
         ) : (
           <div className="cw-cards">
             {current.items.map((emp) => {
-              const days = getDaysUntilBirthday(emp.dateOfBirth || emp.dob);
-              const isToday = days === 0 || isBirthdayToday(emp.dateOfBirth || emp.dob);
+              const dob = getDob(emp);
+              const days = getDaysUntilBirthday(dob);
+              const isToday = days === 0 || isBirthdayToday(dob);
               return (
                 <div className="cw-person-card" key={emp.id}
                   style={{ '--card-accent': current.accent, '--card-bg': current.accentBg, '--card-border': current.accentBorder }}>
@@ -182,7 +185,7 @@ export default function BirthdayWidget({ employees = [], onViewAll }) {
                       <span className="cw-person-tag" style={{ background: '#fff7ed', color: '#f59e0b' }}>🎂 Today!</span>
                     ) : (
                       <span className="cw-person-tag" style={{ background: '#eff6ff', color: '#3b82f6' }}>
-                        {formatUpcomingDate(emp.dateOfBirth || emp.dob)} · {days}d
+                        {formatUpcomingDate(dob)} · {days}d
                       </span>
                     )}
                   </div>
