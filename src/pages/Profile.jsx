@@ -113,19 +113,20 @@ export default function Profile() {
       event.target.value = '';
       return;
     }
-    if (file.size > 1024 * 1024) {
-      setError('Profile photo size cannot exceed 1 MB.');
+    const MAX_PHOTO_SIZE = 5 * 1024 * 1024; // 5MB
+
+    if (file.size > MAX_PHOTO_SIZE) {
+      setError('Profile photo size cannot exceed 5 MB.');
       event.target.value = '';
       return;
     }
-
     setPhotoUploading(true);
     try {
       const saved = await hrmsService.uploadPhoto(file);
       setProfile(saved);
       if (isOwnProfile) {
         updateUser({ ...user, photoUrl: saved.profilePhotoUrl });
-        refreshAvatar();
+        refreshAvatar?.()
       }
       setMessage('Profile photo updated.');
     } catch (err) {

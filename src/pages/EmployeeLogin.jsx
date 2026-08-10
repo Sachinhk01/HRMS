@@ -88,11 +88,11 @@ export function EmployeeLogin() {
             </motion.div>
 
             <motion.h2 className="hrms-login__headline" variants={rise}>
-              One platform.
+              One Platform.
               <br />
               Complete HR.
               <br />
-              <em>Happy employees.</em>
+              <em>Happy Employees.</em>
             </motion.h2>
 
             <motion.p className="hrms-login__subtext" variants={rise}>

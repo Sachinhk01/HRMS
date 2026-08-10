@@ -33,6 +33,7 @@ export const ROLE_MENUS = {
     ['/leave', 'My Leave'],
     ['/leave-approvals', 'Leave Approvals'],
     ['/attendance', 'Attendance'],
+    ['/celebrations', 'Celebration Wall'],
     ['/performance', 'Performance'],
     ['/employees', 'Employees'],
     ['/profile', 'Profile'],
