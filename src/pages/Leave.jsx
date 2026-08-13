@@ -214,9 +214,9 @@ export default function Leave() {
       setFormTo('');
       await load();
       setPage(1);
-      setMsg('Leave request submitted successfully.');
+      setMsg('Leave Request Submitted Successfully.');
     } catch (error) {
-      setErr(error.message || 'Failed to submit leave request.');
+      setErr(error.message || 'Failed To Submit Leave Request.');
     } finally {
       setSubmitting(false);
     }
@@ -230,7 +230,7 @@ export default function Leave() {
       await load();
       setMsg('Leave request cancelled.');
     } catch (error) {
-      setErr(error.message || 'Failed to cancel leave request.');
+      setErr(error.message || 'Failed To Cancel Leave Request.');
     }
   };
 
@@ -252,8 +252,8 @@ export default function Leave() {
       >
         <div className="leave-hero-text">
           <span className="eyebrow">Leave Management</span>
-          <h1>Plan your time away</h1>
-          <p>Apply for leave, monitor balances and track approval progress.</p>
+          <h1>Plan Your Time Away</h1>
+          <p>Apply For Leave, Monitor Balances And Track Approval Progress.</p>
         </div>
         <div className="leave-hero-illustration" aria-hidden="true">
           <svg viewBox="0 0 320 220" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -359,7 +359,7 @@ export default function Leave() {
                 <div className="lb-icon" style={{ background: theme.bg, color: theme.color }}><TIcon size={20} /></div>
                 <div className="lb-name">
                   <strong>{balance.leaveType}</strong>
-                  <span>{balance.remainingLeaves} days remaining</span>
+                  <span>{balance.remainingLeaves} Days Remaining</span>
                 </div>
               </div>
               <div className="lb-progress">
@@ -375,8 +375,8 @@ export default function Leave() {
         {!loading && !balances.length && (
           <div className="empty-state">
             <CalendarDays size={32} />
-            <p>No leave balances found.</p>
-            <small>Your allocated leave types will appear here.</small>
+            <p>No Leave Balances Found.</p>
+            <small>Your Allocated Leave Types Will Appear Here.</small>
           </div>
         )}
       </motion.div>
@@ -392,14 +392,14 @@ export default function Leave() {
             </div>
             <div className="panel-title-icon"><CalendarPlus size={20} /></div>
           </div>
-          <p className="panel-desc">Fill in the details below. Your manager will be notified for approval.</p>
+          <p className="panel-desc">Fill In The Details Below. Your Manager Will Be Notified For Approval.</p>
 
           <form className="leave-form-grid" onSubmit={submit}>
             <label className="lf-field full-span">
               <span className="lf-label"><FileText size={14} /> Leave type</span>
               <div className="lf-select-wrap">
                 <select name="leaveTypeId" required value={formLeaveTypeId} onChange={(e) => setFormLeaveTypeId(e.target.value)}>
-                  <option value="" disabled>Select leave type</option>
+                  <option value="" disabled>Select Leave Type</option>
                   {leaveTypes.map((type) => <option key={type.id} value={type.id}>{type.name}</option>)}
                 </select>
                 <ChevronDown size={16} className="lf-chevron" />
@@ -407,11 +407,11 @@ export default function Leave() {
             </label>
 
             <label className="lf-field">
-              <span className="lf-label"><CalendarDays size={14} /> From date</span>
+              <span className="lf-label"><CalendarDays size={14} /> From Date</span>
               <input name="from" type="date" required value={formFrom} onChange={(e) => setFormFrom(e.target.value)} />
             </label>
             <label className="lf-field">
-              <span className="lf-label"><CalendarDays size={14} /> To date</span>
+              <span className="lf-label"><CalendarDays size={14} /> To Date</span>
               <input name="to" type="date" required value={formTo} onChange={(e) => setFormTo(e.target.value)} />
             </label>
 
@@ -423,7 +423,7 @@ export default function Leave() {
 
             {/* Preview summary */}
             <div className="lf-preview full-span">
-              <div className="lf-preview-head"><CalendarRange size={15} /> Request preview</div>
+              <div className="lf-preview-head"><CalendarRange size={15} /> Request Preview</div>
               {hasPreviewData ? (
                 <div className="lf-preview-grid">
                   <div><span>Type</span><strong>{leaveTypes.find((t) => Number(t.id) === Number(formLeaveTypeId))?.name || '—'}</strong></div>
@@ -433,7 +433,7 @@ export default function Leave() {
                   <div><span>Remaining balance</span><strong>{selectedBalance ? `${selectedBalance.remainingLeaves} days` : '—'}</strong></div>
                 </div>
               ) : (
-                <p className="lf-preview-empty">Fill in the form to see your request preview here.</p>
+                <p className="lf-preview-empty">Fill In The Form To See Your Request Preview Here.</p>
               )}
             </div>
 
@@ -444,7 +444,7 @@ export default function Leave() {
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
             >
-              {submitting ? <><span className="btn-spinner" /> Submitting...</> : <><CalendarPlus size={18} /> Submit request</>}
+              {submitting ? <><span className="btn-spinner" /> Submitting...</> : <><CalendarPlus size={18} /> Submit Request</>}
             </motion.button>
           </form>
         </motion.section>
@@ -453,7 +453,7 @@ export default function Leave() {
         <motion.section className="panel leave-history-panel" initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, ease: easeOut, delay: 0.1 }}>
           <div className="panel-title">
             <div>
-              <span className="eyebrow">My requests</span>
+              <span className="eyebrow">My Requests</span>
               <h2>Leave History</h2>
             </div>
           </div>
@@ -464,7 +464,7 @@ export default function Leave() {
               <input type="text" placeholder="Search type or date..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
             </label>
             <select className="compact-select" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
-              <option value="ALL">All statuses</option>
+              <option value="ALL">All Statuses</option>
               <option value="PENDING">Pending</option>
               <option value="APPROVED">Approved</option>
               <option value="REJECTED">Rejected</option>
@@ -497,8 +497,8 @@ export default function Leave() {
             {!loading && !filteredOrdered.length && (
               <div className="empty-state">
                 <CalendarDays size={32} />
-                <p>No leave requests found.</p>
-                <small>Submit your first request using the form.</small>
+                <p>No Leave Requests Found.</p>
+                <small>Submit Your First Request Using The Form.</small>
               </div>
             )}
           </div>
@@ -512,8 +512,8 @@ export default function Leave() {
           <motion.div className="modal-overlay" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setCancelTarget(null)}>
             <motion.div className="modal-card" initial={{ opacity: 0, scale: 0.94, y: 12 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.94, y: 12 }} transition={{ duration: 0.25, ease: easeOut }} onClick={(e) => e.stopPropagation()}>
               <div className="modal-icon-wrap warn"><AlertTriangle size={26} /></div>
-              <h3>Cancel this leave request?</h3>
-              <p>You're about to cancel your <strong>{cancelTarget.leaveType}</strong> request from <strong>{cancelTarget.startDate}</strong> to <strong>{cancelTarget.endDate}</strong>. This action cannot be undone.</p>
+              <h3>Cancel This Leave Request?</h3>
+              <p>You're About to Cancel Your <strong>{cancelTarget.leaveType}</strong> Request From <strong>{cancelTarget.startDate}</strong> to <strong>{cancelTarget.endDate}</strong>. This Action Cannot be Undone.</p>
               <div className="modal-actions">
                 <button className="btn btn-soft" onClick={() => setCancelTarget(null)}>Keep request</button>
                 <button className="btn btn-danger-soft" onClick={() => handleCancel(cancelTarget.id)}><X size={16} /> Yes, cancel</button>

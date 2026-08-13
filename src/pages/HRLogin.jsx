@@ -96,12 +96,12 @@ export function HRLogin() {
             <motion.h2 className="hrms-login__headline" variants={rise}>
               Run HR,
               <br />
-              without the <em>chaos.</em>
+              Without The <em>Chaos.</em>
             </motion.h2>
 
             <motion.p className="hrms-login__subtext" variants={rise}>
-              Manage employees, broadcast announcements, and coordinate events
-              from one calm console.
+              Manage Employees, Broadcast Announcements, And Coordinate Events
+              From One Calm Console.
             </motion.p>
 
             <motion.div className="hrms-login__floatcard-wrap" variants={cardRise}>
@@ -122,8 +122,8 @@ export function HRLogin() {
                   </span>
                 </div>
                 <div className="hrms-login__floatcard-body">
-                  <div className="hrms-login__floatcard-title">2 new</div>
-                  <div className="hrms-login__floatcard-meta">Team-wide · This week</div>
+                  <div className="hrms-login__floatcard-title">2 New</div>
+                  <div className="hrms-login__floatcard-meta">Team-Wide · This Week</div>
                   <span className="hrms-login__floatcard-status">
                     <ShieldCheck />
                     Live
@@ -145,9 +145,9 @@ export function HRLogin() {
               <span className="hrms-login__card-lock">
                 <Lock />
               </span>
-              <h1 className="hrms-login__card-title">Sign in</h1>
+              <h1 className="hrms-login__card-title">Sign In</h1>
               <p className="hrms-login__card-sub">
-                Use your HR credentials to continue.
+                Use Your HR Credentials To Continue.
               </p>
             </div>
 
@@ -197,7 +197,7 @@ export function HRLogin() {
                   Remember me
                 </label>
                 <Link to="/forgot-password" className="hrms-login__forgot">
-                  Forgot password?
+                  Forgot Password?
                 </Link>
               </div>
 
@@ -208,7 +208,7 @@ export function HRLogin() {
                 className="hrms-btn hrms-btn--primary hrms-btn--block"
                 disabled={isSubmitting}
               >
-                {isSubmitting ? 'Signing in...' : 'Sign in'}
+                {isSubmitting ? 'Signing In...' : 'Sign In'}
                 <ArrowRight />
               </button>
             </form>

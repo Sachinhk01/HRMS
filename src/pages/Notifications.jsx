@@ -66,18 +66,18 @@ export default function Notifications() {
       <PageHeader
         eyebrow="Inbox"
         title="Notifications"
-        description="Important updates across HR, attendance and team activity."
+        description="Important Updates Across HR, Attendance And Team Activity."
         action={hasUnread ? (
           <button className="btn btn-light" onClick={handleReadAll}>
-            <CheckCheck size={16} /> Mark all as read
+            <CheckCheck size={16} /> Mark All As Read
           </button>
         ) : null}
       />
       <section className="panel notifications-panel">
-        {loading && <p className="empty-inline">Loading notifications…</p>}
+        {loading && <p className="empty-inline">Loading Notifications…</p>}
         {!loading && error && <p className="form-error">{error}</p>}
         {!loading && !error && items.length === 0 && (
-          <EmptyState title="You're all caught up" text="No new notifications." />
+          <EmptyState title="You're All Caught Up" text="No New Notifications." />
         )}
         {!loading && !error && items.map((item) => {
           const meta = TYPE_META[item.notificationType] || TYPE_META.GENERAL;

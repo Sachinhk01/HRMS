@@ -148,8 +148,8 @@ export default function Profile() {
     <div className="page-stack profile-page page-reveal">
       <PageHeader
         eyebrow="Employee Profile"
-        title={isOwnProfile ? 'My profile' : fullName}
-        description="View and manage your personal information."
+        title={isOwnProfile ? 'My Profile' : fullName}
+        description="View And Manage Your Personal Information."
       />
 
       {error && <div className="form-alert">{error}</div>}
@@ -206,7 +206,7 @@ export default function Profile() {
                   </select>
                 </label>
                 {message && <div className="success-alert full-span">{message}</div>}
-                <button className="btn btn-primary full-span"><Save size={18} />Save changes</button>
+                <button className="btn btn-primary full-span"><Save size={18} />Save Changes</button>
               </form>
             ) : (
               <div className="profile-info-grid">
@@ -228,7 +228,7 @@ export default function Profile() {
               <div><span>Date of Joining</span><strong>{profile.dateOfJoining || 'Not provided'}</strong></div>
               <div><span>Employment Type</span><strong>{profile.employmentType || 'Not provided'}</strong></div>
               <div><span>Reporting Manager</span><strong>{profile.reportingManagerName || 'Not assigned'}</strong></div>
-              <div className="full-span"><small>Employment details can only be updated by HR from the Employees page.</small></div>
+              <div className="full-span"><small>Employment Details Can Only Be Updated By HR From The Employees Page.</small></div>
             </div>
           )}
 

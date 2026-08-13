@@ -95,14 +95,14 @@ export function ManagerLogin() {
             </motion.div>
 
             <motion.h2 className="hrms-login__headline" variants={rise}>
-              Lead your team
+              Lead Your Team
               <br />
-              with <em>clarity.</em>
+              With <em>Clarity.</em>
             </motion.h2>
 
             <motion.p className="hrms-login__subtext" variants={rise}>
-              Review approvals, track attendance, and monitor performance —
-              all from one manager dashboard.
+              Review Approvals, Track Attendance, And Monitor Performance —
+              All From One Manager Dashboard.
             </motion.p>
 
             <motion.div className="hrms-login__floatcard-wrap" variants={cardRise}>
@@ -124,7 +124,7 @@ export function ManagerLogin() {
                 </div>
                 <div className="hrms-login__floatcard-body">
                   <div className="hrms-login__floatcard-title">Pending</div>
-                  <div className="hrms-login__floatcard-meta">3 requests · Today</div>
+                  <div className="hrms-login__floatcard-meta">3 Requests · Today</div>
                   <span className="hrms-login__floatcard-status">
                     <Clock />
                     Awaiting
@@ -146,9 +146,9 @@ export function ManagerLogin() {
               <span className="hrms-login__card-lock">
                 <Lock />
               </span>
-              <h1 className="hrms-login__card-title">Sign in</h1>
+              <h1 className="hrms-login__card-title">Sign In</h1>
               <p className="hrms-login__card-sub">
-                Use your manager credentials to continue.
+                Use Your Manager Credentials To Continue.
               </p>
             </div>
 
@@ -198,7 +198,7 @@ export function ManagerLogin() {
                   Remember me
                 </label>
                 <Link to="/forgot-password" className="hrms-login__forgot">
-                  Forgot password?
+                  Forgot Password?
                 </Link>
               </div>
 
@@ -209,7 +209,7 @@ export function ManagerLogin() {
                 className="hrms-btn hrms-btn--primary hrms-btn--block"
                 disabled={isSubmitting}
               >
-                {isSubmitting ? 'Signing in...' : 'Sign in'}
+                {isSubmitting ? 'Signing In...' : 'Sign In'}
                 <ArrowRight />
               </button>
             </form>
