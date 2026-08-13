@@ -9,27 +9,21 @@ import PageHeader from '../components/PageHeader';
 import Pagination from '../components/Pagination';
 import usePagination, { sortRecent } from '../hooks/usePagination';
 import { useAuth } from '../context/AuthContext';
-import { getNotifications } from '../services/notificationService';
+import { getCelebrationWallToday, createAnnouncement } from '../services/notificationService';
 import './CelebrationWall.css';
 
-// Filter tabs — must contain 'ALL' plus exact backend NotificationType values for calendar events
-const types = ['ALL', 'BIRTHDAY', 'WORK_ANNIVERSARY', 'HOLIDAY', 'GENERAL', 'APPROVED'];
+// Celebration Wall shows ONLY celebration content. The backend's
+// celebration-wall/today endpoint already restricts results to
+// BIRTHDAY / WORK_ANNIVERSARY (referenceType EMPLOYEE) and ANNOUNCEMENT —
+// nothing else (leave, attendance, holiday, general) can come back, so the
+// filter tabs here only need to cover those real possibilities.
+const types = ['ALL', 'BIRTHDAY', 'WORK_ANNIVERSARY', 'ANNOUNCEMENT'];
 
 // Keys match backend NotificationType enum exactly
 const CATEGORY_META = {
   BIRTHDAY:         { icon: Cake,      color: '#db2777', bg: '#fce7f3', soft: '#fdf2f8', label: 'Birthday' },
   WORK_ANNIVERSARY: { icon: Award,     color: '#0891b2', bg: '#cffafe', soft: '#ecfeff', label: 'Work Anniversary' },
-  HOLIDAY:          { icon: Sparkles,  color: '#059669', bg: '#d1fae5', soft: '#ecfdf5', label: 'Holiday' },
-  LEAVE_APPLIED:    { icon: CalendarDays, color: '#7c3aed', bg: '#ede9fe', soft: '#f5f3ff', label: 'Leave' },
-  LEAVE_MANAGER_APPROVED: { icon: Award, color: '#16a34a', bg: '#dcfce7', soft: '#f0fdf4', label: 'Leave Approved' },
-  LEAVE_HR_APPROVED: { icon: Award,   color: '#16a34a', bg: '#dcfce7', soft: '#f0fdf4', label: 'Leave Approved' },
-  LEAVE_REJECTED:   { icon: CalendarDays, color: '#dc2626', bg: '#fee2e2', soft: '#fef2f2', label: 'Leave Rejected' },
-  LATE_CHECK_IN:    { icon: CalendarDays, color: '#d97706', bg: '#fef3c7', soft: '#fffbeb', label: 'Late Check-in' },
-  ABSENT:           { icon: UserPlus,  color: '#dc2626', bg: '#fee2e2', soft: '#fef2f2', label: 'Absent' },
-  MISSED_CHECKOUT:  { icon: CalendarDays, color: '#d97706', bg: '#fef3c7', soft: '#fffbeb', label: 'Missed Checkout' },
   ANNOUNCEMENT:     { icon: Megaphone, color: '#2563eb', bg: '#dbeafe', soft: '#eff6ff', label: 'Announcement' },
-  APPROVED:         { icon: Award,     color: '#059669', bg: '#d1fae5', soft: '#ecfdf5', label: 'Approved' },
-  GENERAL:          { icon: PartyPopper, color: '#2563eb', bg: '#dbeafe', soft: '#eff6ff', label: 'General' },
 };
 
 function categoryMeta(type = '') {
@@ -64,10 +58,17 @@ const stagger = { hidden: {}, show: { transition: { staggerChildren: 0.07, delay
 
 export default function CelebrationWall() {
   const { user } = useAuth();
+  const canAddCelebration = ['SUPER_ADMIN', 'HR_ADMIN', 'MANAGER'].includes(user?.role);
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [active, setActive] = useState('ALL');
+  const [composerTitle, setComposerTitle] = useState('');
+  const [composerMessage, setComposerMessage] = useState('');
+  const [composerUploadType, setComposerUploadType] = useState('POST');
+  const [composerFiles, setComposerFiles] = useState([]);
+  const [postError, setPostError] = useState('');
+  const [posting, setPosting] = useState(false);
   const [likedPosts, setLikedPosts] = useState({});
   const [commentsState, setCommentsState] = useState({});
   const [commentDrafts, setCommentDrafts] = useState({});
@@ -76,8 +77,8 @@ export default function CelebrationWall() {
     setLoading(true);
     setError('');
     try {
-      const res = await getNotifications({ page: 0, size: 100 });
-      setNotifications(res?.content || []);
+      const res = await getCelebrationWallToday();
+      setNotifications(res || []);
     } catch (err) {
       setError(err.message || 'Failed to load celebrations.');
     } finally {
@@ -92,22 +93,11 @@ export default function CelebrationWall() {
   const { celebrationFeed, upcomingEvents, announcements } = useMemo(() => {
     const rawFeed = [];
     const rawUpcoming = [];
-    const rawAnnouncements = [];
 
     const now = new Date();
     const endOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
 
     (notifications || []).forEach((item) => {
-      if (item.notificationType === 'ANNOUNCEMENT') {
-        rawAnnouncements.push({
-          id: item.id,
-          title: item.title,
-          message: item.message,
-          createdAt: item.createdAt,
-        });
-        return;
-      }
-
       const post = normalizeNotificationToPost(item);
       const dateVal = new Date(post.eventDate || post.createdAt);
 
@@ -121,7 +111,7 @@ export default function CelebrationWall() {
     return {
       celebrationFeed: sortRecent(rawFeed),
       upcomingEvents: sortRecent(rawUpcoming),
-      announcements: sortRecent(rawAnnouncements).slice(0, 4),
+      announcements: [],
     };
   }, [notifications]);
 
@@ -151,6 +141,35 @@ export default function CelebrationWall() {
       [postId]: [...(prev[postId] || []), newComment],
     }));
     setCommentDrafts((prev) => ({ ...prev, [postId]: '' }));
+  };
+
+  const handlePublish = async () => {
+    if (!composerTitle.trim() || !composerMessage.trim()) {
+      setPostError('Title and message are required.');
+      return;
+    }
+
+    setPosting(true);
+    setPostError('');
+
+    try {
+      await createAnnouncement({
+        title: composerTitle.trim(),
+        message: composerMessage.trim(),
+        uploadType: composerUploadType,
+        attachments: composerFiles,
+      });
+
+      setComposerTitle('');
+      setComposerMessage('');
+      setComposerUploadType('POST');
+      setComposerFiles([]);
+      await loadData();
+    } catch (err) {
+      setPostError(err?.response?.data?.message || err.message || 'Failed to post celebration.');
+    } finally {
+      setPosting(false);
+    }
   };
 
   return (
@@ -202,6 +221,55 @@ export default function CelebrationWall() {
 
       <div className="celebration-layout">
         <div className="feed-column">
+          {canAddCelebration && (
+            <section className="panel composer">
+              <div className="composer-head">
+                <span className="composer-avatar">{initials(user?.name || '')}</span>
+                <div className="composer-head-text">
+                  <strong>Share a celebration</strong>
+                  <span>Post an announcement your team will see</span>
+                </div>
+              </div>
+
+              <input
+                className="composer-input"
+                value={composerTitle}
+                onChange={(e) => setComposerTitle(e.target.value)}
+                placeholder="Title"
+              />
+
+              <div className="composer-row">
+                <div className="composer-type-select">
+                  <select value={composerUploadType} onChange={(e) => setComposerUploadType(e.target.value)}>
+                    <option value="POST">Post</option>
+                    <option value="MAGAZINE">Magazine</option>
+                  </select>
+                </div>
+                <input
+                  className="composer-input"
+                  value={composerMessage}
+                  onChange={(e) => setComposerMessage(e.target.value)}
+                  placeholder="Write your message..."
+                />
+              </div>
+
+              <input
+                type="file"
+                multiple
+                onChange={(e) => setComposerFiles(Array.from(e.target.files))}
+              />
+
+              {postError && <p className="form-error">{postError}</p>}
+
+              <div className="composer-footer">
+                <span />
+                <button className="btn btn-gradient btn-ripple" onClick={handlePublish} disabled={posting}>
+                  <Send size={17} /> {posting ? 'Posting...' : 'Publish'}
+                </button>
+              </div>
+            </section>
+          )}
+
           {/* ---------- Filter pills ---------- */}
           <motion.div
             className="filter-pills"

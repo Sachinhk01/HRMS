@@ -9,6 +9,11 @@ export async function getNotifications({ page = 0, size = 100 } = {}) {
   return data.data;
 }
 
+export async function getCelebrationWallToday() {
+  const { data } = await api.get('/notifications/celebration-wall/today');
+  return data.data;
+}
+
 export async function getUnreadCount() {
   const { data } = await api.get('/notifications/unread-count');
   return data.data;
@@ -24,9 +29,12 @@ export async function markAllNotificationsRead() {
   return data.data;
 }
 
-export async function createAnnouncement({ title, message, attachments = [] }) {
+export async function createAnnouncement({ title, message, uploadType, attachments = [] }) {
   const formData = new FormData();
-  const requestBlob = new Blob([JSON.stringify({ title, message })], { type: 'application/json' });
+  const requestBlob = new Blob(
+    [JSON.stringify({ title, message, uploadType })],
+    { type: 'application/json' }
+  );
   formData.append('request', requestBlob);
 
   if (Array.isArray(attachments) && attachments.length > 0) {
@@ -83,4 +91,4 @@ export function splitCelebrationFeedAndEvents(notifications = []) {
 
   return { celebrationFeed, upcomingEvents };
 }
-
+
