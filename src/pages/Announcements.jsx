@@ -72,7 +72,7 @@ export default function Announcements() {
       <PageHeader
         eyebrow="Company Updates"
         title="Announcements"
-        description="Official company announcements, policy updates, and broadcast messages from HR."
+        description="Official Company Announcements, Policy Updates, And Broadcast Messages From HR."
       />
 
       {/* ---------- Hero banner ---------- */}
@@ -85,7 +85,7 @@ export default function Announcements() {
         <div className="ann-hero-text">
           <span className="eyebrow">Company Updates</span>
           <h1>Company Announcements</h1>
-          <p>Stay informed with the latest company updates.</p>
+          <p>Stay Informed With The Latest Company Updates.</p>
         </div>
         <div className="ann-hero-illustration" aria-hidden="true">
           <svg viewBox="0 0 320 200" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -102,7 +102,7 @@ export default function Announcements() {
       </motion.section>
 
       {/* ---------- Announcement feed ---------- */}
-      {loading && <p className="empty-inline">Loading announcements...</p>}
+      {loading && <p className="empty-inline">Loading Announcements...</p>}
       {!loading && error && <p className="form-error">{error}</p>}
 
       {!loading && !error && (
@@ -137,8 +137,8 @@ export default function Announcements() {
           {!announcements.length && (
             <section className="panel empty-state">
               <Megaphone size={36} />
-              <p>No announcements yet.</p>
-              <small>Company updates will appear here once published.</small>
+              <p>No Announcements Yet.</p>
+              <small>Company Updates Will Appear Here Once Published.</small>
             </section>
           )}
         </motion.div>

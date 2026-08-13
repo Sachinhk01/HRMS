@@ -228,17 +228,17 @@ export default function Leave() {
     try {
       await cancelLeave(id);
       await load();
-      setMsg('Leave request cancelled.');
+      setMsg('Leave Request Cancelled.');
     } catch (error) {
       setErr(error.message || 'Failed To Cancel Leave Request.');
     }
   };
 
   const SUMMARY_CARDS = [
-    { icon: WalletCards, label: 'Total Allowance', value: summary.allowance, suffix: ' days', tone: 'blue', desc: 'Annual entitlement' },
-    { icon: CheckCircle2, label: 'Leaves Taken', value: summary.taken, suffix: ' days', tone: 'blue', desc: 'Used this year' },
-    { icon: CalendarDays, label: 'Leaves Left', value: summary.left, suffix: ' days', tone: 'blue', desc: 'Available to use' },
-    { icon: Clock3, label: 'Pending Requests', value: summary.pending, suffix: ' days', tone: 'amber', desc: 'Awaiting decision' },
+    { icon: WalletCards, label: 'Total Allowance', value: summary.allowance, suffix: ' days', tone: 'blue', desc: 'Annual Entitlement' },
+    { icon: CheckCircle2, label: 'Leaves Taken', value: summary.taken, suffix: ' days', tone: 'blue', desc: 'Used This Year' },
+    { icon: CalendarDays, label: 'Leaves Left', value: summary.left, suffix: ' days', tone: 'blue', desc: 'Available to Use' },
+    { icon: Clock3, label: 'Pending Requests', value: summary.pending, suffix: ' days', tone: 'amber', desc: 'Awaiting Decision' },
   ];
 
   return (
@@ -332,7 +332,7 @@ export default function Leave() {
 
       {/* ---------- Leave balance cards ---------- */}
       <section className="leave-section-head">
-        <span className="eyebrow">Your entitlements</span>
+        <span className="eyebrow">Your Entitlements</span>
         <h2>Leave Balances</h2>
       </section>
       <motion.div className="leave-balance-grid" initial="hidden" animate="show" variants={stagger}>
@@ -396,7 +396,7 @@ export default function Leave() {
 
           <form className="leave-form-grid" onSubmit={submit}>
             <label className="lf-field full-span">
-              <span className="lf-label"><FileText size={14} /> Leave type</span>
+              <span className="lf-label"><FileText size={14} /> Leave Type</span>
               <div className="lf-select-wrap">
                 <select name="leaveTypeId" required value={formLeaveTypeId} onChange={(e) => setFormLeaveTypeId(e.target.value)}>
                   <option value="" disabled>Select Leave Type</option>

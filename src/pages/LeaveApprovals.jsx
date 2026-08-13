@@ -216,28 +216,28 @@ export default function LeaveApprovals() {
       label: "Pending Requests",
       value: summary.pending,
       tone: "orange",
-      desc: "Awaiting decision",
+      desc: "Awaiting Decision",
     },
     {
       icon: CheckCircle2,
       label: "Approved Requests",
       value: summary.approved,
       tone: "green",
-      desc: "Total approved",
+      desc: "Total Approved",
     },
     {
       icon: XCircle,
       label: "Rejected Requests",
       value: summary.rejected,
       tone: "red",
-      desc: "Total rejected",
+      desc: "Total Rejected",
     },
     {
       icon: Timer,
       label: "Total Requests",
       value: summary.total,
       tone: "blue",
-      desc: "Across all employees",
+      desc: "Across All Employees",
     },
   ];
 

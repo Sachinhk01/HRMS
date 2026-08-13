@@ -178,8 +178,8 @@ export default function CelebrationWall() {
         title="Celebration Wall"
         description={
           canManage
-            ? 'Post announcements for the team and see today\u2019s birthdays and work anniversaries.'
-            : 'View today\u2019s birthdays, work anniversaries, and company announcements.'
+            ? 'Post Announcements for The Team And See Today\u2019s Birthdays And Work Anniversaries.'
+            : 'View Today\u2019s Birthdays, Work Anniversaries, And Company Announcements.'
         }
       />
 
@@ -193,7 +193,7 @@ export default function CelebrationWall() {
         <div className="celebration-hero-text">
           <span className="eyebrow">Celebration Wall</span>
           <h1>Celebration Wall</h1>
-          <p>Celebrate birthdays, work anniversaries, and team milestones together.</p>
+          <p>Celebrate Birthdays, Work Anniversaries, And Team Milestones Together.</p>
         </div>
         <div className="celebration-hero-illustration" aria-hidden="true">
           <svg viewBox="0 0 320 200" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -226,8 +226,8 @@ export default function CelebrationWall() {
               <div className="composer-head">
                 <span className="composer-avatar">{initials(user?.name || '')}</span>
                 <div className="composer-head-text">
-                  <strong>Share a celebration</strong>
-                  <span>Post an announcement your team will see</span>
+                  <strong>Share a Celebration</strong>
+                  <span>Post an Announcement Your Team Will See</span>
                 </div>
               </div>
 
@@ -292,7 +292,7 @@ export default function CelebrationWall() {
           </motion.div>
 
           {/* ---------- Feed ---------- */}
-          {loading && <p className="empty-inline">Loading celebrations...</p>}
+          {loading && <p className="empty-inline">Loading Celebrations...</p>}
           {!loading && error && <p className="form-error">{error}</p>}
 
           {!loading && !error && (
@@ -380,8 +380,8 @@ export default function CelebrationWall() {
               {!visibleFeed.length && (
                 <section className="panel empty-state">
                   <PartyPopper size={36} />
-                  <p>No celebration posts yet.</p>
-                  <small>Today's birthdays, anniversaries and announcements will appear here.</small>
+                  <p>No Celebration Posts Yet.</p>
+                  <small>Today's Birthdays, Anniversaries And Announcements Will Appear Here.</small>
                 </section>
               )}
             </motion.div>
@@ -411,7 +411,7 @@ export default function CelebrationWall() {
                 <span>{item.message}</span>
               </div>
             ))}
-            {!announcements.length && <p className="empty-inline">No announcements today.</p>}
+            {!announcements.length && <p className="empty-inline">No Announcements Today.</p>}
           </motion.section>
 
           <motion.section

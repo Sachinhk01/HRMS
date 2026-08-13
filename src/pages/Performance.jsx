@@ -81,9 +81,9 @@ export default function Performance() {
   };
 
   const SUMMARY = [
-    { icon: ClipboardCheck, label: 'Pending Reviews', value: 3, tone: 'orange', desc: 'Awaiting completion' },
-    { icon: CheckCircle2, label: 'Completed Reviews', value: reviews.length, tone: 'green', desc: 'This cycle' },
-    { icon: Star, label: 'Average Rating', value: '4.2', tone: 'blue', desc: 'Across all reviews' },
+    { icon: ClipboardCheck, label: 'Pending Reviews', value: 3, tone: 'orange', desc: 'Awaiting Completion' },
+    { icon: CheckCircle2, label: 'Completed Reviews', value: reviews.length, tone: 'green', desc: 'This Cycle' },
+    { icon: Star, label: 'Average Rating', value: '4.2', tone: 'blue', desc: 'Across All Reviews' },
     { icon: Award, label: 'Top Performers', value: 5, tone: 'pink', desc: 'Rated 4.5+' },
   ];
 

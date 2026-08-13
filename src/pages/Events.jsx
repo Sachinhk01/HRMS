@@ -52,7 +52,7 @@ export default function Events() {
       <PageHeader
         eyebrow="Company Activities"
         title="Upcoming Events"
-        description="Stay connected with upcoming company activities, celebrations, and team milestones."
+        description="Stay Connected With Upcoming Company Activities, Celebrations, And Team Milestones."
       />
 
       {/* ---------- Hero banner ---------- */}
@@ -65,7 +65,7 @@ export default function Events() {
         <div className="ev-hero-text">
           <span className="eyebrow">Company Activities</span>
           <h1>Upcoming Events</h1>
-          <p>Stay connected with company activities and celebration events.</p>
+          <p>Stay Connected With Company Activities And Celebration Events.</p>
         </div>
         <div className="ev-hero-illustration" aria-hidden="true">
           <svg viewBox="0 0 320 200" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -89,7 +89,7 @@ export default function Events() {
       </motion.section>
 
       {/* ---------- Event cards ---------- */}
-      {loading && <p className="empty-inline">Loading events...</p>}
+      {loading && <p className="empty-inline">Loading Events...</p>}
       {!loading && error && <p className="form-error">{error}</p>}
 
       {!loading && !error && (
@@ -116,7 +116,7 @@ export default function Events() {
                   <div className="ev-card-actions">
                     <button className="btn btn-small btn-gradient"><Heart size={14} /> Interested</button>
                     <button className="icon-btn" title="Share"><Share2 size={15} /></button>
-                    <button className="icon-btn" title="Add to calendar"><CalendarDays size={15} /></button>
+                    <button className="icon-btn" title="Add to Calendar"><CalendarDays size={15} /></button>
                   </div>
                 </div>
               </motion.article>
@@ -125,8 +125,8 @@ export default function Events() {
           {!eventsList.length && (
             <section className="panel empty-state">
               <CalendarDays size={36} />
-              <p>No events scheduled.</p>
-              <small>Company events and celebration milestones will appear here.</small>
+              <p>No Events Scheduled.</p>
+              <small>Company Events And Celebration Milestones Will Appear Here.</small>
             </section>
           )}
         </motion.div>
