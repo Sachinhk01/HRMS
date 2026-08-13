@@ -2,23 +2,15 @@ import { useEffect, useRef, useState } from 'react';
 import { Bell, ChevronDown, LogOut, Menu, Search, UserRound } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { getUnreadCount } from '../services/notificationService';
+import { useNotifications } from '../context/NotificationContext';
 import './TopBar.css';
 
 export default function TopBar({ onMenu }) {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
-  const [unreadCount, setUnreadCount] = useState(0);
+  const { unreadCount } = useNotifications();
   const menuRef = useRef(null);
-
-  useEffect(() => {
-    let cancelled = false;
-    getUnreadCount()
-      .then((count) => { if (!cancelled) setUnreadCount(count || 0); })
-      .catch(() => { if (!cancelled) setUnreadCount(0); });
-    return () => { cancelled = true; };
-  }, []);
 
   useEffect(() => {
     const close = (event) => {

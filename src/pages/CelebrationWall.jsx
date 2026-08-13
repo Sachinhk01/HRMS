@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import {
   Heart, MessageCircle, PartyPopper, Share2, Bookmark,
-  Gift, Cake, Award, Sparkles, UserPlus, Megaphone, CalendarDays, Send,
+  Gift, Cake, Award, Megaphone, CalendarDays, Send,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import PageHeader from '../components/PageHeader';
@@ -12,23 +12,26 @@ import { useAuth } from '../context/AuthContext';
 import { getCelebrationWallToday, createAnnouncement } from '../services/notificationService';
 import './CelebrationWall.css';
 
-// Celebration Wall shows ONLY celebration content. The backend's
-// celebration-wall/today endpoint already restricts results to
-// BIRTHDAY / WORK_ANNIVERSARY (referenceType EMPLOYEE) and ANNOUNCEMENT —
-// nothing else (leave, attendance, holiday, general) can come back, so the
-// filter tabs here only need to cover those real possibilities.
+// The /celebration-wall/today endpoint only ever returns these three
+// notificationType values (it already excludes ATTENDANCE and LEAVE on the
+// backend), so the filter tabs only need to cover the real possibilities.
 const types = ['ALL', 'BIRTHDAY', 'WORK_ANNIVERSARY', 'ANNOUNCEMENT'];
 
-// Keys match backend NotificationType enum exactly
+// Only HR can create/manage a celebration wall post.
+// Note: the backend's POST /notifications/announcement currently also
+// accepts SUPER_ADMIN and MANAGER tokens — this is a frontend-only gate.
+// If HR-only is meant to be enforced for real, that role check needs to be
+// tightened in NotificationController on the backend too.
+const MANAGE_ROLES = ['HR_ADMIN'];
+
 const CATEGORY_META = {
-  BIRTHDAY:         { icon: Cake,      color: '#db2777', bg: '#fce7f3', soft: '#fdf2f8', label: 'Birthday' },
-  WORK_ANNIVERSARY: { icon: Award,     color: '#0891b2', bg: '#cffafe', soft: '#ecfeff', label: 'Work Anniversary' },
-  ANNOUNCEMENT:     { icon: Megaphone, color: '#2563eb', bg: '#dbeafe', soft: '#eff6ff', label: 'Announcement' },
+  BIRTHDAY: { icon: Cake, color: '#db2777', bg: '#fce7f3', soft: '#fdf2f8', label: 'Birthday' },
+  WORK_ANNIVERSARY: { icon: Award, color: '#0891b2', bg: '#cffafe', soft: '#ecfeff', label: 'Work Anniversary' },
+  ANNOUNCEMENT: { icon: Megaphone, color: '#2563eb', bg: '#dbeafe', soft: '#eff6ff', label: 'Announcement' },
 };
 
 function categoryMeta(type = '') {
-  const normalized = (type || '').toUpperCase().replace(/_/g, ' ');
-  return CATEGORY_META[type] || CATEGORY_META[normalized] || { icon: PartyPopper, color: '#2563eb', bg: '#dbeafe', soft: '#eff6ff', label: type || 'Celebration' };
+  return CATEGORY_META[type] || { icon: PartyPopper, color: '#2563eb', bg: '#dbeafe', soft: '#eff6ff', label: type || 'Celebration' };
 }
 
 function initials(name = '') {
@@ -36,10 +39,9 @@ function initials(name = '') {
 }
 
 function normalizeNotificationToPost(item) {
-  // All fields come directly from backend NotificationResponse JSON
   return {
     id: item.id,
-    type: item.notificationType || 'GENERAL',
+    type: item.notificationType || 'ANNOUNCEMENT',
     title: item.title || '',
     message: item.message || '',
     createdAt: item.createdAt || new Date().toISOString(),
@@ -58,17 +60,24 @@ const stagger = { hidden: {}, show: { transition: { staggerChildren: 0.07, delay
 
 export default function CelebrationWall() {
   const { user } = useAuth();
-  const canAddCelebration = ['SUPER_ADMIN', 'HR_ADMIN', 'MANAGER'].includes(user?.role);
+  const canManage = MANAGE_ROLES.includes(user?.role);
+
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [active, setActive] = useState('ALL');
+
+  // HR composer state
   const [composerTitle, setComposerTitle] = useState('');
   const [composerMessage, setComposerMessage] = useState('');
   const [composerUploadType, setComposerUploadType] = useState('POST');
   const [composerFiles, setComposerFiles] = useState([]);
   const [postError, setPostError] = useState('');
   const [posting, setPosting] = useState(false);
+
+  // Likes/comments are NOT persisted on the backend yet — there's no
+  // like/comment table or endpoint for notifications/announcements today.
+  // These stay client-side (reset on refresh) until that's built.
   const [likedPosts, setLikedPosts] = useState({});
   const [commentsState, setCommentsState] = useState({});
   const [commentDrafts, setCommentDrafts] = useState({});
@@ -90,34 +99,24 @@ export default function CelebrationWall() {
     loadData();
   }, []);
 
-  const { celebrationFeed, upcomingEvents, announcements } = useMemo(() => {
+  const { celebrationFeed, announcements } = useMemo(() => {
     const rawFeed = [];
-    const rawUpcoming = [];
-
-    const now = new Date();
-    const endOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+    const rawAnnouncements = [];
 
     (notifications || []).forEach((item) => {
       const post = normalizeNotificationToPost(item);
-      const dateVal = new Date(post.eventDate || post.createdAt);
-
-      if (dateVal > endOfToday) {
-        rawUpcoming.push(post);
-      } else {
-        rawFeed.push(post);
-      }
+      rawFeed.push(post);
+      if (post.type === 'ANNOUNCEMENT') rawAnnouncements.push(post);
     });
 
     return {
       celebrationFeed: sortRecent(rawFeed),
-      upcomingEvents: sortRecent(rawUpcoming),
-      announcements: [],
+      announcements: sortRecent(rawAnnouncements).slice(0, 4),
     };
   }, [notifications]);
 
   const visibleFeed = useMemo(() => {
     if (active === 'ALL') return celebrationFeed;
-    // active is the raw backend NotificationType string (e.g. WORK_ANNIVERSARY)
     return celebrationFeed.filter((item) => item.type === active);
   }, [celebrationFeed, active]);
 
@@ -177,7 +176,11 @@ export default function CelebrationWall() {
       <PageHeader
         eyebrow="People & Culture"
         title="Celebration Wall"
-        description="View company celebrations, milestones, birthdays, anniversaries, and achievements."
+        description={
+          canManage
+            ? 'Post announcements for the team and see today\u2019s birthdays and work anniversaries.'
+            : 'View today\u2019s birthdays, work anniversaries, and company announcements.'
+        }
       />
 
       {/* ---------- Hero banner ---------- */}
@@ -190,30 +193,26 @@ export default function CelebrationWall() {
         <div className="celebration-hero-text">
           <span className="eyebrow">Celebration Wall</span>
           <h1>Celebration Wall</h1>
-          <p>Celebrate birthdays, work anniversaries, festivals, achievements and team milestones together.</p>
+          <p>Celebrate birthdays, work anniversaries, and team milestones together.</p>
         </div>
         <div className="celebration-hero-illustration" aria-hidden="true">
           <svg viewBox="0 0 320 200" fill="none" xmlns="http://www.w3.org/2000/svg">
             <circle cx="250" cy="55" r="58" fill="#dbeafe" opacity="0.5" />
             <circle cx="60" cy="155" r="42" fill="#bfdbfe" opacity="0.4" />
-            {/* Confetti */}
             <rect x="90" y="30" width="6" height="6" rx="2" fill="#fbbf24" transform="rotate(20 93 33)" />
             <rect x="120" y="22" width="5" height="5" rx="2" fill="#ec4899" transform="rotate(-15 122 24)" />
             <rect x="200" y="28" width="6" height="6" rx="2" fill="#22d3ee" transform="rotate(30 203 31)" />
             <rect x="240" y="40" width="5" height="5" rx="2" fill="#a78bfa" transform="rotate(-20 242 42)" />
-            {/* Cake */}
             <rect x="130" y="100" width="80" height="55" rx="10" fill="#fff" stroke="#bfdbfe" strokeWidth="2" />
             <rect x="130" y="100" width="80" height="14" rx="7" fill="#fde68a" />
             <path d="M150 100 V88 M170 100 V82 M190 100 V88" stroke="#ec4899" strokeWidth="2" strokeLinecap="round" />
             <circle cx="150" cy="84" r="3" fill="#fbbf24" />
             <circle cx="170" cy="78" r="3" fill="#fbbf24" />
             <circle cx="190" cy="84" r="3" fill="#fbbf24" />
-            {/* People */}
             <circle cx="110" cy="140" r="12" fill="#2563eb" />
             <rect x="98" y="150" width="24" height="20" rx="8" fill="#2563eb" />
             <circle cx="230" cy="140" r="12" fill="#0891b2" />
             <rect x="218" y="150" width="24" height="20" rx="8" fill="#0891b2" />
-            {/* Sparkles */}
             <path d="M260 120 l3 6 l6 3 l-6 3 l-3 6 l-3 -6 l-6 -3 l6 -3 z" fill="#fbbf24" />
           </svg>
         </div>
@@ -221,7 +220,8 @@ export default function CelebrationWall() {
 
       <div className="celebration-layout">
         <div className="feed-column">
-          {canAddCelebration && (
+          {/* ---------- HR-only composer ---------- */}
+          {canManage && (
             <section className="panel composer">
               <div className="composer-head">
                 <span className="composer-avatar">{initials(user?.name || '')}</span>
@@ -236,6 +236,7 @@ export default function CelebrationWall() {
                 value={composerTitle}
                 onChange={(e) => setComposerTitle(e.target.value)}
                 placeholder="Title"
+                maxLength={100}
               />
 
               <div className="composer-row">
@@ -250,14 +251,11 @@ export default function CelebrationWall() {
                   value={composerMessage}
                   onChange={(e) => setComposerMessage(e.target.value)}
                   placeholder="Write your message..."
+                  maxLength={1000}
                 />
               </div>
 
-              <input
-                type="file"
-                multiple
-                onChange={(e) => setComposerFiles(Array.from(e.target.files))}
-              />
+              <input type="file" multiple onChange={(e) => setComposerFiles(Array.from(e.target.files))} />
 
               {postError && <p className="form-error">{postError}</p>}
 
@@ -306,13 +304,7 @@ export default function CelebrationWall() {
                 const comments = commentsState[post.id] || [];
 
                 return (
-                  <motion.article
-                    className="panel post-card"
-                    key={post.id}
-                    variants={fadeUp}
-                    whileHover={{ y: -4 }}
-                  >
-                    {/* Post head */}
+                  <motion.article className="panel post-card" key={post.id} variants={fadeUp} whileHover={{ y: -4 }}>
                     <div className="post-head">
                       <span className="post-avatar">{initials(post.title || meta.label)}</span>
                       <div className="post-head-info">
@@ -324,14 +316,25 @@ export default function CelebrationWall() {
                       </span>
                     </div>
 
-                    {/* Thumbnail / content */}
                     <div className="post-thumbnail" style={{ background: meta.soft, borderColor: meta.bg }}>
                       <TIcon size={32} style={{ color: meta.color }} />
                       <strong>{post.title}</strong>
                       {post.message && <span className="post-message">{post.message}</span>}
                     </div>
 
-                    {/* Actions */}
+                    {!!post.images?.length && (
+                      <div className="post-image-grid">
+                        {post.images.map((src, index) => (
+                          <img
+                            src={src}
+                            alt={`${post.title} ${index + 1}`}
+                            key={`${src}-${index}`}
+                            onError={(event) => { event.currentTarget.style.display = 'none'; }}
+                          />
+                        ))}
+                      </div>
+                    )}
+
                     <div className="post-actions">
                       <motion.button
                         className={isLiked ? 'active liked' : ''}
@@ -345,7 +348,6 @@ export default function CelebrationWall() {
                       <button className="ghost"><Bookmark size={16} /></button>
                     </div>
 
-                    {/* Comments */}
                     {comments.length > 0 && (
                       <div className="comment-list">
                         {comments.slice(-3).map((comment) => (
@@ -360,22 +362,15 @@ export default function CelebrationWall() {
                       </div>
                     )}
 
-                    {/* Comment composer */}
                     <div className="comment-composer">
                       <span className="comment-avatar">{initials(user.name)}</span>
                       <input
                         value={commentDrafts[post.id] || ''}
                         onChange={(event) => setCommentDrafts((current) => ({ ...current, [post.id]: event.target.value }))}
                         placeholder="Write a comment..."
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') handleAddComment(post.id);
-                        }}
+                        onKeyDown={(e) => { if (e.key === 'Enter') handleAddComment(post.id); }}
                       />
-                      <motion.button
-                        className="icon-btn primary"
-                        onClick={() => handleAddComment(post.id)}
-                        whileTap={{ scale: 0.9 }}
-                      >
+                      <motion.button className="icon-btn primary" onClick={() => handleAddComment(post.id)} whileTap={{ scale: 0.9 }}>
                         <Send size={16} />
                       </motion.button>
                     </div>
@@ -386,7 +381,7 @@ export default function CelebrationWall() {
                 <section className="panel empty-state">
                   <PartyPopper size={36} />
                   <p>No celebration posts yet.</p>
-                  <small>Celebrations and company milestones will appear here.</small>
+                  <small>Today's birthdays, anniversaries and announcements will appear here.</small>
                 </section>
               )}
             </motion.div>
@@ -397,7 +392,6 @@ export default function CelebrationWall() {
 
         {/* ---------- Right sidebar ---------- */}
         <aside className="celebration-side">
-          {/* Announcements widget */}
           <motion.section
             className="panel side-widget"
             initial={{ opacity: 0, x: 20 }}
@@ -417,38 +411,14 @@ export default function CelebrationWall() {
                 <span>{item.message}</span>
               </div>
             ))}
-            {!announcements.length && <p className="empty-inline">No announcements.</p>}
+            {!announcements.length && <p className="empty-inline">No announcements today.</p>}
           </motion.section>
 
-          {/* Events widget */}
           <motion.section
             className="panel side-widget"
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.5, ease: easeOut, delay: 0.18 }}
-            whileHover={{ y: -4 }}
-          >
-            <div className="side-widget-head">
-              <span className="side-widget-icon" style={{ background: '#dcfce7', color: '#16a34a' }}>
-                <CalendarDays size={18} />
-              </span>
-              <h2>Upcoming events</h2>
-            </div>
-            {upcomingEvents.map((item) => (
-              <div className="side-content" key={item.id}>
-                <strong>{item.title}</strong>
-                <span>{item.message || new Date(item.eventDate || item.createdAt).toLocaleDateString()}</span>
-              </div>
-            ))}
-            {!upcomingEvents.length && <p className="empty-inline">No upcoming events.</p>}
-          </motion.section>
-
-          {/* Quick links widget */}
-          <motion.section
-            className="panel side-widget"
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.5, ease: easeOut, delay: 0.26 }}
             whileHover={{ y: -4 }}
           >
             <div className="side-widget-head">

@@ -6,6 +6,7 @@ import {
 import PageHeader from '../components/PageHeader';
 import EmptyState from '../components/EmptyState';
 import { getNotifications, markAllNotificationsRead, markNotificationRead } from '../services/notificationService';
+import { useNotifications } from '../context/NotificationContext';
 import './Notifications.css';
 
 // Matches backend NotificationType enum exactly. Each entry pairs an icon with a color tone.
@@ -30,6 +31,7 @@ export default function Notifications() {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const { refreshUnreadCount, decrementUnreadCount, setUnreadCount } = useNotifications();
 
   const load = () => {
     setLoading(true);
@@ -39,23 +41,31 @@ export default function Notifications() {
       .finally(() => setLoading(false));
   };
 
-  useEffect(() => { load(); }, []);
+  // Loading this page doesn't mark anything read by itself — only clicking a
+  // row or "Mark all as read" does, matching the explicit actions below.
+  // If you'd rather everything auto-clear just by opening the inbox, call
+  // markAllNotificationsRead() + setUnreadCount(0) inside this effect instead.
+  useEffect(() => { load(); refreshUnreadCount(); }, []);
 
   const handleRead = async (id) => {
     setItems((prev) => prev.map((n) => (n.id === id ? { ...n, isRead: true } : n)));
+    decrementUnreadCount(1);
     try {
       await markNotificationRead(id);
     } catch {
       load();
+      refreshUnreadCount();
     }
   };
 
   const handleReadAll = async () => {
     setItems((prev) => prev.map((n) => ({ ...n, isRead: true })));
+    setUnreadCount(0);
     try {
       await markAllNotificationsRead();
     } catch {
       load();
+      refreshUnreadCount();
     }
   };
 

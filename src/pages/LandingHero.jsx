@@ -134,9 +134,9 @@ export function LandingHero() {
             </motion.div>
 
             <motion.h1 className="hrms-hero__headline" variants={rise}>
-              People operations,
+              People Operations,
               <br />
-              <em>on the clock.</em>
+              <em>On The Clock.</em>
             </motion.h1>
 
             <motion.p className="hrms-hero__subtext" variants={rise}>
