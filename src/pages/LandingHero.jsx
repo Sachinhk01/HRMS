@@ -76,16 +76,16 @@ export function LandingHero() {
   const [staffOpen, setStaffOpen] = useState(false);
 
   const stats = [
-    { icon: Eye, label: 'Real-time attendance' },
-    { icon: Zap, label: 'One-click approvals' },
-    { icon: Users, label: 'Team-wide visibility' },
+    { icon: Eye, label: 'Real-Time Attendance' },
+    { icon: Zap, label: 'One-Click Approvals' },
+    { icon: Users, label: 'Team-Wide Visibility' },
   ];
 
   const features = [
-    { icon: Fingerprint, title: 'Attendance', sub: 'Check-in & timesheets' },
-    { icon: CalendarDays, title: 'Leave Management', sub: 'Balances & requests' },
-    { icon: ClipboardCheck, title: 'Approvals', sub: 'One-click workflows' },
-    { icon: Megaphone, title: 'Announcements', sub: 'Team-wide updates' },
+    { icon: Fingerprint, title: 'Attendance', sub: 'Check-In & Timesheets' },
+    { icon: CalendarDays, title: 'Leave Management', sub: 'Balances & Requests' },
+    { icon: ClipboardCheck, title: 'Approvals', sub: 'One-Click Workflows' },
+    { icon: Megaphone, title: 'Announcements', sub: 'Team-Wide Updates' },
   ];
 
   return (
@@ -129,7 +129,7 @@ export function LandingHero() {
             <motion.div variants={rise}>
               <span className="hrms-eyebrow">
                 <span className="hrms-eyebrow__pulse" />
-                Internal HRMS platform
+                Internal HRMS Platform
               </span>
             </motion.div>
 
@@ -140,8 +140,8 @@ export function LandingHero() {
             </motion.h1>
 
             <motion.p className="hrms-hero__subtext" variants={rise}>
-              MyHourly HRMS brings attendance, leave, approvals, and announcements
-              into one calm, reliable workspace for your whole team.
+              MyHourly HRMS Brings Attendance, Leave, Approvals, And Announcements
+              Into One Calm, Reliable Workspace For Your Whole Team.
             </motion.p>
 
             <motion.div className="hrms-hero__cta-row" variants={rise}>
@@ -229,7 +229,7 @@ export function LandingHero() {
                   <div className="hrms-floatcard__meta">09:02 AM · Today</div>
                   <span className="hrms-floatcard__status hrms-floatcard__status--emerald">
                     <ShieldCheck />
-                    On time
+                    On Time
                   </span>
                 </div>
               </motion.div>
@@ -268,7 +268,7 @@ export function LandingHero() {
           whileInView="show"
           viewport={{ once: true, amount: 0.6 }}
         >
-          Everything for your people, in one place
+          Everything For Your People, In One Place
         </motion.h2>
         <motion.div
           className="hrms-features__grid"
@@ -311,7 +311,7 @@ export function LandingHero() {
           <div className="hrms-footer__left">
             <Logo size={80} />
             <p className="hrms-footer__tagline">
-              Calm, reliable tools for busy teams.
+              Calm, Reliable Tools For Busy Teams.
             </p>
             <div className="hrms-footer__socials">
               <motion.a
@@ -359,7 +359,7 @@ export function LandingHero() {
         </div>
 
         <div className="hrms-footer__bottom">
-          © 2026 HourlyRecruit Tech Labs. All rights reserved.
+          © 2026 HourlyRecruit Tech Labs. All Rights Reserved.
         </div>
       </motion.footer>
 

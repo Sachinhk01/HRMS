@@ -27,11 +27,11 @@ export default function PdfDropzone({ url, fileName, fileSize, onChange, hiddenF
     setError('');
 
     if (file.type !== 'application/pdf') {
-      setError('Only PDF files are supported.');
+      setError('Only PDF Files Are Supported.');
       return;
     }
     if (file.size > MAX_SIZE_MB * 1024 * 1024) {
-      setError(`That file is larger than ${MAX_SIZE_MB}MB. Please upload a smaller PDF.`);
+      setError(`That File is Larger Than ${MAX_SIZE_MB}MB. Please Upload a Smaller PDF.`);
       return;
     }
 
@@ -43,7 +43,7 @@ export default function PdfDropzone({ url, fileName, fileSize, onChange, hiddenF
     };
     reader.onerror = () => {
       setBusy(false);
-      setError('Could not read that file — please try again.');
+      setError('Could Not Read That File — Please Try Again.');
     };
     reader.readAsDataURL(file);
   }
@@ -69,7 +69,7 @@ export default function PdfDropzone({ url, fileName, fileSize, onChange, hiddenF
           <div className="pdf-file-icon"><FileText size={18} /></div>
           <div className="pdf-file-meta">
             <strong>{fileName || 'Magazine.pdf'}</strong>
-            <span>{fileSize ? `${formatSize(fileSize)} · ` : ''}Employees can open or download this all month</span>
+            <span>{fileSize ? `${formatSize(fileSize)} · ` : ''}Employees Can Open or Download This All Month</span>
           </div>
           <div className="pdf-file-actions">
             <a href={url} target="_blank" rel="noreferrer" className="pdf-file-btn" title="Preview PDF">

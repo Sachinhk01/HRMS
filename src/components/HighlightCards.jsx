@@ -35,13 +35,13 @@ export default function HighlightCards({ magazine, employeeOfMonth }) {
           <div className="hl-badge hl-badge--blue">
             <BookOpen size={15} /> Monthly Magazine
           </div>
-          <h3 className="hl-title">{magazine?.title || 'No magazine published yet'}</h3>
-          <p className="hl-desc">{magazine?.description || 'HR or Manager can publish the company magazine here for everyone to read.'}</p>
+          <h3 className="hl-title">{magazine?.title || 'No Magazine Published Yet'}</h3>
+          <p className="hl-desc">{magazine?.description || 'HR or Manager Can Publish The Company Magazine Here For Everyone To Read.'}</p>
           <div className="hl-meta">
             {magazine?.month && <span className="hl-chip">{magazine.month}</span>}
             {magazine?.documentUrl && (
               <a className="hl-link" href={magazine.documentUrl} target="_blank" rel="noreferrer">
-                Open magazine <ExternalLink size={13} />
+                Open Magazine <ExternalLink size={13} />
               </a>
             )}
           </div>
@@ -70,7 +70,7 @@ export default function HighlightCards({ magazine, employeeOfMonth }) {
         </div>
         <div className="hl-content">
           <div className="hl-badge hl-badge--warm">
-            <Award size={15} /> Employee of the Month
+            <Award size={15} /> Employee of The Month
           </div>
           {employeeOfMonth?.employeeName ? (
             <>
@@ -90,8 +90,8 @@ export default function HighlightCards({ magazine, employeeOfMonth }) {
             </>
           ) : (
             <>
-              <h3 className="hl-title">Not selected yet</h3>
-              <p className="hl-desc">HR or Manager can recognise an outstanding employee here.</p>
+              <h3 className="hl-title">Not Selected Yet</h3>
+              <p className="hl-desc">HR or Manager Can Recognise an Outstanding Employee Here.</p>
             </>
           )}
         </div>

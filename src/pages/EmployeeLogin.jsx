@@ -96,8 +96,8 @@ export function EmployeeLogin() {
             </motion.h2>
 
             <motion.p className="hrms-login__subtext" variants={rise}>
-              Attendance, leave, approvals, and announcements — all in one
-              calm, reliable workspace.
+              Attendance, Leave, Approvals, And Announcements — All in One
+              Calm, Reliable Workspace.
             </motion.p>
 
             <motion.div className="hrms-login__floatcard-wrap" variants={cardRise}>
@@ -122,7 +122,7 @@ export function EmployeeLogin() {
                   <div className="hrms-login__floatcard-meta">09:02 AM · Today</div>
                   <span className="hrms-login__floatcard-status">
                     <ShieldCheck />
-                    On time
+                    On Time
                   </span>
                 </div>
               </motion.div>
@@ -141,9 +141,9 @@ export function EmployeeLogin() {
               <span className="hrms-login__card-lock">
                 <Lock />
               </span>
-              <h1 className="hrms-login__card-title">Sign in</h1>
+              <h1 className="hrms-login__card-title">Sign In</h1>
               <p className="hrms-login__card-sub">
-                Use your employee credentials to continue.
+                Use Your Employee Credentials to Continue.
               </p>
             </div>
 
@@ -193,7 +193,7 @@ export function EmployeeLogin() {
                   Remember me
                 </label>
                 <Link to="/forgot-password" className="hrms-login__forgot">
-                  Forgot password?
+                  Forgot Password?
                 </Link>
               </div>
 
@@ -204,7 +204,7 @@ export function EmployeeLogin() {
                 className="hrms-btn hrms-btn--primary hrms-btn--block"
                 disabled={isSubmitting}
               >
-                {isSubmitting ? 'Signing in...' : 'Sign in'}
+                {isSubmitting ? 'Signing In...' : 'Sign In'}
                 <ArrowRight />
               </button>
             </form>

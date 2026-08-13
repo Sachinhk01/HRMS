@@ -157,9 +157,9 @@ export default function Holidays() {
 
       {canManage && (
         <section className="panel holiday-form-panel">
-          <div className="panel-title"><div><span className="eyebrow">{editingId ? 'Update entry' : 'New entry'}</span><h2>{editingId ? 'Edit holiday' : 'Add holiday'}</h2></div>{editingId && <button className="text-button" type="button" onClick={resetForm}>Cancel edit</button>}</div>
+          <div className="panel-title"><div><span className="eyebrow">{editingId ? 'Update entry' : 'New entry'}</span><h2>{editingId ? 'Edit Holiday' : 'Add Holiday'}</h2></div>{editingId && <button className="text-button" type="button" onClick={resetForm}>Cancel edit</button>}</div>
           <form className="form-grid" onSubmit={submit}>
-            <label>Holiday name<input value={form.holidayName} onChange={(event) => setForm({ ...form, holidayName: event.target.value })} placeholder="e.g. Republic Day" required /></label>
+            <label>Holiday Name<input value={form.holidayName} onChange={(event) => setForm({ ...form, holidayName: event.target.value })} placeholder="e.g. Republic Day" required /></label>
             <label>Date<input type="date" value={form.holidayDate} onChange={(event) => setForm({ ...form, holidayDate: event.target.value })} required /></label>
             <label>Type
               <select value={form.holidayType} onChange={(event) => setForm({ ...form, holidayType: event.target.value })}>
@@ -169,7 +169,7 @@ export default function Holidays() {
                 <option value="WEEKEND">Weekend</option>
               </select>
             </label>
-            <label>Description<input value={form.description} onChange={(event) => setForm({ ...form, description: event.target.value })} placeholder="Optional note" /></label>
+            <label>Description<input value={form.description} onChange={(event) => setForm({ ...form, description: event.target.value })} placeholder="Optional Note" /></label>
             <div className="full-span holiday-form-actions"><button className="btn btn-primary" type="submit"><Plus size={18} /> {editingId ? 'Save Changes' : 'Add Holiday'}</button></div>
           </form>
         </section>
@@ -177,7 +177,7 @@ export default function Holidays() {
 
       <section className="panel">
         <div className="holiday-list-toolbar">
-          <div className="searchbox holiday-search"><Search size={17} /><input value={query} onChange={(event) => { setQuery(event.target.value); setPage(1); }} placeholder="Search holidays" /></div>
+          <div className="searchbox holiday-search"><Search size={17} /><input value={query} onChange={(event) => { setQuery(event.target.value); setPage(1); }} placeholder="Search Holidays" /></div>
           <select className="compact-select" value={year} onChange={(event) => { setYear(event.target.value); setPage(1); }}>{years.map((item) => <option key={item}>{item}</option>)}</select>
         </div>
         <div className="table-wrap">
@@ -193,7 +193,7 @@ export default function Holidays() {
                   {canManage && (
                     <td>
                       <div className="holiday-actions">
-                        <button type="button" title="Edit holiday" onClick={() => beginEdit(item)}><Edit3 size={16} /></button>
+                        <button type="button" title="Edit Holiday" onClick={() => beginEdit(item)}><Edit3 size={16} /></button>
                         <button type="button" className="danger" title="Delete holiday" onClick={() => remove(item)}><Trash2 size={16} /></button>
                       </div>
                     </td>
@@ -202,7 +202,7 @@ export default function Holidays() {
               ))}
             </tbody>
           </table>
-          {!loading && !filtered.length && <p className="empty-inline">No holidays added for {year}.</p>}
+          {!loading && !filtered.length && <p className="empty-inline">No Holidays Added for {year}.</p>}
         </div>
         <Pagination page={page} totalItems={filtered.length} pageSize={pageSize} onPageChange={setPage} />
       </section>

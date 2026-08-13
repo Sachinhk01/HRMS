@@ -386,7 +386,7 @@ if (failures.length) {
         <div className="attendance-hero-text">
           <span className="eyebrow">Attendance</span>
           <h1>Track Your Workday</h1>
-          <p>Monitor attendance, manage breaks and review work history.</p>
+          <p>Monitor Attendance, Manage Breaks And Review Work History.</p>
           <div className="attendance-hero-stats">
             <div className="hero-stat">
               <span className="hero-stat-icon"><Clock3 size={16} /></span>
@@ -590,14 +590,14 @@ if (failures.length) {
                     <LogOut size={18} /> Check Out
                   </motion.button>
                 )}
-                {hasCheckedOut && <p className="empty-inline">You're checked out for today.</p>}
+                {hasCheckedOut && <p className="empty-inline">You're Checked Out For Today.</p>}
               </div>
             </motion.section>
 
             {/* History table */}
             <motion.section className="panel history-panel" variants={fadeUp}>
               <div className="panel-title attendance-history-title">
-                <h2>{canViewAll ? 'Attendance records' : 'My attendance history'}</h2>
+                <h2>{canViewAll ? 'Attendance Records' : 'My Attendance History'}</h2>
                 <span className="eyebrow">{user.name}</span>
               </div>
 
@@ -623,7 +623,7 @@ if (failures.length) {
               <div className="table-wrap">
                 <table className="history-table">
                   <thead>
-                    <tr><th>Date</th><th>Check in</th><th>Check out</th><th>Worked</th><th>Break</th><th>Status</th></tr>
+                    <tr><th>Date</th><th>Check In</th><th>Check Out</th><th>Worked</th><th>Break</th><th>Status</th></tr>
                   </thead>
                   <tbody>
                     {isLoading && Array.from({ length: 4 }).map((_, i) => (
@@ -658,7 +658,7 @@ if (failures.length) {
                 {!isLoading && !filteredHistory.length && (
                   <div className="empty-state">
                     <CalendarCheck size={32} />
-                    <p>No attendance records found.</p>
+                    <p>No Attendance Records Found.</p>
                   </div>
                 )}
               </div>
@@ -684,7 +684,7 @@ if (failures.length) {
                 <div className="calendar-toolbar-left">
                   <button type="button" className="calendar-nav-button" onClick={() => setVisibleMonth((c) => new Date(c.getFullYear(), c.getMonth() - 1, 1))} aria-label="Previous month"><ChevronLeft size={20} /></button>
                   <div className="calendar-title-block">
-                    <span className="eyebrow">Monthly overview</span>
+                    <span className="eyebrow">Monthly Overview</span>
                     <h2>{visibleMonth.toLocaleDateString([], { month: 'long', year: 'numeric' })}</h2>
                   </div>
                   <button type="button" className="calendar-nav-button" onClick={() => setVisibleMonth((c) => new Date(c.getFullYear(), c.getMonth() + 1, 1))} aria-label="Next month"><ChevronRight size={20} /></button>
@@ -759,7 +759,7 @@ if (failures.length) {
 
             {/* Selected day panel */}
             <motion.aside className="panel selected-attendance-panel" variants={fadeUp}>
-              <span className="eyebrow">Selected day</span>
+              <span className="eyebrow">Selected Day</span>
               <h2>{selectedDate || 'Choose a date'}</h2>
               {selectedEntry ? (
                 <div className="selected-attendance-details">
@@ -767,10 +767,10 @@ if (failures.length) {
                     <span><CheckCircle2 size={14} /> Status</span>
                     <span className={`status-pill status-${statusClass(selectedEntry.status)}`}>{STATUS_LABELS[selectedEntry.status] || selectedEntry.status}</span>
                   </div>
-                  <div className="sad-row"><span><LogIn size={14} /> Check in</span><strong>—</strong></div>
-                  <div className="sad-row"><span><LogOut size={14} /> Check out</span><strong>—</strong></div>
-                  <div className="sad-row"><span><Briefcase size={14} /> Working hours</span><strong>—</strong></div>
-                  <div className="sad-row"><span><Coffee size={14} /> Break time</span><strong>—</strong></div>
+                  <div className="sad-row"><span><LogIn size={14} /> Check In</span><strong>—</strong></div>
+                  <div className="sad-row"><span><LogOut size={14} /> Check Out</span><strong>—</strong></div>
+                  <div className="sad-row"><span><Briefcase size={14} /> Working Hours</span><strong>—</strong></div>
+                  <div className="sad-row"><span><Coffee size={14} /> Break Time</span><strong>—</strong></div>
                   <div className="sad-row"><span><TrendingUp size={14} /> Overtime</span><strong>—</strong></div>
                   <div className="sad-row"><span><MapPin size={14} /> Location</span><strong>—</strong></div>
                   <div className="sad-row"><span><Sparkles size={14} /> Remarks</span><strong>—</strong></div>
@@ -778,8 +778,8 @@ if (failures.length) {
               ) : (
                 <div className="empty-state">
                   <CalendarDays size={32} />
-                  <p>No attendance found.</p>
-                  <small>This day has no recorded attendance.</small>
+                  <p>No Attendance Found.</p>
+                  <small>This Day Has No Recorded Attendance.</small>
                 </div>
               )}
             </motion.aside>

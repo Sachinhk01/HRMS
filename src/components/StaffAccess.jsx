@@ -127,7 +127,7 @@ export function StaffAccess({ isOpen, onClose }) {
               <ShieldCheck />
               Staff Access
             </div>
-            <div className="staff-access__sub">Choose your workspace to continue</div>
+            <div className="staff-access__sub">Choose Your Workspace to Continue</div>
           </div>
           <button
             type="button"
@@ -146,7 +146,7 @@ export function StaffAccess({ isOpen, onClose }) {
             </span>
             <span className="staff-role__text">
               <span className="staff-role__label">Manager</span>
-              <span className="staff-role__desc">Approvals &amp; team view</span>
+              <span className="staff-role__desc">Approvals &amp; Team View</span>
             </span>
             <span className="staff-role__arrow">
               <ArrowRight />
@@ -159,7 +159,7 @@ export function StaffAccess({ isOpen, onClose }) {
             </span>
             <span className="staff-role__text">
               <span className="staff-role__label">HR</span>
-              <span className="staff-role__desc">People operations console</span>
+              <span className="staff-role__desc">People Operations Console</span>
             </span>
             <span className="staff-role__arrow">
               <ArrowRight />
