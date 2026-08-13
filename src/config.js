@@ -101,6 +101,7 @@ export const ROUTE_ROLES = {
   '/celebrations': [
     'EMPLOYEE',
     'HR_ADMIN',
+    'MANAGER',
     'SUPER_ADMIN',
   ],
 
