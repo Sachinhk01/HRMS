@@ -71,6 +71,53 @@ function formatHolidayDate(value) {
   });
 }
 
+function formatCheckInTime(value) {
+  if (!value || value === "--") return "Not checked in";
+
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    if (!trimmed) return "Not checked in";
+
+    const isoLike = /^\d{4}-\d{2}-\d{2}T/.test(trimmed);
+    if (isoLike) {
+      const parsed = new Date(trimmed);
+      if (!Number.isNaN(parsed.getTime())) {
+        return parsed.toLocaleTimeString([], {
+          hour: "2-digit",
+          minute: "2-digit",
+          hour12: true,
+        });
+      }
+    }
+
+    return trimmed;
+  }
+
+  if (value instanceof Date) {
+    return value.toLocaleTimeString([], {
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: true,
+    });
+  }
+
+  return String(value);
+}
+
+function getTodayCheckInDisplay(attendanceDashboard, attendanceLoading) {
+  if (attendanceLoading) return "...";
+
+  const checkInValue =
+    attendanceDashboard?.checkInAt ||
+    attendanceDashboard?.checkInTime ||
+    attendanceDashboard?.todayCheckInAt ||
+    attendanceDashboard?.todayCheckIn;
+
+  if (!checkInValue || checkInValue === "--") return "Not checked in";
+
+  return formatCheckInTime(checkInValue);
+}
+
 export default function Dashboard() {
   const { user } = useAuth();
   const nav = useNavigate();
@@ -343,7 +390,7 @@ export default function Dashboard() {
       [
         Clock3,
         "Attendance",
-        attendanceLoading ? "..." : isCheckedInToday ? "Marked" : "Not marked",
+        getTodayCheckInDisplay(attendanceDashboard, attendanceLoading),
         "Today",
         "green",
         "/attendance",
@@ -385,7 +432,7 @@ export default function Dashboard() {
       [
         Clock3,
         "My Attendance",
-        attendanceLoading ? "..." : isCheckedInToday ? "Marked" : "Not Marked",
+        getTodayCheckInDisplay(attendanceDashboard, attendanceLoading),
         "Check In / Out",
         "teal",
         "/attendance",

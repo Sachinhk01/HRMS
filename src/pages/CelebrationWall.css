@@ -271,6 +271,13 @@
   background: #eaf2fe; padding: 4px 10px; border-radius: 999px;
 }
 .post-admin-actions { display: flex; gap: 4px; margin-left: auto; }
+.celebration-card-admin { display: flex; gap: 7px; margin-left: auto; }
+.celebration-card-admin button { display: inline-flex; align-items: center; gap: 5px; padding: 7px 10px; border: 1px solid #bfdbfe; border-radius: 9px; background: #fff; color: #2563eb; font: inherit; font-size: 11px; font-weight: 700; cursor: pointer; }
+.celebration-card-admin button.danger { color: #dc2626; border-color: #fecaca; }
+.side-content-title { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
+.side-post-actions { display: flex; gap: 4px; }
+.side-post-actions button { width: 28px; height: 28px; display: grid; place-items: center; border: 1px solid #bfdbfe; border-radius: 8px; background: #fff; color: #2563eb; cursor: pointer; }
+.side-post-actions button.danger { color: #dc2626; border-color: #fecaca; }
 
 /* Post content thumbnail */
 .post-thumbnail {
@@ -420,3 +427,32 @@
 @media (prefers-reduced-motion: reduce) {
   .page-reveal > * { animation: none; }
 }
+/* HR celebration composer */
+.celebration-add-btn, .celebration-publish-btn { background: linear-gradient(135deg, #2563eb, #7c3aed); color: #fff; box-shadow: 0 8px 18px rgba(37,99,235,.22); }
+.celebration-composer { border-top: 4px solid #7c3aed; }
+.celebration-composer-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px; }
+.celebration-composer-head h2 { margin: 3px 0 0; font-size: 20px; color: #172554; }
+.celebration-form { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.celebration-form label { display: grid; gap: 7px; font-size: 12px; font-weight: 650; color: #475569; }
+.celebration-form .full-span { grid-column: 1 / -1; }
+.celebration-form input, .celebration-form select, .celebration-form textarea { width: 100%; padding: 11px 13px; border: 1px solid #dbe3ef; border-radius: 12px; background: #f8fafc; color: #1e293b; font: inherit; outline: none; }
+.celebration-form input:focus, .celebration-form select:focus, .celebration-form textarea:focus { border-color: #7c3aed; background: #fff; box-shadow: 0 0 0 3px rgba(124,58,237,.1); }
+.celebration-form-actions { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.celebration-file { display: inline-flex !important; grid-auto-flow: column; align-items: center; width: max-content; padding: 10px 14px; border: 1px dashed #a5b4fc; border-radius: 11px; background: #f5f3ff; color: #6d28d9 !important; cursor: pointer; }
+.celebration-form-actions > span { font-size: 12px; color: #64748b; }
+.celebration-publish-btn { margin-left: auto; }
+.celebration-tags-field { display: grid; gap: 9px; }
+.celebration-tags-title { display: flex; align-items: center; justify-content: space-between; color: #475569; font-size: 12px; font-weight: 650; }
+.celebration-tags-title > span { display: inline-flex; align-items: center; gap: 7px; }
+.celebration-tags-title small { color: #7c3aed; font-weight: 700; }
+.celebration-tag-search { max-width: 360px; }
+.celebration-tag-list { display: flex; gap: 8px; flex-wrap: wrap; max-height: 170px; overflow: auto; padding: 2px; }
+.celebration-tag-chip { display: inline-flex; align-items: center; gap: 8px; padding: 7px 10px 7px 7px; border: 1px solid #dbe3ef; border-radius: 13px; background: #fff; color: #334155; cursor: pointer; text-align: left; }
+.celebration-tag-chip > span:first-child { width: 30px; height: 30px; border-radius: 9px; display: grid; place-items: center; background: #eaf2fe; color: #2563eb; font-size: 11px; font-weight: 750; }
+.celebration-tag-chip > span:nth-child(2) { display: grid; gap: 1px; }
+.celebration-tag-chip strong { font-size: 12px; font-weight: 650; }
+.celebration-tag-chip small { font-size: 10px; color: #94a3b8; }
+.celebration-tag-chip.selected { border-color: #8b5cf6; background: #f5f3ff; box-shadow: 0 0 0 2px rgba(124,58,237,.08); }
+.celebration-tag-chip .tag-check { color: #7c3aed; font-weight: 800; }
+.post-tagged-people { display: flex; align-items: flex-start; gap: 6px; margin-top: 4px; padding-top: 9px; border-top: 1px solid rgba(148,163,184,.22); color: #6d28d9; font-size: 12px; font-weight: 600; }
+@media (max-width: 640px) { .celebration-form { grid-template-columns: 1fr; } .celebration-form .full-span { grid-column: auto; } .celebration-form-actions { flex-direction: column; align-items: stretch; } .celebration-file { width: 100%; justify-content: center; } .celebration-publish-btn { width: 100%; margin-left: 0; } }

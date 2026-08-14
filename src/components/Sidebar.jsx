@@ -46,6 +46,7 @@ function formatRole(role) {
 export default function Sidebar({ open, onClose }) {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
+  const avatarSrc = user?.photoUrl || user?.profilePhotoUrl || user?.avatarUrl;
   const items = ROLE_MENUS[user?.role] || [];
 
   const handleLogout = () => {
@@ -94,7 +95,13 @@ export default function Sidebar({ open, onClose }) {
 
         <div className="sidebar-footer">
           <div className="sidebar-user">
-            <div className="mini-avatar"></div>
+            <div className="mini-avatar">
+              {avatarSrc ? (
+                <img src={avatarSrc} alt={user?.name || 'User'} />
+              ) : (
+                user?.initials || (user?.name || 'U').charAt(0).toUpperCase()
+              )}
+            </div>
             <div className="sidebar-user-copy">
               <strong
                 title={user?.name || ""}
