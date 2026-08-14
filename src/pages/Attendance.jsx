@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   CalendarDays,
@@ -22,6 +22,9 @@ import {
   TrendingUp,
   Target,
   Hourglass,
+  FileText,
+  FileSpreadsheet,
+  ChevronDown,
 } from 'lucide-react';
 import PageHeader from '../components/PageHeader';
 import Pagination from '../components/Pagination';
@@ -31,6 +34,7 @@ import {
   checkIn,
   checkOut,
   endBreak,
+  exportAttendanceReport,
   getAttendanceCalendar,
   getAttendanceDashboard,
   getAttendanceHistory,
@@ -167,6 +171,22 @@ export default function Attendance() {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [activeLegend, setActiveLegend] = useState(null);
+
+  // ---- Export menu state ----
+  const [isExportMenuOpen, setIsExportMenuOpen] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
+  const exportMenuRef = useRef(null);
+
+  useEffect(() => {
+    if (!isExportMenuOpen) return undefined;
+    function handleClickOutside(event) {
+      if (exportMenuRef.current && !exportMenuRef.current.contains(event.target)) {
+        setIsExportMenuOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [isExportMenuOpen]);
 
   useEffect(() => {
     const clockTimer = window.setInterval(() => setCurrentTime(new Date()), 1000);
@@ -372,6 +392,31 @@ if (failures.length) {
     return handleLocationAwareAction(() => endBreak(), 'endBreak');
   }
 
+  async function handleExport(format) {
+    setIsExportMenuOpen(false);
+    setError('');
+    setSuccessMessage('');
+    setIsExporting(true);
+    try {
+      const filters = {};
+      if (statusFilter !== 'ALL') filters.attendanceStatus = statusFilter;
+      const { blob, filename } = await exportAttendanceReport(format, filters);
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+      setSuccessMessage(`Attendance report downloaded as ${format === 'excel' ? 'Excel' : 'PDF'}.`);
+    } catch (exportError) {
+      setError(exportError.message || 'Unable to export attendance report.');
+    } finally {
+      setIsExporting(false);
+    }
+  }
+
   const todayKey = dateKey(new Date().getFullYear(), new Date().getMonth(), new Date().getDate());
 
   return (
@@ -386,7 +431,7 @@ if (failures.length) {
         <div className="attendance-hero-text">
           <span className="eyebrow">Attendance</span>
           <h1>Track Your Workday</h1>
-          <p>Monitor Attendance, Manage Breaks And Review Work History.</p>
+          <p>Monitor attendance, manage breaks and review work history.</p>
           <div className="attendance-hero-stats">
             <div className="hero-stat">
               <span className="hero-stat-icon"><Clock3 size={16} /></span>
@@ -394,7 +439,7 @@ if (failures.length) {
             </div>
             <div className="hero-stat">
               <span className="hero-stat-icon"><CalendarCheck size={16} /></span>
-              <div><strong>{state === ATTENDANCE_STATE.WORKING ? 'Present' : state === ATTENDANCE_STATE.ON_BREAK ? 'On Break' : hasCheckedOut ? 'Checked Out' : 'Not In'}</strong><small>Status</small></div>
+              <div><strong>{state === ATTENDANCE_STATE.WORKING ? (normalizeAttendanceStatus(dashboard?.attendanceStatus) === 'LATE' ? 'Late' : 'Present') : state === ATTENDANCE_STATE.ON_BREAK ? 'On Break' : hasCheckedOut ? (normalizeAttendanceStatus(dashboard?.attendanceStatus) === 'LATE' ? 'Late' : 'Checked Out') : 'Not In'}</strong><small>Status</small></div>
             </div>
             <div className="hero-stat">
               <span className="hero-stat-icon"><Timer size={16} /></span>
@@ -590,14 +635,14 @@ if (failures.length) {
                     <LogOut size={18} /> Check Out
                   </motion.button>
                 )}
-                {hasCheckedOut && <p className="empty-inline">You're Checked Out For Today.</p>}
+                {hasCheckedOut && <p className="empty-inline">You're checked out for today.</p>}
               </div>
             </motion.section>
 
             {/* History table */}
             <motion.section className="panel history-panel" variants={fadeUp}>
               <div className="panel-title attendance-history-title">
-                <h2>{canViewAll ? 'Attendance Records' : 'My Attendance History'}</h2>
+                <h2>{canViewAll ? 'Attendance records' : 'My attendance history'}</h2>
                 <span className="eyebrow">{user.name}</span>
               </div>
 
@@ -615,15 +660,42 @@ if (failures.length) {
                   <option value="ALL">All statuses</option>
                   {Object.keys(STATUS_LABELS).map((s) => <option key={s} value={s}>{STATUS_LABELS[s]}</option>)}
                 </select>
-                <button type="button" className="btn btn-soft btn-export" title="Export (UI placeholder)">
-                  <Download size={15} /> Export
-                </button>
+                <div className="export-menu-wrap" ref={exportMenuRef}>
+                  <button
+                    type="button"
+                    className="btn btn-soft btn-export"
+                    disabled={isExporting}
+                    onClick={() => setIsExportMenuOpen((open) => !open)}
+                  >
+                    <Download size={15} /> {isExporting ? 'Exporting…' : 'Export'} <ChevronDown size={14} />
+                  </button>
+                  <AnimatePresence>
+                    {isExportMenuOpen && (
+                      <motion.div
+                        className="export-menu"
+                        initial={{ opacity: 0, y: -6, scale: 0.98 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: -6, scale: 0.98 }}
+                        transition={{ duration: 0.15, ease: easeOut }}
+                      >
+                        <button type="button" className="export-menu-item" onClick={() => handleExport('pdf')}>
+                          <FileText size={15} />
+                          <span>Export as PDF</span>
+                        </button>
+                        <button type="button" className="export-menu-item" onClick={() => handleExport('excel')}>
+                          <FileSpreadsheet size={15} />
+                          <span>Export as Excel</span>
+                        </button>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
               </div>
 
               <div className="table-wrap">
                 <table className="history-table">
                   <thead>
-                    <tr><th>Date</th><th>Check In</th><th>Check Out</th><th>Worked</th><th>Break</th><th>Status</th></tr>
+                    <tr><th>Date</th><th>Check in</th><th>Check out</th><th>Worked</th><th>Break</th><th>Status</th></tr>
                   </thead>
                   <tbody>
                     {isLoading && Array.from({ length: 4 }).map((_, i) => (
@@ -658,7 +730,7 @@ if (failures.length) {
                 {!isLoading && !filteredHistory.length && (
                   <div className="empty-state">
                     <CalendarCheck size={32} />
-                    <p>No Attendance Records Found.</p>
+                    <p>No attendance records found.</p>
                   </div>
                 )}
               </div>
@@ -684,7 +756,7 @@ if (failures.length) {
                 <div className="calendar-toolbar-left">
                   <button type="button" className="calendar-nav-button" onClick={() => setVisibleMonth((c) => new Date(c.getFullYear(), c.getMonth() - 1, 1))} aria-label="Previous month"><ChevronLeft size={20} /></button>
                   <div className="calendar-title-block">
-                    <span className="eyebrow">Monthly Overview</span>
+                    <span className="eyebrow">Monthly overview</span>
                     <h2>{visibleMonth.toLocaleDateString([], { month: 'long', year: 'numeric' })}</h2>
                   </div>
                   <button type="button" className="calendar-nav-button" onClick={() => setVisibleMonth((c) => new Date(c.getFullYear(), c.getMonth() + 1, 1))} aria-label="Next month"><ChevronRight size={20} /></button>
@@ -759,7 +831,7 @@ if (failures.length) {
 
             {/* Selected day panel */}
             <motion.aside className="panel selected-attendance-panel" variants={fadeUp}>
-              <span className="eyebrow">Selected Day</span>
+              <span className="eyebrow">Selected day</span>
               <h2>{selectedDate || 'Choose a date'}</h2>
               {selectedEntry ? (
                 <div className="selected-attendance-details">
@@ -767,10 +839,10 @@ if (failures.length) {
                     <span><CheckCircle2 size={14} /> Status</span>
                     <span className={`status-pill status-${statusClass(selectedEntry.status)}`}>{STATUS_LABELS[selectedEntry.status] || selectedEntry.status}</span>
                   </div>
-                  <div className="sad-row"><span><LogIn size={14} /> Check In</span><strong>—</strong></div>
-                  <div className="sad-row"><span><LogOut size={14} /> Check Out</span><strong>—</strong></div>
-                  <div className="sad-row"><span><Briefcase size={14} /> Working Hours</span><strong>—</strong></div>
-                  <div className="sad-row"><span><Coffee size={14} /> Break Time</span><strong>—</strong></div>
+                  <div className="sad-row"><span><LogIn size={14} /> Check in</span><strong>—</strong></div>
+                  <div className="sad-row"><span><LogOut size={14} /> Check out</span><strong>—</strong></div>
+                  <div className="sad-row"><span><Briefcase size={14} /> Working hours</span><strong>—</strong></div>
+                  <div className="sad-row"><span><Coffee size={14} /> Break time</span><strong>—</strong></div>
                   <div className="sad-row"><span><TrendingUp size={14} /> Overtime</span><strong>—</strong></div>
                   <div className="sad-row"><span><MapPin size={14} /> Location</span><strong>—</strong></div>
                   <div className="sad-row"><span><Sparkles size={14} /> Remarks</span><strong>—</strong></div>
@@ -778,8 +850,8 @@ if (failures.length) {
               ) : (
                 <div className="empty-state">
                   <CalendarDays size={32} />
-                  <p>No Attendance Found.</p>
-                  <small>This Day Has No Recorded Attendance.</small>
+                  <p>No attendance found.</p>
+                  <small>This day has no recorded attendance.</small>
                 </div>
               )}
             </motion.aside>
