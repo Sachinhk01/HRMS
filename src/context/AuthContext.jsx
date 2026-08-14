@@ -44,6 +44,8 @@ export function AuthProvider({ children }) {
       ...data.user,
       role: data.user.roles?.[0] || data.user.role,
       name: data.user.name || data.user.fullName || data.user.username,
+      photoUrl: data.user.photoUrl || data.user.profilePhotoUrl || data.user.avatarUrl || '',
+      profilePhotoUrl: data.user.profilePhotoUrl || data.user.photoUrl || data.user.avatarUrl || '',
     };
 
     localStorage.setItem('hrms-token', data.accessToken);
@@ -114,8 +116,14 @@ export function AuthProvider({ children }) {
   };
 
   const updateUser = (next) => {
-    localStorage.setItem('hrms-user', JSON.stringify(next));
-    setUser(next);
+    const merged = {
+      ...user,
+      ...next,
+      photoUrl: next?.photoUrl || next?.profilePhotoUrl || user?.photoUrl || user?.profilePhotoUrl || '',
+      profilePhotoUrl: next?.profilePhotoUrl || next?.photoUrl || user?.profilePhotoUrl || user?.photoUrl || '',
+    };
+    localStorage.setItem('hrms-user', JSON.stringify(merged));
+    setUser(merged);
   };
 
   const logout = () => {

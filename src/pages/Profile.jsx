@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Camera, KeyRound, Save } from 'lucide-react';
+import { Camera, KeyRound, Pencil, Phone, Save } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
 import PageHeader from '../components/PageHeader';
 import { useAuth } from '../context/AuthContext';
@@ -23,6 +23,7 @@ export default function Profile() {
   const [activeTab, setActiveTab] = useState(TABS[0]);
   const [photoObjectUrl, setPhotoObjectUrl] = useState('');
   const [photoUploading, setPhotoUploading] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
 
   const loadProfile = () => {
     setLoading(true);
@@ -60,8 +61,6 @@ export default function Profile() {
       firstName: form.get('firstName'),
       lastName: form.get('lastName'),
       phoneNumber: form.get('phoneNumber'),
-      gender: form.get('gender'),
-      dateOfBirth: form.get('dateOfBirth'),
     };
 
     try {
@@ -69,6 +68,7 @@ export default function Profile() {
       setProfile(saved);
       updateUser({ ...user, name: `${saved.firstName} ${saved.lastName || ''}`.trim() });
       setMessage('Profile updated.');
+      setIsEditing(false);
     } catch (err) {
       setError(err?.response?.data?.message || err.message || 'Failed to update profile.');
     }
@@ -100,6 +100,18 @@ export default function Profile() {
     } catch (err) {
       setPasswordError(err?.response?.data?.message || err.message || 'Could not change password.');
     }
+  };
+
+  const handleProfileAction = () => {
+    if (isEditing) {
+      document.getElementById('personal-profile-form')?.requestSubmit();
+      return;
+    }
+    setActiveTab('Personal Info');
+    setMessage('');
+    setError('');
+    setIsEditing(true);
+    window.setTimeout(() => document.querySelector('#personal-profile-form input[name="firstName"]')?.focus(), 0);
   };
 
   const handlePhotoChange = async (event) => {
@@ -148,28 +160,34 @@ export default function Profile() {
     <div className="page-stack profile-page page-reveal">
       <PageHeader
         eyebrow="Employee Profile"
-        title={isOwnProfile ? 'My Profile' : fullName}
-        description="View And Manage Your Personal Information."
+        title={isOwnProfile ? 'My profile' : fullName}
+        description="View and manage your personal information."
       />
 
       {error && <div className="form-alert">{error}</div>}
 
       <section className="panel profile-card">
-        <div className="profile-avatar-wrap">
-          {photoUrl
-            ? <img className="profile-avatar" src={photoUrl} alt={fullName} />
-            : <div className="profile-avatar">{initials || 'HR'}</div>}
-          {isOwnProfile && (
-            <label className="profile-avatar-edit" title="Change photo">
-              <Camera size={14} />
-              <input type="file" accept="image/*" onChange={handlePhotoChange} hidden disabled={photoUploading} />
-            </label>
-          )}
+        <div className="profile-identity">
+          <div className="profile-avatar-wrap">
+            {photoUrl ? <img className="profile-avatar" src={photoUrl} alt={fullName} /> : <div className="profile-avatar">{initials || 'HR'}</div>}
+            {isOwnProfile && <label className="profile-avatar-edit" title="Change photo"><Camera size={14} /><input type="file" accept="image/*" onChange={handlePhotoChange} hidden disabled={photoUploading} /></label>}
+          </div>
+          <div className="profile-card-body">
+            <h2>{fullName}</h2>
+            <span>{profile.jobTitle || profile.designationName || 'Employee'}</span>
+            <small>{profile.employeeCode || ''}</small>
+          </div>
         </div>
-        <div className="profile-card-body">
-          <h2>{fullName}</h2>
-          <span>{profile.jobTitle || profile.designationName}{profile.departmentName ? ` · ${profile.departmentName}` : ''}</span>
+
+        <div className="profile-summary-grid">
+          <div className="profile-summary-item"><span><Phone size={18} /></span><div><small>Phone no</small><strong>{profile.phoneNumber || 'Not provided'}</strong></div></div>
         </div>
+
+        {isOwnProfile && <div className="profile-flex-actions">
+          <button type="button" className={`profile-banner-edit${isEditing ? ' saving' : ''}`} onClick={handleProfileAction}>
+            {isEditing ? <Save size={17} /> : <Pencil size={17} />}{isEditing ? 'Save Changes' : 'Edit Profile'}
+          </button>
+        </div>}
       </section>
 
       <section className="panel">
@@ -191,22 +209,21 @@ export default function Profile() {
         <div className="profile-tab-content">
           {activeTab === 'Personal Info' && (
             isOwnProfile ? (
-              <form className="form-grid" onSubmit={save}>
-                <label>First Name<input name="firstName" defaultValue={profile.firstName} required /></label>
-                <label>Last Name<input name="lastName" defaultValue={profile.lastName} /></label>
+              <form id="personal-profile-form" className="form-grid" onSubmit={save}>
+                <label>First Name<input name="firstName" defaultValue={profile.firstName} required disabled={!isEditing} /></label>
+                <label>Last Name<input name="lastName" defaultValue={profile.lastName} disabled={!isEditing} /></label>
                 <label>Email<input value={profile.email} disabled /></label>
-                <label>Phone<input name="phoneNumber" defaultValue={profile.phoneNumber} /></label>
-                <label>Date of Birth<input name="dateOfBirth" type="date" defaultValue={profile.dateOfBirth} /></label>
+                <label>Phone<input name="phoneNumber" defaultValue={profile.phoneNumber} disabled={!isEditing} /></label>
+                <label>Date of Birth<input type="date" value={profile.dateOfBirth || ''} disabled /></label>
                 <label>
                   Gender
-                  <select name="gender" defaultValue={profile.gender || ''}>
+                  <select value={profile.gender || ''} disabled>
                     <option value="">Select</option>
                     <option value="MALE">Male</option>
                     <option value="FEMALE">Female</option>
                   </select>
                 </label>
                 {message && <div className="success-alert full-span">{message}</div>}
-                <button className="btn btn-primary full-span"><Save size={18} />Save Changes</button>
               </form>
             ) : (
               <div className="profile-info-grid">
@@ -228,7 +245,7 @@ export default function Profile() {
               <div><span>Date of Joining</span><strong>{profile.dateOfJoining || 'Not provided'}</strong></div>
               <div><span>Employment Type</span><strong>{profile.employmentType || 'Not provided'}</strong></div>
               <div><span>Reporting Manager</span><strong>{profile.reportingManagerName || 'Not assigned'}</strong></div>
-              <div className="full-span"><small>Employment Details Can Only Be Updated By HR From The Employees Page.</small></div>
+              <div className="full-span"><small>Employment details can only be updated by HR from the Employees page.</small></div>
             </div>
           )}
 

@@ -11,6 +11,7 @@ export default function TopBar({ onMenu }) {
   const [open, setOpen] = useState(false);
   const { unreadCount } = useNotifications();
   const menuRef = useRef(null);
+  const avatarSrc = user?.photoUrl || user?.profilePhotoUrl || user?.avatarUrl;
 
   useEffect(() => {
     const close = (event) => {
@@ -55,7 +56,13 @@ export default function TopBar({ onMenu }) {
             aria-expanded={open}
             aria-haspopup="menu"
           >
-            <div className="avatar">{user?.initials}</div>
+            <div className="avatar">
+              {avatarSrc ? (
+                <img src={avatarSrc} alt={user?.name || 'User'} />
+              ) : (
+                user?.initials || (user?.name || 'U').charAt(0).toUpperCase()
+              )}
+            </div>
             <div className="profile-copy">
               <strong style={{ textTransform: "capitalize" }}>
                 {user?.name}
