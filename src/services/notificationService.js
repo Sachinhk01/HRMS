@@ -10,6 +10,11 @@ export async function getCelebrationWallToday() {
   return data.data;
 }
 
+export async function getUpcomingBirthdays(days = 0) {
+  const { data } = await api.get('/notifications/upcoming-birthdays', { params: { days } });
+  return data.data;
+}
+
 export async function getUnreadCount() {
   const { data } = await api.get('/notifications/unread-count');
   return data.data;

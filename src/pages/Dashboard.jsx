@@ -24,10 +24,9 @@ import PdfDropzone from "../components/PdfDropzone";
 import { useAuth } from "../context/AuthContext";
 import {
   getEmployees,
-  getBirthdaysToday,
   normalizeEmployeeName,
 } from "../services/employeeService";
-import { getNotifications } from "../services/notificationService";
+import { getNotifications, getUpcomingBirthdays } from "../services/notificationService";
 import {
   getAttendanceDashboard,
   getAttendanceHistory,
@@ -180,7 +179,7 @@ export default function Dashboard() {
       setBirthdayLoading(true);
       try {
         const [empResult, notifResult] = await Promise.allSettled([
-          getBirthdaysToday(),
+          getUpcomingBirthdays(0),
           getNotifications({ page: 0, size: 50 }),
         ]);
 
@@ -188,7 +187,13 @@ export default function Dashboard() {
 
         const employeeList =
           empResult.status === "fulfilled" && Array.isArray(empResult.value)
-            ? empResult.value
+            ? empResult.value.map((b) => ({
+                id: b.employeeId,
+                name: b.employeeName,
+                dateOfBirth: b.dateOfBirth,
+                nextBirthday: b.upcomingBirthdayDate,
+                daysUntil: b.daysUntil,
+              }))
             : [];
         const notifContent =
           notifResult.status === "fulfilled"

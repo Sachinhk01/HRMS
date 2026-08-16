@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
-import { Bell, ChevronDown, LogOut, Menu, Search, UserRound } from 'lucide-react';
+import { Bell, ChevronDown, LogOut, Menu, Moon, Search, Sun, UserRound } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useNotifications } from '../context/NotificationContext';
+import { useTheme } from '../context/ThemeContext';
 import './TopBar.css';
 
 export default function TopBar({ onMenu }) {
@@ -10,6 +11,7 @@ export default function TopBar({ onMenu }) {
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const { unreadCount } = useNotifications();
+  const { theme, toggleTheme } = useTheme();
   const menuRef = useRef(null);
   const avatarSrc = user?.photoUrl || user?.profilePhotoUrl || user?.avatarUrl;
 
@@ -41,6 +43,14 @@ export default function TopBar({ onMenu }) {
         <input placeholder="Search anything..." />
       </label>
       <div className="topbar-actions">
+        <button
+          type="button"
+          className="icon-btn"
+          onClick={toggleTheme}
+          aria-label={theme === 'light' ? 'Switch to dark mode' : 'Switch to light mode'}
+        >
+          {theme === 'light' ? <Moon size={19} /> : <Sun size={19} />}
+        </button>
         <Link
           className={`icon-btn${unreadCount > 0 ? " notification-dot" : ""}`}
           to="/notifications"
