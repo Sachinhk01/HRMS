@@ -19,7 +19,7 @@ import {
   ChevronRight,
   Sparkles,
 } from "lucide-react";
-<<<<<<< HEAD
+
 import SummaryCard from '../components/SummaryCard';
 import PdfDropzone from '../components/PdfDropzone';
 import { useAuth } from '../context/AuthContext';
@@ -38,7 +38,7 @@ import celebrationGroupImg from '../assets/illustrations/celebration-group.png';
 import './Dashboard.css';
 import BirthdayWidget from '../components/BirthdayWidget';
 import HighlightCards from '../components/HighlightCards';
-=======
+
 import SummaryCard from "../components/SummaryCard";
 import PdfDropzone from "../components/PdfDropzone";
 import { useAuth } from "../context/AuthContext";
@@ -70,7 +70,7 @@ import celebrationGroupImg from "../assets/illustrations/celebration-group.png";
 import "./Dashboard.css";
 import BirthdayWidget from "../components/BirthdayWidget";
 import HighlightCards from "../components/HighlightCards";
->>>>>>> af52e15aa012133d798d7b76d92f991999ff0985
+
 
 const actionImages = {
   'Attendance': calendarAttendanceImg,
@@ -155,10 +155,10 @@ useEffect(() => {
 
         if (cancelled) return;
 
-<<<<<<< HEAD
+
         const employeeList = empResult.status === 'fulfilled' && Array.isArray(empResult.value) ? empResult.value : [];
         const notifContent = notifResult.status === 'fulfilled' ? (notifResult.value?.content || []) : [];
-=======
+
         const employeeList =
           empResult.status === "fulfilled" && Array.isArray(empResult.value)
             ? empResult.value.map((b) => ({
@@ -173,7 +173,7 @@ useEffect(() => {
           notifResult.status === "fulfilled"
             ? notifResult.value?.content || []
             : [];
->>>>>>> af52e15aa012133d798d7b76d92f991999ff0985
+
 
         // Extract BIRTHDAY type notifications from backend GET /notifications
         const birthdayNotifs = notifContent

@@ -10,10 +10,10 @@ export default function TopBar({ onMenu }) {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
-<<<<<<< HEAD
+
   const [unreadCount, setUnreadCount] = useState(0);
   const [avatarUrl, setAvatarUrl] = useState('');
-=======
+
   const { unreadCount } = useNotifications();
   const { theme, toggleTheme } = useTheme();
   const menuRef = useRef(null);
@@ -84,7 +84,7 @@ export default function TopBar({ onMenu }) {
           to="/notifications"
           aria-label="Notifications"
         >
->>>>>>> af52e15aa012133d798d7b76d92f991999ff0985
+
           <Bell size={19} />
         </Link>
         <div className="profile-menu" ref={menuRef}>
