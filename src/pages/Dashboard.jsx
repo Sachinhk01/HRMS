@@ -19,42 +19,13 @@ import {
   ChevronRight,
   Sparkles,
 } from "lucide-react";
-
-import SummaryCard from '../components/SummaryCard';
-import PdfDropzone from '../components/PdfDropzone';
-import { useAuth } from '../context/AuthContext';
-import { getEmployees, getBirthdaysToday, normalizeEmployeeName } from '../services/employeeService';
-import { getNotifications } from '../services/notificationService';
-import { getAttendanceDashboard, getAttendanceHistory } from '../services/attendanceService';
-import { getMyLeaveBalances, getTeamLeaveRequests } from '../services/leaveService';
-import { capitalizeName } from '../utils/formatName';
-import { getEmployeeOfMonth, getMonthlyMagazine, saveEmployeeOfMonth, saveMonthlyMagazine } from '../services/dashboardContentService';
-import { getHolidays, getUpcomingHolidays } from '../services/holidayService';
-import welcomePersonImg from '../assets/illustrations/welcome-person.png';
-import calendarAttendanceImg from '../assets/illustrations/calendar-attendance.png';
-import calendarLeaveImg from '../assets/illustrations/calendar-leave.png';
-import celebrationCakeImg from '../assets/illustrations/celebration-cake.png';
-import celebrationGroupImg from '../assets/illustrations/celebration-group.png';
-import './Dashboard.css';
-import BirthdayWidget from '../components/BirthdayWidget';
-import HighlightCards from '../components/HighlightCards';
-
 import SummaryCard from "../components/SummaryCard";
 import PdfDropzone from "../components/PdfDropzone";
 import { useAuth } from "../context/AuthContext";
-import {
-  getEmployees,
-  normalizeEmployeeName,
-} from "../services/employeeService";
+import { getEmployees, normalizeEmployeeName } from "../services/employeeService";
 import { getNotifications, getUpcomingBirthdays } from "../services/notificationService";
-import {
-  getAttendanceDashboard,
-  getAttendanceHistory,
-} from "../services/attendanceService";
-import {
-  getMyLeaveBalances,
-  getTeamLeaveRequests,
-} from "../services/leaveService";
+import { getAttendanceDashboard, getAttendanceHistory } from "../services/attendanceService";
+import { getMyLeaveBalances, getTeamLeaveRequests } from "../services/leaveService";
 import {
   getEmployeeOfMonth,
   getMonthlyMagazine,
@@ -71,6 +42,16 @@ import "./Dashboard.css";
 import BirthdayWidget from "../components/BirthdayWidget";
 import HighlightCards from "../components/HighlightCards";
 
+// utils/formatName.js was never actually added to the repo on either
+// branch, so build the name capitalization inline instead of importing it.
+function capitalizeName(name) {
+  if (!name) return "";
+  return name
+    .split(" ")
+    .filter(Boolean)
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+    .join(" ");
+}
 
 const actionImages = {
   'Attendance': calendarAttendanceImg,
@@ -155,10 +136,6 @@ useEffect(() => {
 
         if (cancelled) return;
 
-
-        const employeeList = empResult.status === 'fulfilled' && Array.isArray(empResult.value) ? empResult.value : [];
-        const notifContent = notifResult.status === 'fulfilled' ? (notifResult.value?.content || []) : [];
-
         const employeeList =
           empResult.status === "fulfilled" && Array.isArray(empResult.value)
             ? empResult.value.map((b) => ({
@@ -173,7 +150,6 @@ useEffect(() => {
           notifResult.status === "fulfilled"
             ? notifResult.value?.content || []
             : [];
-
 
         // Extract BIRTHDAY type notifications from backend GET /notifications
         const birthdayNotifs = notifContent
