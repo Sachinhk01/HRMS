@@ -19,42 +19,13 @@ import {
   ChevronRight,
   Sparkles,
 } from "lucide-react";
-<<<<<<< HEAD
-import SummaryCard from '../components/SummaryCard';
-import PdfDropzone from '../components/PdfDropzone';
-import { useAuth } from '../context/AuthContext';
-import { getEmployees, getBirthdaysToday, normalizeEmployeeName } from '../services/employeeService';
-import { getNotifications } from '../services/notificationService';
-import { getAttendanceDashboard, getAttendanceHistory } from '../services/attendanceService';
-import { getMyLeaveBalances, getTeamLeaveRequests } from '../services/leaveService';
-import { capitalizeName } from '../utils/formatName';
-import { getEmployeeOfMonth, getMonthlyMagazine, saveEmployeeOfMonth, saveMonthlyMagazine } from '../services/dashboardContentService';
-import { getHolidays, getUpcomingHolidays } from '../services/holidayService';
-import welcomePersonImg from '../assets/illustrations/welcome-person.png';
-import calendarAttendanceImg from '../assets/illustrations/calendar-attendance.png';
-import calendarLeaveImg from '../assets/illustrations/calendar-leave.png';
-import celebrationCakeImg from '../assets/illustrations/celebration-cake.png';
-import celebrationGroupImg from '../assets/illustrations/celebration-group.png';
-import './Dashboard.css';
-import BirthdayWidget from '../components/BirthdayWidget';
-import HighlightCards from '../components/HighlightCards';
-=======
 import SummaryCard from "../components/SummaryCard";
 import PdfDropzone from "../components/PdfDropzone";
 import { useAuth } from "../context/AuthContext";
-import {
-  getEmployees,
-  normalizeEmployeeName,
-} from "../services/employeeService";
+import { getEmployees, normalizeEmployeeName } from "../services/employeeService";
 import { getNotifications, getUpcomingBirthdays } from "../services/notificationService";
-import {
-  getAttendanceDashboard,
-  getAttendanceHistory,
-} from "../services/attendanceService";
-import {
-  getMyLeaveBalances,
-  getTeamLeaveRequests,
-} from "../services/leaveService";
+import { getAttendanceDashboard, getAttendanceHistory } from "../services/attendanceService";
+import { getMyLeaveBalances, getTeamLeaveRequests } from "../services/leaveService";
 import {
   getEmployeeOfMonth,
   getMonthlyMagazine,
@@ -70,7 +41,17 @@ import celebrationGroupImg from "../assets/illustrations/celebration-group.png";
 import "./Dashboard.css";
 import BirthdayWidget from "../components/BirthdayWidget";
 import HighlightCards from "../components/HighlightCards";
->>>>>>> af52e15aa012133d798d7b76d92f991999ff0985
+
+// utils/formatName.js was never actually added to the repo on either
+// branch, so build the name capitalization inline instead of importing it.
+function capitalizeName(name) {
+  if (!name) return "";
+  return name
+    .split(" ")
+    .filter(Boolean)
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+    .join(" ");
+}
 
 const actionImages = {
   'Attendance': calendarAttendanceImg,
@@ -155,10 +136,6 @@ useEffect(() => {
 
         if (cancelled) return;
 
-<<<<<<< HEAD
-        const employeeList = empResult.status === 'fulfilled' && Array.isArray(empResult.value) ? empResult.value : [];
-        const notifContent = notifResult.status === 'fulfilled' ? (notifResult.value?.content || []) : [];
-=======
         const employeeList =
           empResult.status === "fulfilled" && Array.isArray(empResult.value)
             ? empResult.value.map((b) => ({
@@ -173,7 +150,6 @@ useEffect(() => {
           notifResult.status === "fulfilled"
             ? notifResult.value?.content || []
             : [];
->>>>>>> af52e15aa012133d798d7b76d92f991999ff0985
 
         // Extract BIRTHDAY type notifications from backend GET /notifications
         const birthdayNotifs = notifContent
@@ -382,10 +358,10 @@ useEffect(() => {
     ];
   } else {
     cards = [
-      [ClipboardCheck, 'Pending leave', leaveLoading ? '...' : pendingApprovalsCount, 'Awaiting decision', 'pink', '/leave-approvals'],
-      [CalendarDays, 'My leaves left', leaveLoading ? '...' : leaveSummary.left, `${leaveLoading ? '...' : leaveSummary.taken} days taken`, 'blue', '/leave'],
-      [Clock3, 'Attendance', attendanceLoading ? '...' : attendanceCount, 'Team records', 'green', '/attendance'],
-      [Target, 'Performance', 'Review', 'Team goals', 'orange', '/performance'],
+      [ClipboardCheck, 'Pending Leave', leaveLoading ? '...' : pendingApprovalsCount, 'Awaiting Decision', 'pink', '/leave-approvals'],
+      [CalendarDays, 'My Leaves Left', leaveLoading ? '...' : leaveSummary.left, `${leaveLoading ? '...' : leaveSummary.taken} Days Taken`, 'blue', '/leave'],
+      [Clock3, 'Attendance', attendanceLoading ? '...' : attendanceCount, 'Team Records', 'green', '/attendance'],
+      [Target, 'Performance', 'Review', 'Team Goals', 'orange', '/performance'],
     ];
     links = [
       { label: "My Leave", path: "/leave", icon: CalendarDays },

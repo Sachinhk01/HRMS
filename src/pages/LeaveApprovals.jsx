@@ -107,7 +107,7 @@ export default function LeaveApprovals() {
     try {
       await managerLeaveAction(id, action, reason || '');
       await load();
-      setMsg(action === 'APPROVE' ? 'Leave request approved.' : 'Leave request rejected.');
+      setMsg(action === 'APPROVE' ? 'Leave Request Approved.' : 'Leave Request Rejected.');
     } catch (error) {
       setErr(error.message || 'Failed to record decision.');
     } finally {
@@ -150,10 +150,10 @@ export default function LeaveApprovals() {
   }
 
   const SUMMARY_CARDS = [
-    { icon: Clock3, label: 'Pending Requests', value: summary.pending, tone: 'orange', desc: 'Awaiting decision' },
-    { icon: CheckCircle2, label: 'Approved Requests', value: summary.approved, tone: 'green', desc: 'Total approved' },
-    { icon: XCircle, label: 'Rejected Requests', value: summary.rejected, tone: 'red', desc: 'Total rejected' },
-    { icon: Timer, label: 'Total Requests', value: summary.total, tone: 'blue', desc: 'Across all employees' },
+    { icon: Clock3, label: 'Pending Requests', value: summary.pending, tone: 'orange', desc: 'Awaiting Decision' },
+    { icon: CheckCircle2, label: 'Approved Requests', value: summary.approved, tone: 'green', desc: 'Total Approved' },
+    { icon: XCircle, label: 'Rejected Requests', value: summary.rejected, tone: 'red', desc: 'Total Rejected' },
+    { icon: Timer, label: 'Total Requests', value: summary.total, tone: 'blue', desc: 'Across All Employees' },
   ];
 
   return (
@@ -168,7 +168,7 @@ export default function LeaveApprovals() {
         <div className="la-hero-text">
           <span className="eyebrow">Manager Workspace</span>
           <h1>Leave Approval Center</h1>
-          <p>Review, approve and manage employee leave requests.</p>
+          <p>Review, Approve And Manage Employee Leave Requests.</p>
         </div>
         <div className="la-hero-illustration" aria-hidden="true">
           <svg viewBox="0 0 320 200" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -221,7 +221,7 @@ export default function LeaveApprovals() {
       <motion.section className="panel la-panel" initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, ease: easeOut }}>
         <div className="panel-title">
           <div>
-            <span className="eyebrow">Pending review</span>
+            <span className="eyebrow">Pending Review</span>
             <h2>Team Leave Requests</h2>
           </div>
         </div>
@@ -236,7 +236,7 @@ export default function LeaveApprovals() {
             {leaveTypes.map((t) => <option key={t} value={t}>{t}</option>)}
           </select>
           <select className="compact-select" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
-            <option value="ALL">All statuses</option>
+            <option value="ALL">All Statuses</option>
             <option value="PENDING">Pending</option>
             <option value="APPROVED">Approved</option>
             <option value="REJECTED">Rejected</option>
@@ -248,7 +248,7 @@ export default function LeaveApprovals() {
           <table className="la-table">
             <thead>
               <tr>
-                <th>Employee</th><th>Leave type</th><th>Date range</th><th>Days</th><th>Reason</th><th>Status</th><th>Actions</th>
+                <th>Employee</th><th>Leave Type</th><th>Date Range</th><th>Days</th><th>Reason</th><th>Status</th><th>Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -289,8 +289,8 @@ export default function LeaveApprovals() {
           {!loading && !filteredOrdered.length && (
             <div className="empty-state">
               <Inbox size={32} />
-              <p>No pending leave requests.</p>
-              <small>Approved and rejected requests won't appear here.</small>
+              <p>No Pending Leave Requests.</p>
+              <small>Approved And Rejected Requests Won't Appear Here.</small>
             </div>
           )}
         </div>
@@ -303,8 +303,8 @@ export default function LeaveApprovals() {
           <motion.div className="modal-overlay" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setApproveTarget(null)}>
             <motion.div className="modal-card" initial={{ opacity: 0, scale: 0.94, y: 12 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.94, y: 12 }} transition={{ duration: 0.25, ease: easeOut }} onClick={(e) => e.stopPropagation()}>
               <div className="modal-icon-wrap success"><CheckCircle2 size={26} /></div>
-              <h3>Approve this request?</h3>
-              <p>Confirm approval for <strong>{capitalizeName(approveTarget.employeeName)}</strong>'s <strong>{approveTarget.leaveType}</strong> leave from <strong>{approveTarget.startDate}</strong> to <strong>{approveTarget.endDate}</strong>.</p>
+              <h3>Approve This Request?</h3>
+              <p>Confirm Approval For <strong>{capitalizeName(approveTarget.employeeName)}</strong>'s <strong>{approveTarget.leaveType}</strong> Leave From <strong>{approveTarget.startDate}</strong> to <strong>{approveTarget.endDate}</strong>.</p>
               <div className="modal-actions">
                 <button className="btn btn-soft" onClick={() => setApproveTarget(null)}>Cancel</button>
                 <button className="btn btn-gradient-green" disabled={acting} onClick={confirmApprove}><Check size={16} /> {acting ? 'Approving...' : 'Yes, approve'}</button>

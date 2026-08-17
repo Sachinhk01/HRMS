@@ -101,6 +101,12 @@ function formatMinutesLabel(totalMinutes) {
   return `${hours}h ${mins}m`;
 }
 
+// The location line shows placeholder/error text while permission is
+// pending or denied — only treat it as a real location once resolved.
+function isResolvedLocation(text) {
+  return Boolean(text) && text !== 'Fetching location...' && text !== 'Location unavailable' && text !== 'Location permission denied';
+}
+
 function formatLiveClock(date) {
   return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true });
 }
@@ -163,6 +169,10 @@ export default function Attendance() {
   });
   const [historyPage, setHistoryPage] = useState(1);
   const canViewAll = user.role === 'HR_ADMIN' || user.role === 'MANAGER';
+  // Overtime for today only — sourced from the existing /attendance/check-out
+  // response (CheckOutResponse.overtimeMinutes), which is the only endpoint
+  // that returns it. Reset on each mount/day since it only applies to today.
+  const [todayOvertimeMinutes, setTodayOvertimeMinutes] = useState(null);
 
   // ---- UI-only state (no logic impact) ----
   const [searchQuery, setSearchQuery] = useState('');
@@ -203,7 +213,11 @@ export default function Attendance() {
     setError('');
     setIsLoading(true);
     try {
-      const [dashboardResult, historyResult, calendarResult] =
+      const monthStartStr = dateKey(visibleMonth.getFullYear(), visibleMonth.getMonth(), 1);
+      const daysInVisibleMonth = new Date(visibleMonth.getFullYear(), visibleMonth.getMonth() + 1, 0).getDate();
+      const monthEndStr = dateKey(visibleMonth.getFullYear(), visibleMonth.getMonth(), daysInVisibleMonth);
+
+      const [dashboardResult, historyResult, calendarResult, monthDetailResult] =
   await Promise.allSettled([
     getAttendanceDashboard(),
     getAttendanceHistory({
@@ -216,6 +230,18 @@ export default function Attendance() {
       visibleMonth.getMonth() + 1,
       visibleMonth.getFullYear()
     ),
+    // Existing /attendance/history endpoint, just scoped to the visible month
+    // via its already-supported fromDate/toDate params. Used only to enrich
+    // the "Selected day" panel with check-in/out/working/break details that
+    // the lightweight /attendance/calendar endpoint doesn't return.
+    getAttendanceHistory({
+      page: 0,
+      size: daysInVisibleMonth,
+      sortBy: "attendanceDate",
+      sortDirection: "asc",
+      fromDate: monthStartStr,
+      toDate: monthEndStr,
+    }),
   ]);
 
 const failures = [];
@@ -236,11 +262,26 @@ if (historyResult.status === "fulfilled") {
 }
 
 if (calendarResult.status === "fulfilled") {
+  // Best-effort enrichment map keyed by date; if this call failed we simply
+  // fall back to status-only entries, same as before.
+  const detailByDate = new Map();
+  if (monthDetailResult.status === "fulfilled") {
+    (monthDetailResult.value?.content || []).forEach((record) => {
+      detailByDate.set(record.attendanceDate, record);
+    });
+  }
   setCalendarEntries(
-    (calendarResult.value || []).map((entry) => ({
-      date: entry.attendanceDate,
-      status: normalizeAttendanceStatus(entry.attendanceStatus),
-    }))
+    (calendarResult.value || []).map((entry) => {
+      const detail = detailByDate.get(entry.attendanceDate);
+      return {
+        date: entry.attendanceDate,
+        status: normalizeAttendanceStatus(entry.attendanceStatus),
+        checkInTime: detail?.checkInTime || null,
+        checkOutTime: detail?.checkOutTime || null,
+        workingHours: detail?.todayWorkingHours || null,
+        breakHours: detail?.todayBreakHours || null,
+      };
+    })
   );
 } else {
   setCalendarEntries([]);
@@ -339,7 +380,10 @@ if (failures.length) {
             );
           })
         : null;
-      await action(coords);
+      const actionResult = await action(coords);
+      if (actionName === 'checkOut' && actionResult && actionResult.overtimeMinutes != null) {
+        setTodayOvertimeMinutes(actionResult.overtimeMinutes);
+      }
       await loadAttendanceData();
       setSuccessMessage(
         actionName === 'checkIn'
@@ -787,12 +831,12 @@ if (failures.length) {
                     <span><CheckCircle2 size={14} /> Status</span>
                     <span className={`status-pill status-${statusClass(selectedEntry.status)}`}>{STATUS_LABELS[selectedEntry.status] || selectedEntry.status}</span>
                   </div>
-                  <div className="sad-row"><span><LogIn size={14} /> Check in</span><strong>—</strong></div>
-                  <div className="sad-row"><span><LogOut size={14} /> Check out</span><strong>—</strong></div>
-                  <div className="sad-row"><span><Briefcase size={14} /> Working hours</span><strong>—</strong></div>
-                  <div className="sad-row"><span><Coffee size={14} /> Break time</span><strong>—</strong></div>
-                  <div className="sad-row"><span><TrendingUp size={14} /> Overtime</span><strong>—</strong></div>
-                  <div className="sad-row"><span><MapPin size={14} /> Location</span><strong>—</strong></div>
+                  <div className="sad-row"><span><LogIn size={14} /> Check in</span><strong>{displayTime(selectedEntry.checkInTime)}</strong></div>
+                  <div className="sad-row"><span><LogOut size={14} /> Check out</span><strong>{displayTime(selectedEntry.checkOutTime)}</strong></div>
+                  <div className="sad-row"><span><Briefcase size={14} /> Working hours</span><strong>{selectedEntry.workingHours ? displayDuration(selectedEntry.workingHours) : '—'}</strong></div>
+                  <div className="sad-row"><span><Coffee size={14} /> Break time</span><strong>{selectedEntry.breakHours ? displayDuration(selectedEntry.breakHours) : '—'}</strong></div>
+                  <div className="sad-row"><span><TrendingUp size={14} /> Overtime</span><strong>{selectedDate === todayKey && todayOvertimeMinutes != null ? formatMinutesLabel(todayOvertimeMinutes) : '—'}</strong></div>
+                  <div className="sad-row"><span><MapPin size={14} /> Location</span><strong>{selectedDate === todayKey && isResolvedLocation(locationText) ? locationText : '—'}</strong></div>
                   <div className="sad-row"><span><Sparkles size={14} /> Remarks</span><strong>—</strong></div>
                 </div>
               ) : (
