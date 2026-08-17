@@ -19,7 +19,7 @@ function capitalizeName(name) {
     .join(' ');
 }
 
-export default function TopBar({ onMenu }) {
+export default function TopBar() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
@@ -80,9 +80,6 @@ export default function TopBar({ onMenu }) {
 
   return (
     <header className="topbar">
-
-      {/* Hamburger menu removed */}
-
       <label className="searchbox">
         <Search size={17} />
         <input placeholder="Search anything..." />
