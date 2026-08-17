@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   CalendarDays,
@@ -13,7 +13,6 @@ import {
   CheckCircle2,
   XCircle,
   Search,
-  Download,
   CalendarCheck,
   Timer,
   Briefcase,
@@ -22,12 +21,10 @@ import {
   TrendingUp,
   Target,
   Hourglass,
-  FileText,
-  FileSpreadsheet,
-  ChevronDown,
 } from 'lucide-react';
 import PageHeader from '../components/PageHeader';
 import Pagination from '../components/Pagination';
+import ExportMenu from '../components/ExportMenu';
 import { useAuth } from '../context/AuthContext';
 import {
   ATTENDANCE_STATE,
@@ -171,22 +168,6 @@ export default function Attendance() {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [activeLegend, setActiveLegend] = useState(null);
-
-  // ---- Export menu state ----
-  const [isExportMenuOpen, setIsExportMenuOpen] = useState(false);
-  const [isExporting, setIsExporting] = useState(false);
-  const exportMenuRef = useRef(null);
-
-  useEffect(() => {
-    if (!isExportMenuOpen) return undefined;
-    function handleClickOutside(event) {
-      if (exportMenuRef.current && !exportMenuRef.current.contains(event.target)) {
-        setIsExportMenuOpen(false);
-      }
-    }
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [isExportMenuOpen]);
 
   useEffect(() => {
     const clockTimer = window.setInterval(() => setCurrentTime(new Date()), 1000);
@@ -393,10 +374,8 @@ if (failures.length) {
   }
 
   async function handleExport(format) {
-    setIsExportMenuOpen(false);
     setError('');
     setSuccessMessage('');
-    setIsExporting(true);
     try {
       const filters = {};
       if (statusFilter !== 'ALL') filters.attendanceStatus = statusFilter;
@@ -412,8 +391,6 @@ if (failures.length) {
       setSuccessMessage(`Attendance report downloaded as ${format === 'excel' ? 'Excel' : 'PDF'}.`);
     } catch (exportError) {
       setError(exportError.message || 'Unable to export attendance report.');
-    } finally {
-      setIsExporting(false);
     }
   }
 
@@ -660,36 +637,7 @@ if (failures.length) {
                   <option value="ALL">All statuses</option>
                   {Object.keys(STATUS_LABELS).map((s) => <option key={s} value={s}>{STATUS_LABELS[s]}</option>)}
                 </select>
-                <div className="export-menu-wrap" ref={exportMenuRef}>
-                  <button
-                    type="button"
-                    className="btn btn-soft btn-export"
-                    disabled={isExporting}
-                    onClick={() => setIsExportMenuOpen((open) => !open)}
-                  >
-                    <Download size={15} /> {isExporting ? 'Exporting…' : 'Export'} <ChevronDown size={14} />
-                  </button>
-                  <AnimatePresence>
-                    {isExportMenuOpen && (
-                      <motion.div
-                        className="export-menu"
-                        initial={{ opacity: 0, y: -6, scale: 0.98 }}
-                        animate={{ opacity: 1, y: 0, scale: 1 }}
-                        exit={{ opacity: 0, y: -6, scale: 0.98 }}
-                        transition={{ duration: 0.15, ease: easeOut }}
-                      >
-                        <button type="button" className="export-menu-item" onClick={() => handleExport('pdf')}>
-                          <FileText size={15} />
-                          <span>Export as PDF</span>
-                        </button>
-                        <button type="button" className="export-menu-item" onClick={() => handleExport('excel')}>
-                          <FileSpreadsheet size={15} />
-                          <span>Export as Excel</span>
-                        </button>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-                </div>
+                <ExportMenu onExport={handleExport} />
               </div>
 
               <div className="table-wrap">

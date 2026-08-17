@@ -82,3 +82,21 @@ export async function getMyLeaveTransactions() {
   const { data } = await api.get("/leave-transactions/my");
   return data.data;
 }
+
+// Downloads the leave report as a file (excel/pdf) using the existing
+// /reports/leave endpoint (format=excel|pdf). Returns the raw blob + a
+// filename pulled from the Content-Disposition header when available.
+export async function exportLeaveReport(format, filters = {}) {
+  const params = { format, ...filters };
+  const response = await api.get("/reports/leave", {
+    params,
+    responseType: "blob",
+  });
+
+  const disposition = response.headers?.["content-disposition"] || "";
+  const match = disposition.match(/filename="?([^"]+)"?/i);
+  const fallbackExt = format === "excel" ? "xlsx" : "pdf";
+  const filename = match?.[1] || `leave-report.${fallbackExt}`;
+
+  return { blob: response.data, filename };
+}

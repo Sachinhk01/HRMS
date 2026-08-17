@@ -53,7 +53,7 @@ export function ManagerLogin() {
       await login({ email, password });
       navigate('/dashboard');
     } catch (error) {
-      setServerError(error.message || 'Unable to sign in. Please try again.');
+      setServerError(error.message || 'Unable to Sign In. Please Try Again.');
     } finally {
       setIsSubmitting(false);
     }

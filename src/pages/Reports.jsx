@@ -15,6 +15,7 @@ import PageHeader from '../components/PageHeader';
 import { getEmployees } from '../services/employeeService';
 import { getAttendanceHistory } from '../services/attendanceService';
 import { getAllLeaveRequests } from '../services/leaveService';
+import { capitalizeName } from '../utils/formatName';
 import './Reports.css';
 
 function initialsOf(first, last) {
@@ -188,11 +189,11 @@ export default function Reports() {
   }, [leaveStatusCounts, totalLeaves]);
 
   const kpis = [
-    { icon: Users, tone: 'blue', label: 'Employees', value: employeesLoading ? '…' : employees.length, desc: 'Total Accounts' },
-    { icon: UserCheck, tone: 'green', label: 'Active Employees', value: employeesLoading ? '…' : activeCount, desc: employeesLoading ? '' : `${activePct}% of Total` },
-    { icon: Clock3, tone: 'teal', label: 'Attendance', value: loadingAttendance ? '…' : attendanceCount, desc: 'Total Records' },
-    { icon: CalendarDays, tone: 'pink', label: 'Leave requests', value: loadingLeaves ? '…' : totalLeaves, desc: 'All Time' },
-    { icon: Hourglass, tone: 'orange', label: 'Pending approvals', value: loadingLeaves ? '…' : pendingLeaveCount, desc: 'Awaiting Review' },
+    { icon: Users, tone: 'blue', label: 'Employees', value: employeesLoading ? '…' : employees.length, desc: 'Total accounts' },
+    { icon: UserCheck, tone: 'green', label: 'Active employees', value: employeesLoading ? '…' : activeCount, desc: employeesLoading ? '' : `${activePct}% of total` },
+    { icon: Clock3, tone: 'teal', label: 'Attendance', value: loadingAttendance ? '…' : attendanceCount, desc: 'Total records' },
+    { icon: CalendarDays, tone: 'pink', label: 'Leave requests', value: loadingLeaves ? '…' : totalLeaves, desc: 'All time' },
+    { icon: Hourglass, tone: 'orange', label: 'Pending approvals', value: loadingLeaves ? '…' : pendingLeaveCount, desc: 'Awaiting review' },
   ];
 
   return (
@@ -200,7 +201,7 @@ export default function Reports() {
       <PageHeader
         eyebrow="HR Analytics"
         title="Reports"
-        description="Live Summaries Pulled From The Backend."
+        description="Live summaries pulled from the backend."
       />
 
       {attendanceError && <div className="form-alert">{attendanceError}</div>}
@@ -221,7 +222,7 @@ export default function Reports() {
 
       <div className="reports-charts-grid">
         <div className="panel chart-card wide">
-          <div className="chart-head"><BarChart3 size={17} /><h3>Employees By Department</h3></div>
+          <div className="chart-head"><BarChart3 size={17} /><h3>Employees by department</h3></div>
           {departmentCounts.length ? (
             <div className="chart-placeholder bars">
               {departmentCounts.map(([name, count]) => (
@@ -234,13 +235,13 @@ export default function Reports() {
           ) : (
             <div className="empty-state">
               <FolderOpen size={28} />
-              <p>No Department Data Yet</p>
+              <p>No department data yet</p>
             </div>
           )}
         </div>
 
         <div className="panel chart-card">
-          <div className="chart-head"><PieChart size={17} /><h3>Leave Requests By Status</h3></div>
+          <div className="chart-head"><PieChart size={17} /><h3>Leave requests by status</h3></div>
           {totalLeaves ? (
             <div className="donut-wrap">
               <div className="donut" style={{ borderRadius: '50%', background: donutGradient }} />
@@ -258,7 +259,7 @@ export default function Reports() {
           ) : (
             <div className="empty-state">
               <CalendarDays size={28} />
-              <p>No Leave Requests Yet</p>
+              <p>No leave requests yet</p>
             </div>
           )}
         </div>
@@ -268,7 +269,7 @@ export default function Reports() {
         <div className="panel-title">
           <div>
             <span className="eyebrow">Directory</span>
-            <h2>Employee Directory</h2>
+            <h2>Employee directory</h2>
           </div>
           <div className="panel-title-icon"><Users size={19} /></div>
         </div>
@@ -288,7 +289,7 @@ export default function Reports() {
             value={department}
             onChange={(e) => setDepartment(e.target.value)}
           >
-            <option value="">All Departments</option>
+            <option value="">All departments</option>
             {departmentOptions.map((name) => (
               <option key={name} value={name}>{name}</option>
             ))}
@@ -325,7 +326,7 @@ export default function Reports() {
                     <td>
                       <div className="emp-cell">
                         <span className="emp-avatar">{initialsOf(x.firstName, x.lastName)}</span>
-                        <span className="emp-name">{x.firstName} {x.lastName}</span>
+                        <span className="emp-name">{capitalizeName(x.firstName)} {capitalizeName(x.lastName)}</span>
                       </div>
                     </td>
                     <td>{x.departmentName ? <span className="dept-badge">{x.departmentName}</span> : '—'}</td>
@@ -343,8 +344,8 @@ export default function Reports() {
           {!employeesLoading && !filteredEmployees.length && (
             <div className="empty-state">
               <Users size={28} />
-              <p>{employees.length ? 'No employees match your filters.' : 'No Employee Records.'}</p>
-              <small>Try Clearing The Search or Department Filter.</small>
+              <p>{employees.length ? 'No employees match your filters.' : 'No employee records.'}</p>
+              <small>Try clearing the search or department filter.</small>
             </div>
           )}
         </div>

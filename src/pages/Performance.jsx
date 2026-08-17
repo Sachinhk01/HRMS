@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import PageHeader from '../components/PageHeader';
 import { getEmployees } from '../services/employeeService';
+import { capitalizeName } from '../utils/formatName';
 import './Performance.css';
 
 const easeOut = [0.16, 1, 0.3, 1];
@@ -69,7 +70,7 @@ export default function Performance() {
     const emp = employees.find((e) => e.id === Number(selectedEmp));
     const newReview = {
       id: Date.now(),
-      employeeName: emp ? `${emp.firstName} ${emp.lastName}` : 'Employee',
+      employeeName: emp ? capitalizeName(`${emp.firstName} ${emp.lastName}`) : 'Employee',
       period, rating, feedback, strengths, improvements, goals,
       managerName: 'You', status: 'COMPLETED', createdAt: new Date().toISOString(),
     };
@@ -81,9 +82,9 @@ export default function Performance() {
   };
 
   const SUMMARY = [
-    { icon: ClipboardCheck, label: 'Pending Reviews', value: 3, tone: 'orange', desc: 'Awaiting Completion' },
-    { icon: CheckCircle2, label: 'Completed Reviews', value: reviews.length, tone: 'green', desc: 'This Cycle' },
-    { icon: Star, label: 'Average Rating', value: '4.2', tone: 'blue', desc: 'Across All Reviews' },
+    { icon: ClipboardCheck, label: 'Pending Reviews', value: 3, tone: 'orange', desc: 'Awaiting completion' },
+    { icon: CheckCircle2, label: 'Completed Reviews', value: reviews.length, tone: 'green', desc: 'This cycle' },
+    { icon: Star, label: 'Average Rating', value: '4.2', tone: 'blue', desc: 'Across all reviews' },
     { icon: Award, label: 'Top Performers', value: 5, tone: 'pink', desc: 'Rated 4.5+' },
   ];
 
@@ -94,7 +95,7 @@ export default function Performance() {
         <div className="perf-hero-text">
           <span className="eyebrow">People Development</span>
           <h1>Performance Reviews</h1>
-          <p>Track Employee Growth And Performance Reviews.</p>
+          <p>Track employee growth and performance reviews.</p>
         </div>
         <div className="perf-hero-illustration" aria-hidden="true">
           <svg viewBox="0 0 320 200" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -135,17 +136,17 @@ export default function Performance() {
         {/* ---------- Review form ---------- */}
         <motion.section className="panel" initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, ease: easeOut }}>
           <div className="panel-title">
-            <div><span className="eyebrow">New Review</span><h2>Submit Review</h2></div>
+            <div><span className="eyebrow">New review</span><h2>Submit Review</h2></div>
             <div className="panel-title-icon"><ClipboardCheck size={20} /></div>
           </div>
-          <p className="panel-desc">Rate And Provide Feedback For An Employee This Review Cycle.</p>
+          <p className="panel-desc">Rate and provide feedback for an employee this review cycle.</p>
 
           <form className="perf-form" onSubmit={submit}>
             <label className="perf-field">
               <span className="perf-label"><User size={14} /> Employee</span>
               <div className="perf-select-wrap">
                 <select value={selectedEmp} onChange={(e) => setSelectedEmp(e.target.value)} required>
-                  <option value="" disabled>Select Employee</option>
+                  <option value="" disabled>Select employee</option>
                   {employees.map((emp) => <option key={emp.id} value={emp.id}>{emp.firstName} {emp.lastName}</option>)}
                 </select>
                 <ChevronDown size={16} className="perf-chevron" />
@@ -153,7 +154,7 @@ export default function Performance() {
             </label>
 
             <label className="perf-field">
-              <span className="perf-label"><CalendarDays size={14} /> Review Period</span>
+              <span className="perf-label"><CalendarDays size={14} /> Review period</span>
               <div className="perf-select-wrap">
                 <select value={period} onChange={(e) => setPeriod(e.target.value)}>
                   <option>Q1 2026</option><option>Q2 2026</option><option>Q3 2026</option><option>Q4 2026</option>
@@ -206,7 +207,7 @@ export default function Performance() {
           </div>
           <div className="perf-timeline">
             {reviews.length === 0 && (
-              <div className="empty-state"><Award size={32} /><p>No Reviews Yet.</p><small>Submitted Reviews Will Appear Here.</small></div>
+              <div className="empty-state"><Award size={32} /><p>No reviews yet.</p><small>Submitted reviews will appear here.</small></div>
             )}
             {reviews.map((review, i) => (
               <motion.div className="tl-card" key={review.id} initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.4, delay: i * 0.06, ease: easeOut }}>

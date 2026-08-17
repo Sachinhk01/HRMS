@@ -1,4 +1,4 @@
-import { NavLink, useNavigate } from "react-router-dom";
+import { NavLink, useNavigate } from 'react-router-dom';
 import {
   BarChart3,
   CalendarDays,
@@ -14,61 +14,53 @@ import {
   UserRound,
   Users,
   UserSearch,
-} from "lucide-react";
-import Logo from "./Logo";
-import { useAuth } from "../context/AuthContext";
-import { ROLE_MENUS } from "../config";
-import "./Sidebar.css";
+} from 'lucide-react';
+import Logo from './Logo';
+import { useAuth } from '../context/AuthContext';
+import { ROLE_MENUS } from '../config';
+import './Sidebar.css';
 
 const icons = {
-  "/dashboard": LayoutDashboard,
-  "/celebrations": PartyPopper,
-  "/attendance": Clock3,
-  "/leave": CalendarDays,
-  "/performance": Target,
-  "/reports": BarChart3,
-  "/profile": UserRound,
-  "/employees": Users,
-  "/leave-approvals": ClipboardCheck,
-  "/announcements": Megaphone,
-  "/events": CalendarRange,
-  "/candidates": UserSearch,
-  "/holidays": CalendarCheck2,
+  '/dashboard': LayoutDashboard,
+  '/celebrations': PartyPopper,
+  '/attendance': Clock3,
+  '/leave': CalendarDays,
+  '/performance': Target,
+  '/reports': BarChart3,
+  '/profile': UserRound,
+  '/employees': Users,
+  '/leave-approvals': ClipboardCheck,
+  '/announcements': Megaphone,
+  '/events': CalendarRange,
+  '/candidates': UserSearch,
+  '/holidays': CalendarCheck2,
 };
-
-function formatRole(role) {
-  if (role === "HR_ADMIN") return "HR";
-  if (role === "MANAGER") return "Manager";
-  if (role === "EMPLOYEE") return "Employee";
-  return role || "";
-}
 
 export default function Sidebar({ open, onClose }) {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
-  const avatarSrc = user?.photoUrl || user?.profilePhotoUrl || user?.avatarUrl;
   const items = ROLE_MENUS[user?.role] || [];
 
   const handleLogout = () => {
     logout();
     onClose?.();
-    navigate("/login", { replace: true });
+    navigate('/login', { replace: true });
   };
 
   const goToDashboard = () => {
-    navigate("/dashboard");
+    navigate('/dashboard');
     onClose?.();
   };
 
   return (
     <>
       <button
-        className={`sidebar-backdrop ${open ? "show" : ""}`}
+        className={`sidebar-backdrop ${open ? 'show' : ''}`}
         onClick={onClose}
         aria-label="Close navigation"
       />
 
-      <aside className={`sidebar ${open ? "sidebar--open" : ""}`}>
+      <aside className={`sidebar ${open ? 'sidebar--open' : ''}`}>
         <div className="sidebar-head">
           <Logo size={75} linkTo="/dashboard" />
         </div>
@@ -83,7 +75,7 @@ export default function Sidebar({ open, onClose }) {
                 to={path}
                 onClick={onClose}
                 className={({ isActive }) =>
-                  isActive ? "nav-link active" : "nav-link"
+                  isActive ? 'nav-link active' : 'nav-link'
                 }
               >
                 <Icon size={19} />
@@ -94,25 +86,6 @@ export default function Sidebar({ open, onClose }) {
         </nav>
 
         <div className="sidebar-footer">
-          <div className="sidebar-user">
-            <div className="mini-avatar">
-              {avatarSrc ? (
-                <img src={avatarSrc} alt={user?.name || 'User'} />
-              ) : (
-                user?.initials || (user?.name || 'U').charAt(0).toUpperCase()
-              )}
-            </div>
-            <div className="sidebar-user-copy">
-              <strong
-                title={user?.name || ""}
-                style={{ textTransform: "capitalize" }}
-              >
-                {user?.name || "User"}
-              </strong>
-              <span>{formatRole(user?.role)}</span>
-            </div>
-          </div>
-
           <button
             type="button"
             className="sidebar-logout-btn"

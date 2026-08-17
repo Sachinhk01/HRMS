@@ -225,8 +225,8 @@
 }
 .btn-gradient-red:hover:not(:disabled) { box-shadow: 0 12px 28px rgba(220, 38, 38, .38); }
 .btn-small { padding: 9px 16px; font-size: 13px; border-radius: 12px; }
-.btn-export { padding: 10px 16px; font-size: 13px; }
 .la-actions { display: flex; gap: 8px; }
+.la-actions-done { color: #94a3b8; font-size: 13px; font-weight: 600; }
 
 /* ---------- Skeleton + empty ---------- */
 .skeleton-row td { padding: 14px; }
