@@ -19,6 +19,7 @@ import {
   ChevronRight,
   Sparkles,
 } from "lucide-react";
+<<<<<<< HEAD
 import SummaryCard from '../components/SummaryCard';
 import PdfDropzone from '../components/PdfDropzone';
 import { useAuth } from '../context/AuthContext';
@@ -37,6 +38,39 @@ import celebrationGroupImg from '../assets/illustrations/celebration-group.png';
 import './Dashboard.css';
 import BirthdayWidget from '../components/BirthdayWidget';
 import HighlightCards from '../components/HighlightCards';
+=======
+import SummaryCard from "../components/SummaryCard";
+import PdfDropzone from "../components/PdfDropzone";
+import { useAuth } from "../context/AuthContext";
+import {
+  getEmployees,
+  normalizeEmployeeName,
+} from "../services/employeeService";
+import { getNotifications, getUpcomingBirthdays } from "../services/notificationService";
+import {
+  getAttendanceDashboard,
+  getAttendanceHistory,
+} from "../services/attendanceService";
+import {
+  getMyLeaveBalances,
+  getTeamLeaveRequests,
+} from "../services/leaveService";
+import {
+  getEmployeeOfMonth,
+  getMonthlyMagazine,
+  saveEmployeeOfMonth,
+  saveMonthlyMagazine,
+} from "../services/dashboardContentService";
+import { getHolidays, getUpcomingHolidays } from "../services/holidayService";
+import welcomePersonImg from "../assets/illustrations/welcome-person.png";
+import calendarAttendanceImg from "../assets/illustrations/calendar-attendance.png";
+import calendarLeaveImg from "../assets/illustrations/calendar-leave.png";
+import celebrationCakeImg from "../assets/illustrations/celebration-cake.png";
+import celebrationGroupImg from "../assets/illustrations/celebration-group.png";
+import "./Dashboard.css";
+import BirthdayWidget from "../components/BirthdayWidget";
+import HighlightCards from "../components/HighlightCards";
+>>>>>>> af52e15aa012133d798d7b76d92f991999ff0985
 
 const actionImages = {
   'Attendance': calendarAttendanceImg,
@@ -115,14 +149,31 @@ useEffect(() => {
       setBirthdayLoading(true);
       try {
         const [empResult, notifResult] = await Promise.allSettled([
-          getBirthdaysToday(),
+          getUpcomingBirthdays(0),
           getNotifications({ page: 0, size: 50 }),
         ]);
 
         if (cancelled) return;
 
+<<<<<<< HEAD
         const employeeList = empResult.status === 'fulfilled' && Array.isArray(empResult.value) ? empResult.value : [];
         const notifContent = notifResult.status === 'fulfilled' ? (notifResult.value?.content || []) : [];
+=======
+        const employeeList =
+          empResult.status === "fulfilled" && Array.isArray(empResult.value)
+            ? empResult.value.map((b) => ({
+                id: b.employeeId,
+                name: b.employeeName,
+                dateOfBirth: b.dateOfBirth,
+                nextBirthday: b.upcomingBirthdayDate,
+                daysUntil: b.daysUntil,
+              }))
+            : [];
+        const notifContent =
+          notifResult.status === "fulfilled"
+            ? notifResult.value?.content || []
+            : [];
+>>>>>>> af52e15aa012133d798d7b76d92f991999ff0985
 
         // Extract BIRTHDAY type notifications from backend GET /notifications
         const birthdayNotifs = notifContent

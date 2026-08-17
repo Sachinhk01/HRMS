@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+<<<<<<< HEAD
 import { Bell, ChevronDown, LogOut, Search, UserRound } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
@@ -6,14 +7,26 @@ import { getUnreadCount } from '../services/notificationService';
 import { getProfilePhotoUrl } from '../services/employeeService';
 import { hrmsService } from '../services/hrmsService';
 import { capitalizeName } from '../utils/formatName';
+=======
+import { Bell, ChevronDown, LogOut, Menu, Moon, Search, Sun, UserRound } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
+import { useNotifications } from '../context/NotificationContext';
+import { useTheme } from '../context/ThemeContext';
+>>>>>>> af52e15aa012133d798d7b76d92f991999ff0985
 import './TopBar.css';
 
 export default function TopBar({ onMenu }) {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
+<<<<<<< HEAD
   const [unreadCount, setUnreadCount] = useState(0);
   const [avatarUrl, setAvatarUrl] = useState('');
+=======
+  const { unreadCount } = useNotifications();
+  const { theme, toggleTheme } = useTheme();
+>>>>>>> af52e15aa012133d798d7b76d92f991999ff0985
   const menuRef = useRef(null);
 
   useEffect(() => {
@@ -69,7 +82,23 @@ export default function TopBar({ onMenu }) {
         <input placeholder="Search anything..." />
       </label>
       <div className="topbar-actions">
+<<<<<<< HEAD
         <Link className={`icon-btn${unreadCount > 0 ? ' notification-dot' : ''}`} to="/notifications" aria-label="Notifications">
+=======
+        <button
+          type="button"
+          className="icon-btn"
+          onClick={toggleTheme}
+          aria-label={theme === 'light' ? 'Switch to dark mode' : 'Switch to light mode'}
+        >
+          {theme === 'light' ? <Moon size={19} /> : <Sun size={19} />}
+        </button>
+        <Link
+          className={`icon-btn${unreadCount > 0 ? " notification-dot" : ""}`}
+          to="/notifications"
+          aria-label="Notifications"
+        >
+>>>>>>> af52e15aa012133d798d7b76d92f991999ff0985
           <Bell size={19} />
         </Link>
         <div className="profile-menu" ref={menuRef}>
