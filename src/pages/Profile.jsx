@@ -6,7 +6,7 @@ import { useAuth } from '../context/AuthContext';
 import { hrmsService } from '../services/hrmsService';
 
 import { getEmployeeById, getProfilePhotoUrl } from '../services/employeeService';
-import { capitalizeName } from '../utils/formatName';
+import { capitalizeName } from '../utils/FormatName';
 import './Profile.css';
 
 const TABS = ['Personal Info', 'Employment Details', 'Change Password'];

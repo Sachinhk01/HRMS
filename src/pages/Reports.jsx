@@ -15,7 +15,7 @@ import PageHeader from '../components/PageHeader';
 import { getEmployees } from '../services/employeeService';
 import { getAttendanceHistory } from '../services/attendanceService';
 import { getAllLeaveRequests } from '../services/leaveService';
-import { capitalizeName } from '../utils/formatName';
+import { capitalizeName } from '../utils/FormatName';
 import './Reports.css';
 
 function initialsOf(first, last) {

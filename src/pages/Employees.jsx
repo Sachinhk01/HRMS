@@ -13,7 +13,7 @@ import {
   getEmployees, createEmployee, getDepartments, getDesignations, getJobTitles, getEmployeeDropdown,
 } from '../services/employeeService';
 import './Employees.css';
-import { capitalizeName } from '../utils/formatName';
+import { capitalizeName } from '../utils/FormatName';
 
 const DEPT_COLORS = {
   Engineering: '#2563eb', Sales: '#16a34a', HR: '#d97706', Marketing: '#db2777',

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Cake, ChevronLeft, ChevronRight, PartyPopper, CalendarDays } from 'lucide-react';
-import { capitalizeName } from '../utils/formatName';
+import { capitalizeName } from '../utils/FormatName';
 
 function getInitials(name = '') {
   return name.split(' ').map((p) => p[0]).join('').slice(0, 2).toUpperCase();
