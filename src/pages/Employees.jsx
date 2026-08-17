@@ -13,6 +13,7 @@ import {
   getEmployees, createEmployee, getDepartments, getDesignations, getJobTitles, getEmployeeDropdown,
 } from '../services/employeeService';
 import './Employees.css';
+import { capitalizeName } from '../utils/formatName';
 
 const DEPT_COLORS = {
   Engineering: '#2563eb', Sales: '#16a34a', HR: '#d97706', Marketing: '#db2777',
@@ -93,6 +94,17 @@ export default function Employees() {
 
   const departmentNames = useMemo(() => Array.from(new Set(rows.map((e) => e.departmentName).filter(Boolean))), [rows]);
   const designationNames = useMemo(() => Array.from(new Set(rows.map((e) => e.designationName).filter(Boolean))), [rows]);
+
+  // Reporting manager dropdown: restricted to show only Anagha (EMP0001) as
+  // requested — the underlying employee list from the API is untouched,
+  // this just filters what's rendered in this one select.
+  const managerOptions = useMemo(
+    () => managers.filter((m) =>
+      (m.employeeCode || '').toUpperCase() === 'EMP0001' ||
+      (m.employeeName || '').toLowerCase().includes('anagha')
+    ),
+    [managers]
+  );
 
   const filtered = useMemo(() => {
     let list = rows;
@@ -284,7 +296,7 @@ export default function Employees() {
         <div className="emp-hero-text">
           <span className="eyebrow">Organization</span>
           <h1>Employees</h1>
-          <p>Browse Your Organization And View Employee Information.</p>
+          <p>Browse your organization and view employee information.</p>
           {canCreate && (
             <button className="btn btn-primary emp-add-btn" onClick={openAddModal}>
               <UserPlus size={16} /> Add Employee
@@ -377,11 +389,11 @@ export default function Employees() {
                   <span className="emp-avatar lg" style={{ background: `linear-gradient(135deg, ${deptColor(emp.departmentName)}, ${deptColor(emp.departmentName)}cc)` }}>{initials(`${emp.firstName} ${emp.lastName}`)}</span>
                   <span className="dept-badge" style={{ background: `${deptColor(emp.departmentName)}1a`, color: deptColor(emp.departmentName) }}>{emp.departmentName || '—'}</span>
                 </div>
-                <strong className="emp-card-name">{emp.firstName} {emp.lastName}</strong>
+                <strong className="emp-card-name">{capitalizeName(emp.firstName)} {capitalizeName(emp.lastName)}</strong>
                 <span className="emp-card-role">{emp.designationName || '—'}</span>
                 <div className="emp-card-meta">
                   <span><Mail size={13} /> {emp.email || '—'}</span>
-                  <span><Phone size={13} /> {emp.phoneNumber || '—'}</span>
+                  <span><Phone size={13} /> {emp.phone || '—'}</span>
                 </div>
                 <div className="emp-card-actions">
                   <button className="btn btn-small btn-soft" onClick={() => setDrawerEmp(emp)}><Eye size={14} /> View</button>
@@ -391,8 +403,8 @@ export default function Employees() {
             {!loading && !err && !filtered.length && (
               <div className="empty-state" style={{ gridColumn: '1 / -1' }}>
                 <Users size={32} />
-                <p>No Employees Found.</p>
-                <small>Try Adjusting Your Filters.</small>
+                <p>No employees found.</p>
+                <small>Try adjusting your filters.</small>
               </div>
             )}
           </motion.div>
@@ -407,19 +419,19 @@ export default function Employees() {
                   ))}
                   {!loading && pageItems.map((emp) => (
                     <motion.tr key={emp.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, ease: easeOut }}>
-                      <td><span className="emp-cell"><span className="emp-avatar" style={{ background: `linear-gradient(135deg, ${deptColor(emp.departmentName)}, ${deptColor(emp.departmentName)}cc)` }}>{initials(`${emp.firstName} ${emp.lastName}`)}</span><span className="emp-name">{emp.firstName} {emp.lastName}</span></span></td>
+                      <td><span className="emp-cell"><span className="emp-avatar" style={{ background: `linear-gradient(135deg, ${deptColor(emp.departmentName)}, ${deptColor(emp.departmentName)}cc)` }}>{initials(`${emp.firstName} ${emp.lastName}`)}</span><span className="emp-name">{capitalizeName(emp.firstName)} {capitalizeName(emp.lastName)}</span></span></td>
                       <td>{emp.employeeCode || '—'}</td>
                       <td>{emp.departmentName ? <span className="dept-badge" style={{ background: `${deptColor(emp.departmentName)}1a`, color: deptColor(emp.departmentName) }}>{emp.departmentName}</span> : '—'}</td>
                       <td>{emp.designationName || '—'}</td>
                       <td>{emp.email || '—'}</td>
-                      <td>{emp.phoneNumber || '—'}</td>
+                      <td>{emp.phone || '—'}</td>
                       <td><span className={`status-pill ${emp.active ? 'approved' : 'cancelled'}`}>{emp.active ? 'Active' : 'Inactive'}</span></td>
                       <td><button className="icon-btn" title="View profile" onClick={() => setDrawerEmp(emp)}><Eye size={15} /></button></td>
                     </motion.tr>
                   ))}
                 </tbody>
               </table>
-              {!loading && !err && !filtered.length && <div className="empty-state"><Users size={32} /><p>No Employees Found.</p><small>Try Adjusting Your Filters.</small></div>}
+              {!loading && !err && !filtered.length && <div className="empty-state"><Users size={32} /><p>No employees found.</p><small>Try adjusting your filters.</small></div>}
             </div>
           </motion.section>
         )}
@@ -441,8 +453,8 @@ export default function Employees() {
             >
               <div className="emp-modal-head">
                 <div>
-                  <span className="eyebrow">Employee Preview</span>
-                  <h2>{drawerEmp.firstName} {drawerEmp.lastName}</h2>
+                  <span className="eyebrow">Employee preview</span>
+                  <h2>{capitalizeName(drawerEmp.firstName)} {capitalizeName(drawerEmp.lastName)}</h2>
                 </div>
                 <button className="emp-modal-close" onClick={() => setDrawerEmp(null)}><X size={18} /></button>
               </div>
@@ -451,7 +463,7 @@ export default function Employees() {
                 <div className="emp-modal-person">
                   <span className="emp-avatar lg" style={{ background: `linear-gradient(135deg, ${deptColor(drawerEmp.departmentName)}, ${deptColor(drawerEmp.departmentName)}cc)` }}>{initials(`${drawerEmp.firstName} ${drawerEmp.lastName}`)}</span>
                   <div>
-                    <strong>{drawerEmp.firstName} {drawerEmp.lastName}</strong>
+                    <strong>{capitalizeName(drawerEmp.firstName)} {capitalizeName(drawerEmp.lastName)}</strong>
                     <small>{drawerEmp.designationName || '—'}</small>
                   </div>
                 </div>
@@ -461,7 +473,7 @@ export default function Employees() {
                   <div className="emp-info-item"><Building2 size={14} /><span>Department</span><strong>{drawerEmp.departmentName || '—'}</strong></div>
                   <div className="emp-info-item"><Briefcase size={14} /><span>Designation</span><strong>{drawerEmp.designationName || '—'}</strong></div>
                   <div className="emp-info-item"><Mail size={14} /><span>Email</span><strong className="truncate">{drawerEmp.email || '—'}</strong></div>
-                  <div className="emp-info-item"><Phone size={14} /><span>Phone</span><strong>{drawerEmp.phoneNumber || '—'}</strong></div>
+                  <div className="emp-info-item"><Phone size={14} /><span>Phone</span><strong>{drawerEmp.phone || '—'}</strong></div>
                   <div className="emp-info-item"><CalendarDays size={14} /><span>Status</span><strong>{drawerEmp.active ? 'Active' : 'Inactive'}</strong></div>
                 </div>
               </div>
@@ -488,7 +500,7 @@ export default function Employees() {
             >
               <div className="emp-modal-head">
                 <div>
-                  <span className="eyebrow">Step {addStep} of 2 · {addStep === 1 ? 'Account Details' : 'Employee Profile'}</span>
+                  <span className="eyebrow">Step {addStep} of 2 · {addStep === 1 ? 'Account details' : 'Employee profile'}</span>
                   <h2>Add Employee</h2>
                 </div>
                 <button className="emp-modal-close" onClick={closeAddModal}><X size={18} /></button>
@@ -504,14 +516,14 @@ export default function Employees() {
                     <div className="emp-form-grid">
                       <label className="form-field">
                         <span>Username</span>
-                        <input type="text" value={form.username} onChange={updateField('username')} placeholder="e.g. Anagha.k" required />
+                        <input type="text" value={form.username} onChange={updateField('username')} placeholder="e.g. anagha.k" required />
                       </label>
                       <label className="form-field">
                         <span>Email</span>
                         <input type="email" value={form.email} onChange={updateField('email')} placeholder="name@company.com" required />
                       </label>
                       <label className="form-field">
-                        <span>Temporary Password</span>
+                        <span>Temporary password</span>
                         <input type="password" value={form.password} onChange={updateField('password')} placeholder="Min. 6 characters" required />
                       </label>
                       <label className="form-field">
@@ -526,15 +538,15 @@ export default function Employees() {
                   {addStep === 2 && (
                     <div className="emp-form-grid">
                       <label className="form-field">
-                        <span>First Name</span>
+                        <span>First name</span>
                         <input type="text" value={form.firstName} onChange={updateField('firstName')} required />
                       </label>
                       <label className="form-field">
-                        <span>Last Name</span>
+                        <span>Last name</span>
                         <input type="text" value={form.lastName} onChange={updateField('lastName')} />
                       </label>
                       <label className="form-field">
-                        <span>Phone Number</span>
+                        <span>Phone number</span>
                         <input type="tel" value={form.phoneNumber} onChange={updateField('phoneNumber')} placeholder="10-digit mobile" required />
                       </label>
                       <label className="form-field">
@@ -545,15 +557,15 @@ export default function Employees() {
                         </select>
                       </label>
                       <label className="form-field">
-                        <span>Date of Birth</span>
+                        <span>Date of birth</span>
                         <input type="date" value={form.dateOfBirth} onChange={updateField('dateOfBirth')} required />
                       </label>
                       <label className="form-field">
-                        <span>Date of Joining</span>
+                        <span>Date of joining</span>
                         <input type="date" value={form.dateOfJoining} onChange={updateField('dateOfJoining')} required />
                       </label>
                       <label className="form-field">
-                        <span>Employment Type</span>
+                        <span>Employment type</span>
                         <select value={form.employmentType} onChange={updateField('employmentType')} required>
                           <option value="">Select</option>
                           {EMPLOYMENT_TYPE_OPTIONS.map((t) => <option key={t} value={t}>{t.replace('_', ' ')}</option>)}
@@ -586,7 +598,7 @@ export default function Employees() {
                         </select>
                       </label>
                       <label className="form-field">
-                        <span>Job Title {titleLoading && <small>(loading…)</small>}</span>
+                        <span>Job title {titleLoading && <small>(loading…)</small>}</span>
                         <select
                           value={form.jobTitleId}
                           onChange={updateField('jobTitleId')}
@@ -600,10 +612,12 @@ export default function Employees() {
                         </select>
                       </label>
                       <label className="form-field">
-                        <span>Reporting Manager <small>(optional)</small></span>
+                        <span>Reporting manager</span>
                         <select value={form.reportingManagerId} onChange={updateField('reportingManagerId')}>
-                          <option value="">None</option>
-                          {managers.map((m) => <option key={m.id} value={m.id}>{m.employeeName} ({m.employeeCode})</option>)}
+                          {managerOptions.length === 0 && <option value="">No manager available</option>}
+                          {managerOptions.map((m) => (
+                            <option key={m.id} value={m.id}>Anagha Pothi ({m.employeeCode})</option>
+                          ))}
                         </select>
                       </label>
                     </div>

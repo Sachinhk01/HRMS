@@ -178,7 +178,7 @@ export function EmployeeLogin() {
                   <button
                     type="button"
                     className="hrms-field__toggle"
-                    aria-label={showPassword ? 'Hide password' : 'Show password'}
+                    aria-label={showPassword ? 'Hide Password' : 'Show Password'}
                     onClick={() => setShowPassword((v) => !v)}
                   >
                     {showPassword ? <EyeOff /> : <Eye />}

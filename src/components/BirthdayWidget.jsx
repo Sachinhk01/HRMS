@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Cake, ChevronLeft, ChevronRight, PartyPopper, CalendarDays } from 'lucide-react';
+import { capitalizeName } from '../utils/formatName';
 
 function getInitials(name = '') {
   return name.split(' ').map((p) => p[0]).join('').slice(0, 2).toUpperCase();
@@ -86,7 +87,7 @@ export default function BirthdayWidget({ employees = [], onViewAll }) {
       accentBg: 'linear-gradient(135deg,#fffbeb,#fff7ed)',
       accentBorder: '#fde68a',
       items: todaysBirthdays,
-      empty: 'No Birthdays Today — Check Back Tomorrow!',
+      empty: 'No birthdays today — check back tomorrow!',
       emptyIcon: '🎂',
       badge: todaysBirthdays.length,
       chipColor: '#f59e0b',
@@ -100,7 +101,7 @@ export default function BirthdayWidget({ employees = [], onViewAll }) {
       accentBg: 'linear-gradient(135deg,#eff6ff,#eef2ff)',
       accentBorder: '#bfdbfe',
       items: upcomingBirthdays,
-      empty: 'No Birthdays in The Next 30 Days.',
+      empty: 'No birthdays in the next 30 days.',
       emptyIcon: '📅',
       badge: upcomingBirthdays.length,
       chipColor: '#3b82f6',
@@ -179,7 +180,7 @@ export default function BirthdayWidget({ employees = [], onViewAll }) {
                     {getInitials(emp.name)}
                   </div>
                   <div className="cw-person-copy">
-                    <strong>{emp.name}</strong>
+                    <strong>{capitalizeName(emp.name)}</strong>
                     <span className="cw-person-role">{emp.designation || emp.department || 'Team member'}</span>
                     {isToday ? (
                       <span className="cw-person-tag" style={{ background: '#fff7ed', color: '#f59e0b' }}>🎂 Today!</span>

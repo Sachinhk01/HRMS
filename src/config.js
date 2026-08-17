@@ -114,13 +114,15 @@ export const ROUTE_ROLES = {
   '/announcements': [
     'HR_ADMIN',
     'SUPER_ADMIN',
-    'EMPLOYEE'
+    'EMPLOYEE',
+    'MANAGER'
   ],
 
   '/events': [
     'HR_ADMIN',
     'SUPER_ADMIN',
-    'EMPLOYEE'
+    'EMPLOYEE',
+    'MANAGER'
   ],
 
   '/reports': [
