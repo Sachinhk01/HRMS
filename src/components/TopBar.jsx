@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Bell, ChevronDown, LogOut, Menu, Search, UserRound } from 'lucide-react';
+import { Bell, ChevronDown, LogOut, Search, UserRound } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useNotifications } from '../context/NotificationContext';
@@ -11,6 +11,7 @@ import './TopBar.css';
 // branch, so build the name capitalization inline instead of importing it.
 function capitalizeName(name) {
   if (!name) return '';
+
   return name
     .split(' ')
     .filter(Boolean)
@@ -18,7 +19,7 @@ function capitalizeName(name) {
     .join(' ');
 }
 
-export default function TopBar({ onMenu }) {
+export default function TopBar() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
@@ -36,26 +37,39 @@ export default function TopBar({ onMenu }) {
     hrmsService.getProfile()
       .then((profile) => {
         if (cancelled || !profile?.hasProfilePhoto) return;
+
         return getProfilePhotoUrl(profile.id).then((url) => {
           if (cancelled) return;
+
           objectUrl = url;
           setAvatarUrl(url);
         });
       })
-      .catch(() => { if (!cancelled) setAvatarUrl(''); });
+      .catch(() => {
+        if (!cancelled) setAvatarUrl('');
+      });
 
     return () => {
       cancelled = true;
-      if (objectUrl) URL.revokeObjectURL(objectUrl);
+
+      if (objectUrl) {
+        URL.revokeObjectURL(objectUrl);
+      }
     };
   }, [user?.id]);
 
   useEffect(() => {
     const close = (event) => {
-      if (!menuRef.current?.contains(event.target)) setOpen(false);
+      if (!menuRef.current?.contains(event.target)) {
+        setOpen(false);
+      }
     };
+
     document.addEventListener('mousedown', close);
-    return () => document.removeEventListener('mousedown', close);
+
+    return () => {
+      document.removeEventListener('mousedown', close);
+    };
   }, []);
 
   const handleLogout = () => {
@@ -66,17 +80,11 @@ export default function TopBar({ onMenu }) {
 
   return (
     <header className="topbar">
-      <button
-        className="icon-btn mobile-menu"
-        onClick={onMenu}
-        aria-label="Open navigation"
-      >
-        <Menu size={21} />
-      </button>
       <label className="searchbox">
         <Search size={17} />
         <input placeholder="Search anything..." />
       </label>
+
       <div className="topbar-actions">
         <Link
           className={`icon-btn${unreadCount > 0 ? ' notification-dot' : ''}`}
@@ -85,18 +93,59 @@ export default function TopBar({ onMenu }) {
         >
           <Bell size={19} />
         </Link>
+
         <div className="profile-menu" ref={menuRef}>
-          <button type="button" className="profile-trigger" onClick={() => setOpen((value) => !value)} aria-expanded={open} aria-haspopup="menu">
+          <button
+            type="button"
+            className="profile-trigger"
+            onClick={() => setOpen((value) => !value)}
+            aria-expanded={open}
+            aria-haspopup="menu"
+          >
             <div className="avatar">
-              {avatarUrl ? <img className="avatar-img" src={avatarUrl} alt={user?.name || 'Profile'} /> : user?.initials}
+              {avatarUrl ? (
+                <img
+                  className="avatar-img"
+                  src={avatarUrl}
+                  alt={user?.name || 'Profile'}
+                />
+              ) : (
+                user?.initials
+              )}
             </div>
-            <div className="profile-copy"><strong>{capitalizeName(user?.name)}</strong><span>{user?.title}</span></div>
-            <ChevronDown size={16} className={open ? 'rotate-180' : ''} />
+
+            <div className="profile-copy">
+              <strong>{capitalizeName(user?.name)}</strong>
+              <span>{user?.title}</span>
+            </div>
+
+            <ChevronDown
+              size={16}
+              className={open ? 'rotate-180' : ''}
+            />
           </button>
+
           {open && (
             <div className="profile-dropdown" role="menu">
-              <button type="button" onClick={() => { setOpen(false); navigate('/profile'); }}><UserRound size={17} /> My Profile</button>
-              <button type="button" className="danger" onClick={handleLogout}><LogOut size={17} /> Logout</button>
+              <button
+                type="button"
+                onClick={() => {
+                  setOpen(false);
+                  navigate('/profile');
+                }}
+              >
+                <UserRound size={17} />
+                My Profile
+              </button>
+
+              <button
+                type="button"
+                className="danger"
+                onClick={handleLogout}
+              >
+                <LogOut size={17} />
+                Logout
+              </button>
             </div>
           )}
         </div>

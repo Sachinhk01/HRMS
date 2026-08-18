@@ -42,6 +42,41 @@ function initials(name = '') {
   return name.split(' ').map((p) => p[0]).join('').slice(0, 2).toUpperCase();
 }
 
+// createCelebration() (the "Add Celebration" composer) posts through the
+// existing /notifications/announcement endpoint — there's no dedicated
+// celebration endpoint — and encodes the celebration type/date/tagged
+// people as trailing "\n\nLabel: value" lines inside the message body (see
+// notificationService.js). Parse them back out so these posts render as
+// celebration cards in the feed/filters instead of only in the sidebar
+// Announcements widget. Plain announcements (no embedded "Celebration
+// type:" line) fall through unchanged and stay sidebar-only.
+const CELEBRATION_TYPE_RE = /\n\nCelebration type:\s*([A-Z_]+)\s*$/;
+const CELEBRATION_DATE_RE = /\n\nCelebration date:\s*([^\n]+)/;
+const TAGGED_PEOPLE_RE = /\n\nTagged people:\s*([^\n]+)/;
+
+function parseCelebrationMeta(rawMessage = '') {
+  const typeMatch = rawMessage.match(CELEBRATION_TYPE_RE);
+  if (!typeMatch) return null;
+
+  const dateMatch = rawMessage.match(CELEBRATION_DATE_RE);
+  const taggedMatch = rawMessage.match(TAGGED_PEOPLE_RE);
+
+  const cleanMessage = rawMessage
+    .replace(CELEBRATION_TYPE_RE, '')
+    .replace(CELEBRATION_DATE_RE, '')
+    .replace(TAGGED_PEOPLE_RE, '')
+    .trim();
+
+  return {
+    type: typeMatch[1],
+    eventDate: dateMatch ? dateMatch[1].trim() : null,
+    taggedPeople: taggedMatch
+      ? taggedMatch[1].split(',').map((name) => ({ name: name.trim() })).filter((p) => p.name)
+      : [],
+    message: cleanMessage,
+  };
+}
+
 function normalizeNotificationToPost(item) {
   // All fields come directly from backend NotificationResponse JSON
   return {
@@ -128,6 +163,30 @@ export default function CelebrationWall() {
 
     (notifications || []).forEach((item) => {
       if (item.notificationType === 'ANNOUNCEMENT') {
+        const celebrationMeta = parseCelebrationMeta(item.message || '');
+        if (celebrationMeta) {
+          const post = {
+            id: item.id,
+            type: celebrationMeta.type,
+            title: item.title || '',
+            message: celebrationMeta.message,
+            createdAt: item.createdAt || new Date().toISOString(),
+            eventDate: celebrationMeta.eventDate,
+            images: item.attachmentUrls || [],
+            isRead: Boolean(item.isRead),
+            priority: item.priority || 'LOW',
+            taggedPeople: celebrationMeta.taggedPeople,
+            announcementId: item.referenceId,
+          };
+          const dateVal = new Date(post.eventDate || post.createdAt);
+          if (dateVal > endOfToday) {
+            rawUpcoming.push(post);
+          } else {
+            rawFeed.push(post);
+          }
+          return;
+        }
+
         rawAnnouncements.push({
           id: item.id,
           title: item.title,
@@ -223,7 +282,7 @@ export default function CelebrationWall() {
       <PageHeader
         eyebrow="People & Culture"
         title="Celebration Wall"
-        description="View company celebrations, milestones, birthdays, anniversaries, and achievements."
+        description="View Company Celebrations, Milestones, Birthdays, Anniversaries, And Achievements."
         action={canCreateCelebration ? <button type="button" className="btn celebration-add-btn" onClick={() => setComposerOpen(true)}><Plus size={18} /> Add Celebration</button> : null}
       />
 
@@ -231,7 +290,7 @@ export default function CelebrationWall() {
 
       {canCreateCelebration && composerOpen && (
         <section className="panel celebration-composer">
-          <div className="celebration-composer-head"><div><span className="eyebrow">HR Celebration</span><h2>Add a celebration</h2></div><button type="button" className="icon-btn" onClick={() => setComposerOpen(false)} aria-label="Close"><X size={18} /></button></div>
+          <div className="celebration-composer-head"><div><span className="eyebrow">HR Celebration</span><h2>Add a Celebration</h2></div><button type="button" className="icon-btn" onClick={() => setComposerOpen(false)} aria-label="Close"><X size={18} /></button></div>
           <form className="celebration-form" onSubmit={handleCreateCelebration}>
             <label>Celebration Type<select value={celebrationForm.type} onChange={(e) => setCelebrationForm((value) => ({ ...value, type: e.target.value }))}><option value="GENERAL">General Celebration</option><option value="BIRTHDAY">Birthday</option><option value="WORK_ANNIVERSARY">Work Anniversary</option><option value="HOLIDAY">Festival / Holiday</option><option value="APPROVED">Achievement</option></select></label>
             <label>Celebration Date<input type="date" value={celebrationForm.eventDate} onChange={(e) => setCelebrationForm((value) => ({ ...value, eventDate: e.target.value }))} /></label>
@@ -245,7 +304,7 @@ export default function CelebrationWall() {
                   const selected = celebrationForm.taggedPeople.some((person) => String(person.id) === String(employee.id));
                   return <button type="button" key={employee.id} className={`celebration-tag-chip ${selected ? 'selected' : ''}`} onClick={() => toggleTaggedPerson(employee)}><span>{initials(employee.employeeName)}</span><span><strong>{employee.employeeName}</strong><small>{employee.employeeCode}</small></span>{selected && <span className="tag-check">✓</span>}</button>;
                 })}
-                {!employees.length && <span className="empty-inline">No employees available to tag.</span>}
+                {!employees.length && <span className="empty-inline">No Employees Available to Tag.</span>}
               </div>
             </div>
             <div className="celebration-form-actions full-span"><label className="celebration-file"><ImagePlus size={17} /> Add Photos<input type="file" accept="image/*" multiple hidden onChange={(e) => setCelebrationFiles(Array.from(e.target.files || []))} /></label>{celebrationFiles.length > 0 && <span>{celebrationFiles.length} photo{celebrationFiles.length > 1 ? 's' : ''} selected</span>}<button className="btn celebration-publish-btn" disabled={creating}><Send size={17} />{creating ? 'Adding…' : 'Add Celebration'}</button></div>
@@ -318,7 +377,7 @@ export default function CelebrationWall() {
           </motion.div>
 
           {/* ---------- Feed ---------- */}
-          {loading && <p className="empty-inline">Loading celebrations...</p>}
+          {loading && <p className="empty-inline">Loading Celebrations...</p>}
           {!loading && error && <p className="form-error">{error}</p>}
 
           {!loading && !error && (
@@ -412,7 +471,7 @@ export default function CelebrationWall() {
                 <section className="panel empty-state">
                   <PartyPopper size={36} />
                   <p>No celebration posts yet.</p>
-                  <small>Celebrations and company milestones will appear here.</small>
+                  <small>Celebrations And Company Milestones Will Appear Here.</small>
                 </section>
               )}
             </motion.div>
@@ -443,7 +502,7 @@ export default function CelebrationWall() {
                 <span>{item.message}</span>
               </div>
             ))}
-            {!announcements.length && <p className="empty-inline">No announcements.</p>}
+            {!announcements.length && <p className="empty-inline">No Announcements.</p>}
           </motion.section>
 
           {/* Events widget */}
@@ -458,7 +517,7 @@ export default function CelebrationWall() {
               <span className="side-widget-icon" style={{ background: '#dcfce7', color: '#16a34a' }}>
                 <CalendarDays size={18} />
               </span>
-              <h2>Upcoming events</h2>
+              <h2>Upcoming Events</h2>
             </div>
             {upcomingEvents.map((item) => (
               <div className="side-content" key={item.id}>
@@ -466,7 +525,7 @@ export default function CelebrationWall() {
                 <span>{item.message || new Date(item.eventDate || item.createdAt).toLocaleDateString()}</span>
               </div>
             ))}
-            {!upcomingEvents.length && <p className="empty-inline">No upcoming events.</p>}
+            {!upcomingEvents.length && <p className="empty-inline">No Upcoming Events.</p>}
           </motion.section>
 
           {/* Quick links widget */}

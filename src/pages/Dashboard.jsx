@@ -358,10 +358,10 @@ useEffect(() => {
     ];
   } else {
     cards = [
-      [ClipboardCheck, 'Pending leave', leaveLoading ? '...' : pendingApprovalsCount, 'Awaiting decision', 'pink', '/leave-approvals'],
-      [CalendarDays, 'My leaves left', leaveLoading ? '...' : leaveSummary.left, `${leaveLoading ? '...' : leaveSummary.taken} days taken`, 'blue', '/leave'],
-      [Clock3, 'Attendance', attendanceLoading ? '...' : attendanceCount, 'Team records', 'green', '/attendance'],
-      [Target, 'Performance', 'Review', 'Team goals', 'orange', '/performance'],
+      [ClipboardCheck, 'Pending Leave', leaveLoading ? '...' : pendingApprovalsCount, 'Awaiting Decision', 'pink', '/leave-approvals'],
+      [CalendarDays, 'My Leaves Left', leaveLoading ? '...' : leaveSummary.left, `${leaveLoading ? '...' : leaveSummary.taken} Days Taken`, 'blue', '/leave'],
+      [Clock3, 'Attendance', attendanceLoading ? '...' : attendanceCount, 'Team Records', 'green', '/attendance'],
+      [Target, 'Performance', 'Review', 'Team Goals', 'orange', '/performance'],
     ];
     links = [
       { label: "My Leave", path: "/leave", icon: CalendarDays },
