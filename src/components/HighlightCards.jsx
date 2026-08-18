@@ -1,5 +1,5 @@
 import { Award, BookOpen, ChevronRight, ExternalLink, Star } from 'lucide-react';
-import { capitalizeName } from '../utils/FormatName';
+import { capitalizeName } from '../utils/formatName';
 
 /**
  * Redesigned highlight cards inspired by the reference image:

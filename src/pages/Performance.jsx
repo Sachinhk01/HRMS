@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 import PageHeader from '../components/PageHeader';
 import { getEmployees } from '../services/employeeService';
-import { capitalizeName } from '../utils/FormatName';
+import { capitalizeName } from '../utils/formatName';
 import './Performance.css';
 
 const easeOut = [0.16, 1, 0.3, 1];

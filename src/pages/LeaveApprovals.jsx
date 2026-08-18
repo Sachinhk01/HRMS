@@ -24,7 +24,7 @@ import StatusBadge from '../components/StatusBadge';
 import ExportMenu from '../components/ExportMenu';
 import usePagination, { sortRecent } from '../hooks/usePagination';
 import { getAllLeaveRequests, getTeamLeaveRequests, managerLeaveAction, exportLeaveReport } from '../services/leaveService';
-import { capitalizeName } from '../utils/FormatName';
+import { capitalizeName } from '../utils/formatName';
 import './LeaveApprovals.css';
 
 const easeOut = [0.16, 1, 0.3, 1];
