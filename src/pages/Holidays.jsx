@@ -137,7 +137,7 @@ export default function Holidays() {
 
   return (
     <div className="page-stack holidays-page page-reveal">
-      <PageHeader eyebrow="Organisation calendar" title="Holiday List" description="View company holidays and plan attendance and leave in advance." />
+      <PageHeader eyebrow="Organisation calendar" title="Holiday List" description="View Company Holidays And Plan Attendance And Leave In Advance." />
 
       {error && <div className="form-alert">{error}</div>}
       {message && <div className="success-alert">{message}</div>}
@@ -146,10 +146,10 @@ export default function Holidays() {
         <section className="panel holiday-upcoming-card">
           <CalendarDays size={28} />
           <div>
-            <span className="eyebrow">Next upcoming holiday</span>
+            <span className="eyebrow">Next Upcoming Holiday</span>
             {upcoming
               ? <><h2>{upcoming.holidayName}</h2><p>{formatDate(upcoming.holidayDate, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</p></>
-              : <><h2>{loading ? 'Loading…' : 'No upcoming holiday'}</h2><p>HR or Manager can add the holiday calendar.</p></>}
+              : <><h2>{loading ? 'Loading…' : 'No Upcoming Holiday'}</h2><p>HR or Manager Can Add The Holiday Calendar.</p></>}
           </div>
         </section>
         <section className="panel holiday-count-card"><strong>{filtered.length}</strong><span>Holidays in {year}</span></section>
@@ -157,7 +157,7 @@ export default function Holidays() {
 
       {canManage && (
         <section className="panel holiday-form-panel">
-          <div className="panel-title"><div><span className="eyebrow">{editingId ? 'Update entry' : 'New entry'}</span><h2>{editingId ? 'Edit Holiday' : 'Add Holiday'}</h2></div>{editingId && <button className="text-button" type="button" onClick={resetForm}>Cancel edit</button>}</div>
+          <div className="panel-title"><div><span className="eyebrow">{editingId ? 'Update entry' : 'New entry'}</span><h2>{editingId ? 'Edit Holiday' : 'Add Holiday'}</h2></div>{editingId && <button className="text-button" type="button" onClick={resetForm}>Cancel Edit</button>}</div>
           <form className="form-grid" onSubmit={submit}>
             <label>Holiday Name<input value={form.holidayName} onChange={(event) => setForm({ ...form, holidayName: event.target.value })} placeholder="e.g. Republic Day" required /></label>
             <label>Date<input type="date" value={form.holidayDate} onChange={(event) => setForm({ ...form, holidayDate: event.target.value })} required /></label>
@@ -194,7 +194,7 @@ export default function Holidays() {
                     <td>
                       <div className="holiday-actions">
                         <button type="button" title="Edit Holiday" onClick={() => beginEdit(item)}><Edit3 size={16} /></button>
-                        <button type="button" className="danger" title="Delete holiday" onClick={() => remove(item)}><Trash2 size={16} /></button>
+                        <button type="button" className="danger" title="Delete Holiday" onClick={() => remove(item)}><Trash2 size={16} /></button>
                       </div>
                     </td>
                   )}

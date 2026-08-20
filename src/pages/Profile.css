@@ -240,7 +240,12 @@
 @media (prefers-reduced-motion: reduce) { .page-reveal > * { animation: none; } }
 
 /* Profile banner layout and in-banner edit action */
-.profile-card { display: grid; grid-template-columns: minmax(240px, 1.25fr) minmax(180px, .8fr) minmax(170px, .65fr); align-items: center; gap: clamp(16px, 2vw, 30px); padding: 24px 34px 24px 24px; min-height: 145px; overflow: hidden; position: relative; background: linear-gradient(125deg, rgba(255,255,255,.75), rgba(232,244,255,.9)), linear-gradient(135deg, #edf6ff, #e2efff); border-color: #d8e8f8; }
+/* NOTE: display/grid-template-columns/gap intentionally removed here —
+   they were overriding the correct .profile-card flex rule near the top
+   of this file (the one actually matching this page's markup: avatar +
+   name/role, two items), which caused a huge gap between the avatar and
+   the name/role text. */
+.profile-card { align-items: center; padding: 24px 34px 24px 24px; min-height: 145px; overflow: hidden; position: relative; background: linear-gradient(125deg, rgba(255,255,255,.75), rgba(232,244,255,.9)), linear-gradient(135deg, #edf6ff, #e2efff); border-color: #d8e8f8; }
 .profile-card::after { content: ''; position: absolute; inset: 0; background: linear-gradient(135deg, transparent 34%, rgba(255,255,255,.45) 34%, rgba(255,255,255,.45) 48%, transparent 48%, transparent 68%, rgba(255,255,255,.38) 68%, rgba(255,255,255,.38) 82%, transparent 82%); pointer-events: none; }
 .profile-card > * { position: relative; z-index: 1; }
 .profile-identity { display: flex; align-items: center; gap: 16px; min-width: 0; }

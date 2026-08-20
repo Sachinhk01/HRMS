@@ -8,10 +8,13 @@ import {
   BarChart3,
   PieChart,
   Search,
-  Download,
   FolderOpen,
 } from 'lucide-react';
+import * as XLSX from 'xlsx';
+import { jsPDF } from 'jspdf';
+import autoTable from 'jspdf-autotable';
 import PageHeader from '../components/PageHeader';
+import ExportMenu from '../components/ExportMenu';
 import { getEmployees } from '../services/employeeService';
 import { getAttendanceHistory } from '../services/attendanceService';
 import { getAllLeaveRequests } from '../services/leaveService';
@@ -29,9 +32,14 @@ const LEAVE_STATUS_META = {
   CANCELLED: { label: 'Cancelled', color: '#94a3b8' },
 };
 
-function downloadCsv(rows) {
-  const header = ['Employee Code', 'Name', 'Department', 'Designation', 'Email', 'Status'];
-  const lines = rows.map((x) => [
+// There's no backend report endpoint for the employee directory (only
+// /reports/attendance and /reports/leave exist), so PDF/Excel are built
+// client-side from the same rows already loaded into the table — no new
+// or changed API calls involved.
+const REPORT_HEADER = ['Employee Code', 'Name', 'Department', 'Designation', 'Email', 'Status'];
+
+function rowsToAoA(rows) {
+  return rows.map((x) => [
     x.employeeCode || '',
     `${x.firstName || ''} ${x.lastName || ''}`.trim(),
     x.departmentName || '',
@@ -39,16 +47,28 @@ function downloadCsv(rows) {
     x.email || '',
     x.active ? 'Active' : 'Inactive',
   ]);
-  const csv = [header, ...lines]
-    .map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(','))
-    .join('\n');
-  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = `employee-report-${new Date().toISOString().slice(0, 10)}.csv`;
-  link.click();
-  URL.revokeObjectURL(url);
+}
+
+function downloadExcel(rows) {
+  const worksheet = XLSX.utils.aoa_to_sheet([REPORT_HEADER, ...rowsToAoA(rows)]);
+  worksheet['!cols'] = [{ wch: 14 }, { wch: 22 }, { wch: 16 }, { wch: 20 }, { wch: 28 }, { wch: 10 }];
+  const workbook = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(workbook, worksheet, 'Employee Directory');
+  XLSX.writeFile(workbook, `employee-directory-${new Date().toISOString().slice(0, 10)}.xlsx`);
+}
+
+function downloadPdf(rows) {
+  const doc = new jsPDF({ orientation: 'landscape' });
+  doc.setFontSize(14);
+  doc.text('Employee Directory', 14, 16);
+  autoTable(doc, {
+    head: [REPORT_HEADER],
+    body: rowsToAoA(rows),
+    startY: 22,
+    styles: { fontSize: 9 },
+    headStyles: { fillColor: [37, 99, 235] },
+  });
+  doc.save(`employee-directory-${new Date().toISOString().slice(0, 10)}.pdf`);
 }
 
 export default function Reports() {
@@ -189,11 +209,11 @@ export default function Reports() {
   }, [leaveStatusCounts, totalLeaves]);
 
   const kpis = [
-    { icon: Users, tone: 'blue', label: 'Employees', value: employeesLoading ? '…' : employees.length, desc: 'Total accounts' },
-    { icon: UserCheck, tone: 'green', label: 'Active employees', value: employeesLoading ? '…' : activeCount, desc: employeesLoading ? '' : `${activePct}% of total` },
-    { icon: Clock3, tone: 'teal', label: 'Attendance', value: loadingAttendance ? '…' : attendanceCount, desc: 'Total records' },
-    { icon: CalendarDays, tone: 'pink', label: 'Leave requests', value: loadingLeaves ? '…' : totalLeaves, desc: 'All time' },
-    { icon: Hourglass, tone: 'orange', label: 'Pending approvals', value: loadingLeaves ? '…' : pendingLeaveCount, desc: 'Awaiting review' },
+    { icon: Users, tone: 'blue', label: 'Employees', value: employeesLoading ? '…' : employees.length, desc: 'Total Accounts' },
+    { icon: UserCheck, tone: 'green', label: 'Active Employees', value: employeesLoading ? '…' : activeCount, desc: employeesLoading ? '' : `${activePct}% of Total` },
+    { icon: Clock3, tone: 'teal', label: 'Attendance', value: loadingAttendance ? '…' : attendanceCount, desc: 'Total Records' },
+    { icon: CalendarDays, tone: 'pink', label: 'Leave Requests', value: loadingLeaves ? '…' : totalLeaves, desc: 'All Time' },
+    { icon: Hourglass, tone: 'orange', label: 'Pending Approvals', value: loadingLeaves ? '…' : pendingLeaveCount, desc: 'Awaiting Review' },
   ];
 
   return (
@@ -201,7 +221,7 @@ export default function Reports() {
       <PageHeader
         eyebrow="HR Analytics"
         title="Reports"
-        description="Live summaries pulled from the backend."
+        description="Live Summaries Pulled From The Backend."
       />
 
       {attendanceError && <div className="form-alert">{attendanceError}</div>}
@@ -222,7 +242,7 @@ export default function Reports() {
 
       <div className="reports-charts-grid">
         <div className="panel chart-card wide">
-          <div className="chart-head"><BarChart3 size={17} /><h3>Employees by department</h3></div>
+          <div className="chart-head"><BarChart3 size={17} /><h3>Employees by Department</h3></div>
           {departmentCounts.length ? (
             <div className="chart-placeholder bars">
               {departmentCounts.map(([name, count]) => (
@@ -235,13 +255,13 @@ export default function Reports() {
           ) : (
             <div className="empty-state">
               <FolderOpen size={28} />
-              <p>No department data yet</p>
+              <p>No Department Data Yet</p>
             </div>
           )}
         </div>
 
         <div className="panel chart-card">
-          <div className="chart-head"><PieChart size={17} /><h3>Leave requests by status</h3></div>
+          <div className="chart-head"><PieChart size={17} /><h3>Leave Requests by Status</h3></div>
           {totalLeaves ? (
             <div className="donut-wrap">
               <div className="donut" style={{ borderRadius: '50%', background: donutGradient }} />
@@ -259,7 +279,7 @@ export default function Reports() {
           ) : (
             <div className="empty-state">
               <CalendarDays size={28} />
-              <p>No leave requests yet</p>
+              <p>No Leave Requests Yet</p>
             </div>
           )}
         </div>
@@ -269,7 +289,7 @@ export default function Reports() {
         <div className="panel-title">
           <div>
             <span className="eyebrow">Directory</span>
-            <h2>Employee directory</h2>
+            <h2>Employee Directory</h2>
           </div>
           <div className="panel-title-icon"><Users size={19} /></div>
         </div>
@@ -295,14 +315,11 @@ export default function Reports() {
             ))}
           </select>
           <div className="reports-export">
-            <button
-              type="button"
-              className="btn btn-soft btn-export"
-              onClick={() => downloadCsv(filteredEmployees)}
+            <ExportMenu
+              label="Export"
               disabled={!filteredEmployees.length}
-            >
-              <Download size={15} /> Export CSV
-            </button>
+              onExport={(format) => (format === 'excel' ? downloadExcel(filteredEmployees) : downloadPdf(filteredEmployees))}
+            />
           </div>
         </div>
 
@@ -345,7 +362,7 @@ export default function Reports() {
             <div className="empty-state">
               <Users size={28} />
               <p>{employees.length ? 'No employees match your filters.' : 'No employee records.'}</p>
-              <small>Try clearing the search or department filter.</small>
+              <small>Try Clearing The Search or Department Filter.</small>
             </div>
           )}
         </div>

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import {
-  Megaphone, AlertTriangle, AlertCircle, Info,
+  Megaphone,
 } from 'lucide-react';
 import PageHeader from '../components/PageHeader';
 import Pagination from '../components/Pagination';
@@ -16,12 +16,6 @@ const fadeUp = {
 };
 const stagger = { hidden: {}, show: { transition: { staggerChildren: 0.07, delayChildren: 0.04 } } };
 
-// Keys match backend NotificationPriority enum exactly: LOW | MEDIUM | HIGH
-const PRIORITY_META = {
-  LOW:    { icon: Info,          color: '#2563eb', bg: '#dbeafe', label: 'Info' },
-  MEDIUM: { icon: AlertTriangle, color: '#d97706', bg: '#fef3c7', label: 'Important' },
-  HIGH:   { icon: AlertCircle,   color: '#dc2626', bg: '#fee2e2', label: 'Urgent' },
-};
 
 export default function Announcements() {
   const [notifications, setNotifications] = useState([]);
@@ -55,8 +49,6 @@ export default function Announcements() {
           // title and message come directly from backend NotificationResponse
           title: parsed.title || n.title || '',
           message: parsed.message || n.message || '',
-          // backend NotificationPriority: LOW | MEDIUM | HIGH
-          priority: n.priority || 'LOW',
           createdAt: n.createdAt,
           attachmentUrls: n.attachmentUrls || [],
           isRead: Boolean(n.isRead),
@@ -107,16 +99,8 @@ export default function Announcements() {
 
       {!loading && !error && (
         <motion.div className="ann-feed" initial="hidden" animate="show" variants={stagger}>
-          {pageItems.map((item) => {
-            const meta = PRIORITY_META[item.priority] || PRIORITY_META.LOW;
-            const PIcon = meta.icon;
-            return (
+          {pageItems.map((item) => (
               <motion.article className="panel ann-card" key={item.id} variants={fadeUp} whileHover={{ y: -4 }}>
-                <div className="ann-card-head">
-                  <span className="ann-priority-badge" style={{ background: meta.bg, color: meta.color }}>
-                    <PIcon size={13} /> {meta.label}
-                  </span>
-                </div>
                 <h3>{item.title}</h3>
                 <p>{item.message}</p>
                 {item.attachmentUrls?.length > 0 && (
@@ -132,8 +116,7 @@ export default function Announcements() {
                   <small>{item.createdAt ? new Date(item.createdAt).toLocaleString() : ''}</small>
                 </div>
               </motion.article>
-            );
-          })}
+          ))}
           {!announcements.length && (
             <section className="panel empty-state">
               <Megaphone size={36} />

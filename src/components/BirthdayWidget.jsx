@@ -136,7 +136,7 @@ export default function BirthdayWidget({ employees = [], onViewAll }) {
           </div>
           {onViewAll && (
             <button className="cw-view-all" onClick={onViewAll}>
-              View all <ChevronRight size={14} />
+              View All <ChevronRight size={14} />
             </button>
           )}
         </div>

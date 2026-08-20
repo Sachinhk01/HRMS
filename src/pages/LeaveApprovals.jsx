@@ -320,8 +320,8 @@ export default function LeaveApprovals() {
           <motion.div className="modal-overlay" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setRejectTarget(null)}>
             <motion.div className="modal-card" initial={{ opacity: 0, scale: 0.94, y: 12 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.94, y: 12 }} transition={{ duration: 0.25, ease: easeOut }} onClick={(e) => e.stopPropagation()}>
               <div className="modal-icon-wrap danger"><XCircle size={26} /></div>
-              <h3>Reject this request?</h3>
-              <p>Provide a reason for rejecting <strong>{capitalizeName(rejectTarget.employeeName)}</strong>'s <strong>{rejectTarget.leaveType}</strong> leave request.</p>
+              <h3>Reject This Request?</h3>
+              <p>Provide a Reason For Rejecting <strong>{capitalizeName(rejectTarget.employeeName)}</strong>'s <strong>{rejectTarget.leaveType}</strong> Leave Request.</p>
               <label className="reject-reason-field">
                 <textarea rows="4" maxLength={500} value={rejectReason} onChange={(e) => setRejectReason(e.target.value)} placeholder="Reason for rejection..." />
                 <span className="lf-counter">{rejectReason.length}/500</span>
@@ -348,7 +348,7 @@ export default function LeaveApprovals() {
               transition={{ type: 'spring', stiffness: 360, damping: 38 }}
             >
               <div className="drawer-head">
-                <span className="eyebrow">Request details</span>
+                <span className="eyebrow">Request Details</span>
                 <h2>Leave Request</h2>
                 <button className="drawer-close" onClick={() => setDrawerItem(null)} aria-label="Close"><X size={20} /></button>
               </div>
@@ -364,23 +364,23 @@ export default function LeaveApprovals() {
 
                 <div className="drawer-grid">
                   <div className="dg-item"><UserRound size={15} /><span>Employee</span><strong>{capitalizeName(drawerItem.employeeName)}</strong></div>
-                  <div className="dg-item"><FileText size={15} /><span>Leave type</span><strong>{drawerItem.leaveType}</strong></div>
-                  <div className="dg-item"><CalendarRange size={15} /><span>Date range</span><strong>{drawerItem.startDate} – {drawerItem.endDate}</strong></div>
-                  <div className="dg-item"><CalendarDays size={15} /><span>Total days</span><strong>{drawerItem.totalDays}</strong></div>
+                  <div className="dg-item"><FileText size={15} /><span>Leave Type</span><strong>{drawerItem.leaveType}</strong></div>
+                  <div className="dg-item"><CalendarRange size={15} /><span>Date Range</span><strong>{drawerItem.startDate} – {drawerItem.endDate}</strong></div>
+                  <div className="dg-item"><CalendarDays size={15} /><span>Total Days</span><strong>{drawerItem.totalDays}</strong></div>
                   <div className="dg-item"><Building2 size={15} /><span>Department</span><strong>{drawerItem.department || '—'}</strong></div>
                   <div className="dg-item"><ClipboardList size={15} /><span>Status</span><strong><StatusBadge>{drawerItem.status}</StatusBadge></strong></div>
                 </div>
 
                 <div className="drawer-section">
                   <span className="ds-label"><FileText size={14} /> Reason</span>
-                  <p>{drawerItem.reason || 'No reason provided.'}</p>
+                  <p>{drawerItem.reason || 'No Reason Provided.'}</p>
                 </div>
 
                 <div className="drawer-section">
                   <span className="ds-label"><History size={14} /> Timeline</span>
                   <div className="timeline">
-                    <div className="tl-item"><span className="tl-dot" /><div><strong>Request submitted</strong><small>{drawerItem.startDate}</small></div></div>
-                    <div className="tl-item"><span className="tl-dot pending" /><div><strong>Awaiting manager decision</strong><small>{drawerItem.status}</small></div></div>
+                    <div className="tl-item"><span className="tl-dot" /><div><strong>Request Submitted</strong><small>{drawerItem.startDate}</small></div></div>
+                    <div className="tl-item"><span className="tl-dot pending" /><div><strong>Awaiting Manager Decision</strong><small>{drawerItem.status}</small></div></div>
                   </div>
                 </div>
               </div>

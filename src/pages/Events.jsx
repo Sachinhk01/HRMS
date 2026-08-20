@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import {
-  CalendarDays, MapPin, Heart, Share2, Pin,
+  CalendarDays, Heart, Share2,
 } from 'lucide-react';
 import PageHeader from '../components/PageHeader';
 import Pagination from '../components/Pagination';
 import usePagination, { sortRecent } from '../hooks/usePagination';
-import { getNotifications, parseNotificationContent, splitCelebrationFeedAndEvents } from '../services/notificationService';
+import { getNotifications, buildUpcomingEvents } from '../services/notificationService';
+import { getHolidays } from '../services/holidayService';
 import './Events.css';
 
 const easeOut = [0.16, 1, 0.3, 1];
@@ -18,32 +19,43 @@ const stagger = { hidden: {}, show: { transition: { staggerChildren: 0.07, delay
 
 export default function Events() {
   const [notifications, setNotifications] = useState([]);
+  const [holidays, setHolidays] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
+  // Same two sources the Celebration Wall's "Upcoming events" widget
+  // pulls from: celebration-type notifications and company holidays.
+  // One source failing (e.g. a role-gated holidays endpoint) doesn't
+  // blank out the other.
   const loadData = async () => {
     setLoading(true);
     setError('');
-    try {
-      const res = await getNotifications({ page: 0, size: 100 });
-      setNotifications(res?.content || []);
-    } catch (err) {
-      setError(err.message || 'Failed to load events.');
-    } finally {
-      setLoading(false);
+    const [notifResult, holidayResult] = await Promise.allSettled([
+      getNotifications({ page: 0, size: 100 }),
+      getHolidays({ page: 0, size: 100, sortBy: 'holidayDate', sortDirection: 'asc' }),
+    ]);
+
+    if (notifResult.status === 'fulfilled') {
+      setNotifications(notifResult.value?.content || []);
+    } else {
+      setNotifications([]);
+      setError(notifResult.reason?.message || 'Failed to load events.');
     }
+    setHolidays(holidayResult.status === 'fulfilled' ? (holidayResult.value?.content || []) : []);
+    setLoading(false);
   };
 
   useEffect(() => {
     loadData();
   }, []);
 
-  const eventsList = useMemo(() => {
-    const { upcomingEvents, celebrationFeed } = splitCelebrationFeedAndEvents(notifications);
-    // Combine upcoming events or all events with explicit event date
-    const combined = [...upcomingEvents, ...celebrationFeed.filter((n) => n.eventDate)];
-    return sortRecent(combined.length ? combined : notifications.filter((n) => n.notificationType !== 'ANNOUNCEMENT'));
-  }, [notifications]);
+  // Exactly what the Celebration Wall's "Upcoming events" sidebar shows —
+  // birthdays, work anniversaries, general celebration posts, and
+  // holidays whose date is still ahead of today.
+  const eventsList = useMemo(
+    () => sortRecent(buildUpcomingEvents(notifications, holidays)),
+    [notifications, holidays]
+  );
 
   const { page, pageItems, pageSize, setPage } = usePagination(eventsList, 6);
 
@@ -95,8 +107,7 @@ export default function Events() {
       {!loading && !error && (
         <motion.div className="ev-grid" initial="hidden" animate="show" variants={stagger}>
           {pageItems.map((item) => {
-            const parsed = parseNotificationContent(item);
-            const dateVal = parsed.date || item.eventDate || item.createdAt;
+            const dateVal = item.eventDate || item.createdAt;
             const dateObj = dateVal ? new Date(dateVal) : null;
             return (
               <motion.article className="panel ev-card" key={item.id} variants={fadeUp} whileHover={{ y: -6 }}>
@@ -105,14 +116,10 @@ export default function Events() {
                     <strong>{dateObj ? dateObj.getDate() : '—'}</strong>
                     <small>{dateObj ? dateObj.toLocaleString([], { month: 'short' }) : ''}</small>
                   </div>
-                  {item.pinned && <span className="ev-pinned"><Pin size={12} /> Pinned</span>}
                 </div>
                 <div className="ev-card-body">
-                  <h3>{parsed.title}</h3>
-                  <p>{parsed.message}</p>
-                  <div className="ev-meta">
-                    {item.location && <span><MapPin size={13} /> {item.location}</span>}
-                  </div>
+                  <h3>{item.title}</h3>
+                  <p>{item.message}</p>
                   <div className="ev-card-actions">
                     <button className="btn btn-small btn-gradient"><Heart size={14} /> Interested</button>
                     <button className="icon-btn" title="Share"><Share2 size={15} /></button>

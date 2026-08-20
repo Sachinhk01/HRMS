@@ -130,7 +130,11 @@ useEffect(() => {
       setBirthdayLoading(true);
       try {
         const [empResult, notifResult] = await Promise.allSettled([
-          getUpcomingBirthdays(0),
+          // BirthdayWidget itself splits results into "Today" vs the next
+          // 30 days, so it needs a wide enough window from the API to have
+          // anything to split — days:0 was asking for a zero-day lookahead
+          // and always came back empty.
+          getUpcomingBirthdays(30),
           getNotifications({ page: 0, size: 50 }),
         ]);
 
@@ -331,9 +335,9 @@ useEffect(() => {
   if (role === 'EMPLOYEE') {
     cards = [
       [Clock3, 'Attendance Login Time', loginTimeValue, 'Today', 'green', '/attendance'],
-      [CalendarDays, 'Leaves left', leaveLoading ? '...' : leaveSummary.left, `${leaveLoading ? '...' : leaveSummary.taken} days taken`, 'pink', '/leave'],
-      [PartyPopper, 'Celebrations', 'View', 'Company wall', 'orange', '/celebrations'],
-      [UserRound, 'Profile', 'Update', 'Personal details', 'teal', '/profile'],
+      [CalendarDays, 'Leaves Left', leaveLoading ? '...' : leaveSummary.left, `${leaveLoading ? '...' : leaveSummary.taken} Days Taken`, 'pink', '/leave'],
+      [PartyPopper, 'Celebrations', 'View', 'Company Wall', 'orange', '/celebrations'],
+      [UserRound, 'Profile', 'Update', 'Personal Details', 'teal', '/profile'],
     ];
     links = [
       { label: "Attendance", path: "/attendance", icon: Clock3 },
@@ -343,8 +347,8 @@ useEffect(() => {
     ];
 } else if (role === 'HR_ADMIN') {
     cards = [
-      [Users, 'Employees', employees.length, 'Total users', 'green', '/employees'],
-      [Clock3, 'My Login Time', loginTimeValue, 'Check in / out', 'teal', '/attendance'],
+      [Users, 'Employees', employees.length, 'Total Users', 'green', '/employees'],
+      [Clock3, 'My Login Time', loginTimeValue, 'Check In / Out', 'teal', '/attendance'],
       [Megaphone, 'Announcements', 'View', 'Published', 'orange', '/announcements'],
       [CalendarRange, 'Events', 'View', 'Created', 'pink', '/events'],
     ];
@@ -383,7 +387,7 @@ useEffect(() => {
       });
       setMagazine(next);
       setMagazineFile({ url: next.documentUrl || '', name: next.documentName || '', size: next.documentSize || 0 });
-      setMessage('Monthly magazine updated.');
+      setMessage('Monthly Magazine Updated.');
     } catch (error) { setMessage(error.message); }
   }
 
@@ -399,7 +403,7 @@ useEffect(() => {
         department: selected?.departmentName || '',
       });
       setEmployeeOfMonth(next);
-      setMessage('Employee of the Month updated.');
+      setMessage('Employee of The Month Updated.');
     } catch (error) { setMessage(error.message); }
   }
 
@@ -438,7 +442,7 @@ useEffect(() => {
         <div className="feature-icon"><CalendarDays size={24} /></div>
         <div className="dashboard-holiday-content">
           <span className="eyebrow">Upcoming Holidays</span>
-          <h2>{upcomingHoliday ? upcomingHoliday.holidayName : holidaysLoading ? 'Loading upcoming holidays…' : 'No upcoming holiday'}</h2>
+          <h2>{upcomingHoliday ? upcomingHoliday.holidayName : holidaysLoading ? 'Loading Upcoming Holidays…' : 'No Upcoming Holiday'}</h2>
           <p>
             {upcomingHoliday
               ? formatHolidayDate(upcomingHoliday.holidayDate)
@@ -483,7 +487,7 @@ useEffect(() => {
                 <div className="editor-card-icon editor-card-icon--blue"><BookOpen size={18} /></div>
                 <div>
                   <h3>Monthly Magazine</h3>
-                  <p>PDF opens or downloads for every employee on their dashboard</p>
+                  <p>PDF Opens or Downloads For Every Employee on Their Dashboard</p>
                 </div>
               </div>
 

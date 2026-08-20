@@ -11,6 +11,7 @@ import usePagination from '../hooks/usePagination';
 import { useAuth } from '../context/AuthContext';
 import {
   getEmployees, createEmployee, getDepartments, getDesignations, getJobTitles, getEmployeeDropdown,
+  getProfilePhotoUrl,
 } from '../services/employeeService';
 import './Employees.css';
 import { capitalizeName } from '../utils/formatName';
@@ -21,6 +22,29 @@ const DEPT_COLORS = {
 };
 function deptColor(dept) { return DEPT_COLORS[dept] || '#2563eb'; }
 function initials(name = '') { return name.split(' ').map((p) => p[0]).join('').slice(0, 2).toUpperCase(); }
+
+// Shows the employee's real profile photo when one has been uploaded
+// (photoUrl is looked up by the parent from a fetched object-URL map),
+// falling back to the colored initials avatar otherwise.
+function EmpAvatar({ emp, size, photoUrl }) {
+  const cls = size === 'lg' ? 'emp-avatar lg' : 'emp-avatar';
+  if (photoUrl) {
+    return (
+      <img
+        src={photoUrl}
+        alt={`${emp.firstName || ''} ${emp.lastName || ''}`.trim()}
+        className={cls}
+        style={{ objectFit: 'cover', display: 'block' }}
+      />
+    );
+  }
+  const color = deptColor(emp.departmentName);
+  return (
+    <span className={cls} style={{ background: `linear-gradient(135deg, ${color}, ${color}cc)` }}>
+      {initials(`${emp.firstName} ${emp.lastName}`)}
+    </span>
+  );
+}
 
 const easeOut = [0.16, 1, 0.3, 1];
 const fadeUp = { hidden: { opacity: 0, y: 18 }, show: { opacity: 1, y: 0, transition: { duration: 0.5, ease: easeOut } } };
@@ -119,6 +143,42 @@ export default function Employees() {
   }, [rows, searchQuery, deptFilter, desigFilter, statusFilter]);
 
   const { page, setPage, pageItems, pageSize } = usePagination(filtered, view === 'grid' ? 9 : 8);
+
+  // ---------- Real profile photos ----------
+  // Employee cards only ever showed initials because no photo was ever
+  // fetched. Only the employees currently on screen (this page, plus the
+  // one open in the preview modal) are fetched, and each object-URL is
+  // cached by employee id so paging back and forth doesn't re-fetch.
+  const [photoUrls, setPhotoUrls] = useState({});
+
+  useEffect(() => {
+    const toFetch = [...pageItems, ...(drawerEmp ? [drawerEmp] : [])]
+      .filter((emp) => emp?.hasProfilePhoto && emp?.id != null && !(emp.id in photoUrls));
+
+    if (!toFetch.length) return;
+    let cancelled = false;
+
+    toFetch.forEach((emp) => {
+      getProfilePhotoUrl(emp.id)
+        .then((url) => {
+          if (cancelled) return;
+          setPhotoUrls((prev) => (emp.id in prev ? prev : { ...prev, [emp.id]: url }));
+        })
+        .catch(() => {
+          if (cancelled) return;
+          setPhotoUrls((prev) => (emp.id in prev ? prev : { ...prev, [emp.id]: '' }));
+        });
+    });
+
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pageItems, drawerEmp]);
+
+  // Revoke every cached object URL when the page unmounts.
+  useEffect(() => () => {
+    Object.values(photoUrls).forEach((url) => { if (url) URL.revokeObjectURL(url); });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // ---------- Add Employee: load departments + managers when the modal opens ----------
   useEffect(() => {
@@ -296,7 +356,7 @@ export default function Employees() {
         <div className="emp-hero-text">
           <span className="eyebrow">Organization</span>
           <h1>Employees</h1>
-          <p>Browse your organization and view employee information.</p>
+          <p>Browse Your Organization And View Employee Information.</p>
           {canCreate && (
             <button className="btn btn-primary emp-add-btn" onClick={openAddModal}>
               <UserPlus size={16} /> Add Employee
@@ -354,15 +414,15 @@ export default function Employees() {
           <input type="text" placeholder="Search name, email or employee code..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
         </label>
         <select className="compact-select" value={deptFilter} onChange={(e) => setDeptFilter(e.target.value)}>
-          <option value="ALL">All departments</option>
+          <option value="ALL">All Departments</option>
           {departmentNames.map((d) => <option key={d} value={d}>{d}</option>)}
         </select>
         <select className="compact-select" value={desigFilter} onChange={(e) => setDesigFilter(e.target.value)}>
-          <option value="ALL">All designations</option>
+          <option value="ALL">All Designations</option>
           {designationNames.map((d) => <option key={d} value={d}>{d}</option>)}
         </select>
         <select className="compact-select" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
-          <option value="ALL">All status</option>
+          <option value="ALL">All Status</option>
           <option value="ACTIVE">Active</option>
           <option value="INACTIVE">Inactive</option>
         </select>
@@ -386,14 +446,14 @@ export default function Employees() {
             {!loading && pageItems.map((emp) => (
               <motion.article className="panel emp-card" key={emp.id} variants={fadeUp} whileHover={{ y: -6 }}>
                 <div className="emp-card-top">
-                  <span className="emp-avatar lg" style={{ background: `linear-gradient(135deg, ${deptColor(emp.departmentName)}, ${deptColor(emp.departmentName)}cc)` }}>{initials(`${emp.firstName} ${emp.lastName}`)}</span>
+                  <EmpAvatar emp={emp} size="lg" photoUrl={photoUrls[emp.id]} />
                   <span className="dept-badge" style={{ background: `${deptColor(emp.departmentName)}1a`, color: deptColor(emp.departmentName) }}>{emp.departmentName || '—'}</span>
                 </div>
                 <strong className="emp-card-name">{capitalizeName(emp.firstName)} {capitalizeName(emp.lastName)}</strong>
                 <span className="emp-card-role">{emp.designationName || '—'}</span>
                 <div className="emp-card-meta">
                   <span><Mail size={13} /> {emp.email || '—'}</span>
-                  <span><Phone size={13} /> {emp.phone || '—'}</span>
+                  <span><Phone size={13} /> {emp.phoneNumber || '—'}</span>
                 </div>
                 <div className="emp-card-actions">
                   <button className="btn btn-small btn-soft" onClick={() => setDrawerEmp(emp)}><Eye size={14} /> View</button>
@@ -419,12 +479,12 @@ export default function Employees() {
                   ))}
                   {!loading && pageItems.map((emp) => (
                     <motion.tr key={emp.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, ease: easeOut }}>
-                      <td><span className="emp-cell"><span className="emp-avatar" style={{ background: `linear-gradient(135deg, ${deptColor(emp.departmentName)}, ${deptColor(emp.departmentName)}cc)` }}>{initials(`${emp.firstName} ${emp.lastName}`)}</span><span className="emp-name">{capitalizeName(emp.firstName)} {capitalizeName(emp.lastName)}</span></span></td>
+                      <td><span className="emp-cell"><EmpAvatar emp={emp} photoUrl={photoUrls[emp.id]} /><span className="emp-name">{capitalizeName(emp.firstName)} {capitalizeName(emp.lastName)}</span></span></td>
                       <td>{emp.employeeCode || '—'}</td>
                       <td>{emp.departmentName ? <span className="dept-badge" style={{ background: `${deptColor(emp.departmentName)}1a`, color: deptColor(emp.departmentName) }}>{emp.departmentName}</span> : '—'}</td>
                       <td>{emp.designationName || '—'}</td>
                       <td>{emp.email || '—'}</td>
-                      <td>{emp.phone || '—'}</td>
+                      <td>{emp.phoneNumber || '—'}</td>
                       <td><span className={`status-pill ${emp.active ? 'approved' : 'cancelled'}`}>{emp.active ? 'Active' : 'Inactive'}</span></td>
                       <td><button className="icon-btn" title="View profile" onClick={() => setDrawerEmp(emp)}><Eye size={15} /></button></td>
                     </motion.tr>
@@ -453,7 +513,7 @@ export default function Employees() {
             >
               <div className="emp-modal-head">
                 <div>
-                  <span className="eyebrow">Employee preview</span>
+                  <span className="eyebrow">Employee Preview</span>
                   <h2>{capitalizeName(drawerEmp.firstName)} {capitalizeName(drawerEmp.lastName)}</h2>
                 </div>
                 <button className="emp-modal-close" onClick={() => setDrawerEmp(null)}><X size={18} /></button>
@@ -461,7 +521,7 @@ export default function Employees() {
 
               <div className="emp-modal-body">
                 <div className="emp-modal-person">
-                  <span className="emp-avatar lg" style={{ background: `linear-gradient(135deg, ${deptColor(drawerEmp.departmentName)}, ${deptColor(drawerEmp.departmentName)}cc)` }}>{initials(`${drawerEmp.firstName} ${drawerEmp.lastName}`)}</span>
+                  <EmpAvatar emp={drawerEmp} size="lg" photoUrl={photoUrls[drawerEmp.id]} />
                   <div>
                     <strong>{capitalizeName(drawerEmp.firstName)} {capitalizeName(drawerEmp.lastName)}</strong>
                     <small>{drawerEmp.designationName || '—'}</small>
@@ -469,11 +529,11 @@ export default function Employees() {
                 </div>
 
                 <div className="emp-info-grid emp-info-grid-3">
-                  <div className="emp-info-item"><IdCard size={14} /><span>Employee code</span><strong>{drawerEmp.employeeCode || '—'}</strong></div>
+                  <div className="emp-info-item"><IdCard size={14} /><span>Employee Code</span><strong>{drawerEmp.employeeCode || '—'}</strong></div>
                   <div className="emp-info-item"><Building2 size={14} /><span>Department</span><strong>{drawerEmp.departmentName || '—'}</strong></div>
                   <div className="emp-info-item"><Briefcase size={14} /><span>Designation</span><strong>{drawerEmp.designationName || '—'}</strong></div>
                   <div className="emp-info-item"><Mail size={14} /><span>Email</span><strong className="truncate">{drawerEmp.email || '—'}</strong></div>
-                  <div className="emp-info-item"><Phone size={14} /><span>Phone</span><strong>{drawerEmp.phone || '—'}</strong></div>
+                  <div className="emp-info-item"><Phone size={14} /><span>Phone</span><strong>{drawerEmp.phoneNumber || '—'}</strong></div>
                   <div className="emp-info-item"><CalendarDays size={14} /><span>Status</span><strong>{drawerEmp.active ? 'Active' : 'Inactive'}</strong></div>
                 </div>
               </div>
@@ -500,7 +560,7 @@ export default function Employees() {
             >
               <div className="emp-modal-head">
                 <div>
-                  <span className="eyebrow">Step {addStep} of 2 · {addStep === 1 ? 'Account details' : 'Employee profile'}</span>
+                  <span className="eyebrow">Step {addStep} of 2 · {addStep === 1 ? 'Account Details' : 'Employee Profile'}</span>
                   <h2>Add Employee</h2>
                 </div>
                 <button className="emp-modal-close" onClick={closeAddModal}><X size={18} /></button>
@@ -523,7 +583,7 @@ export default function Employees() {
                         <input type="email" value={form.email} onChange={updateField('email')} placeholder="name@company.com" required />
                       </label>
                       <label className="form-field">
-                        <span>Temporary password</span>
+                        <span>Temporary Password</span>
                         <input type="password" value={form.password} onChange={updateField('password')} placeholder="Min. 6 characters" required />
                       </label>
                       <label className="form-field">
@@ -538,15 +598,15 @@ export default function Employees() {
                   {addStep === 2 && (
                     <div className="emp-form-grid">
                       <label className="form-field">
-                        <span>First name</span>
+                        <span>First Name</span>
                         <input type="text" value={form.firstName} onChange={updateField('firstName')} required />
                       </label>
                       <label className="form-field">
-                        <span>Last name</span>
+                        <span>Last Name</span>
                         <input type="text" value={form.lastName} onChange={updateField('lastName')} />
                       </label>
                       <label className="form-field">
-                        <span>Phone number</span>
+                        <span>Phone Number</span>
                         <input type="tel" value={form.phoneNumber} onChange={updateField('phoneNumber')} placeholder="10-digit mobile" required />
                       </label>
                       <label className="form-field">
@@ -557,15 +617,15 @@ export default function Employees() {
                         </select>
                       </label>
                       <label className="form-field">
-                        <span>Date of birth</span>
+                        <span>Date of Birth</span>
                         <input type="date" value={form.dateOfBirth} onChange={updateField('dateOfBirth')} required />
                       </label>
                       <label className="form-field">
-                        <span>Date of joining</span>
+                        <span>Date of Joining</span>
                         <input type="date" value={form.dateOfJoining} onChange={updateField('dateOfJoining')} required />
                       </label>
                       <label className="form-field">
-                        <span>Employment type</span>
+                        <span>Employment Type</span>
                         <select value={form.employmentType} onChange={updateField('employmentType')} required>
                           <option value="">Select</option>
                           {EMPLOYMENT_TYPE_OPTIONS.map((t) => <option key={t} value={t}>{t.replace('_', ' ')}</option>)}
@@ -598,7 +658,7 @@ export default function Employees() {
                         </select>
                       </label>
                       <label className="form-field">
-                        <span>Job title {titleLoading && <small>(loading…)</small>}</span>
+                        <span>Job Title {titleLoading && <small>(loading…)</small>}</span>
                         <select
                           value={form.jobTitleId}
                           onChange={updateField('jobTitleId')}
@@ -612,9 +672,9 @@ export default function Employees() {
                         </select>
                       </label>
                       <label className="form-field">
-                        <span>Reporting manager</span>
+                        <span>Reporting Manager</span>
                         <select value={form.reportingManagerId} onChange={updateField('reportingManagerId')}>
-                          {managerOptions.length === 0 && <option value="">No manager available</option>}
+                          <option value="">None</option>
                           {managerOptions.map((m) => (
                             <option key={m.id} value={m.id}>Anagha Pothi ({m.employeeCode})</option>
                           ))}

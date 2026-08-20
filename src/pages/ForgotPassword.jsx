@@ -47,7 +47,7 @@ export function ForgotPassword() {
           <motion.div className="hrms-login__card" variants={rise} initial="hidden" animate="show">
             <Link to="/login" className="fp-back-link">
               <ArrowLeft size={15} />
-              Back to login
+              Back to Login
             </Link>
 
             <div className="hrms-login__card-head">
@@ -88,7 +88,7 @@ export function ForgotPassword() {
                   className="hrms-btn hrms-btn--primary hrms-btn--block"
                   disabled={isSubmitting}
                 >
-                  {isSubmitting ? 'Sending...' : 'Send reset link'}
+                  {isSubmitting ? 'Sending...' : 'Send Reset Link'}
                   <ArrowRight />
                 </button>
               </form>
@@ -97,7 +97,7 @@ export function ForgotPassword() {
             {sent && (
               <div className="fp-success">
                 <ShieldCheck size={18} />
-                <span>Didn't get it? Check spam, or try again in a few minutes.</span>
+                <span>Didn't Get It? Check Spam, or Try Again in a Few Minutes.</span>
               </div>
             )}
           </motion.div>

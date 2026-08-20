@@ -39,23 +39,23 @@ export default function Candidates() {
   };
 
   return <div className="page-stack">
-    <PageHeader eyebrow="Manager Workspace" title="Candidates" description="Add candidates, capture required DOB details, and generate their temporary login credentials." />
+    <PageHeader eyebrow="Manager Workspace" title="Candidates" description="Add Candidates, Capture Required DOB Details, And Generate Their Temporary Login Credentials." />
     <section className="panel">
-      <div className="panel-title"><h2>Add candidate</h2><UserPlus size={20} /></div>
+      <div className="panel-title"><h2>Add Candidate</h2><UserPlus size={20} /></div>
       <form className="form-grid compact-form" onSubmit={submit}>
-        <label>Full name<input name="name" required /></label>
+        <label>Full Name<input name="name" required /></label>
         <label>Email<input name="email" type="email" required /></label>
-        <label>Date of birth<input name="dob" type="date" required /></label>
+        <label>Date of Birth<input name="dob" type="date" required /></label>
         <label>Phone<input name="phone" /></label>
-        <label>Applied position<input name="position" required /></label>
+        <label>Applied Position<input name="position" required /></label>
         <label>Department<input name="department" /></label>
         <label>Experience<input name="experience" placeholder="e.g. 2 years" /></label>
         <label>Status<select name="status"><option value="SCREENING">Screening</option><option value="INTERVIEW">Interview</option><option value="SELECTED">Selected</option><option value="REJECTED">Rejected</option></select></label>
-        <label>Temporary login password<div className="inline-field"><input value={password} onChange={(event) => setPassword(event.target.value)} minLength="6" required /><button type="button" className="icon-btn" title="Generate password" onClick={() => setPassword(generateTemporaryPassword())}><KeyRound size={17} /></button></div></label>
+        <label>Temporary Login Password<div className="inline-field"><input value={password} onChange={(event) => setPassword(event.target.value)} minLength="6" required /><button type="button" className="icon-btn" title="Generate password" onClick={() => setPassword(generateTemporaryPassword())}><KeyRound size={17} /></button></div></label>
         {error && <div className="form-alert full-span">{error}</div>}
-        <button className="btn btn-primary full-span">Add candidate and create login</button>
+        <button className="btn btn-primary full-span">Add Candidate And Create Login</button>
       </form>
-      {credentials && <div className="credentials-card"><div><strong>Login credentials generated</strong><span>{credentials.email}</span><code>{credentials.password}</code></div><button className="btn btn-secondary" onClick={copyCredentials}><ClipboardCopy size={16} /> Copy</button></div>}
+      {credentials && <div className="credentials-card"><div><strong>Login Credentials Generated</strong><span>{credentials.email}</span><code>{credentials.password}</code></div><button className="btn btn-secondary" onClick={copyCredentials}><ClipboardCopy size={16} /> Copy</button></div>}
     </section>
     <section className="panel">
       <div className="table-wrap"><table><thead><tr><th>Candidate</th><th>DOB</th><th>Position</th><th>Status</th><th>Login Email</th><th>Actions</th></tr></thead><tbody>

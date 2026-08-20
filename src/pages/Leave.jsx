@@ -366,8 +366,8 @@ export default function Leave() {
                 <motion.i initial={{ width: 0 }} animate={{ width: `${pct}%` }} transition={{ duration: 0.9, ease: easeOut }} style={{ background: `linear-gradient(90deg, ${theme.color}, ${theme.color}cc)` }} />
               </div>
               <div className="lb-stats">
-                <span><b>{balance.usedLeaves}</b> used</span>
-                <span><b>{balance.allocatedLeaves}</b> allocated</span>
+                <span><b>{balance.usedLeaves}</b> Used</span>
+                <span><b>{balance.allocatedLeaves}</b> Allocated</span>
               </div>
             </motion.div>
           );

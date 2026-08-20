@@ -11,10 +11,19 @@ import usePagination, { sortRecent } from '../hooks/usePagination';
 import { useAuth } from '../context/AuthContext';
 import { createCelebration, deleteAnnouncement, getNotifications, updateAnnouncement } from '../services/notificationService';
 import { getEmployeeDropdown } from '../services/employeeService';
+import { getHolidays } from '../services/holidayService';
+import { getMyLeaveRequests, getTeamLeaveRequests, getAllLeaveRequests } from '../services/leaveService';
 import './CelebrationWall.css';
 
 // Filter tabs — must contain 'ALL' plus exact backend NotificationType values for calendar events
 const types = ['ALL', 'BIRTHDAY', 'WORK_ANNIVERSARY', 'HOLIDAY', 'GENERAL', 'APPROVED'];
+
+// Only these are genuine celebration/social content. Notifications like
+// LATE_CHECK_IN, ABSENT, MISSED_CHECKOUT, LEAVE_APPLIED, LEAVE_REJECTED etc.
+// are operational alerts, not celebration posts — they're excluded from the
+// wall entirely (they still show up normally in the notification bell /
+// Announcements page, just not here).
+const CELEBRATION_TYPES = ['BIRTHDAY', 'WORK_ANNIVERSARY', 'HOLIDAY', 'GENERAL'];
 
 // Keys match backend NotificationType enum exactly
 const CATEGORY_META = {
@@ -94,6 +103,15 @@ function normalizeNotificationToPost(item) {
   };
 }
 
+// Some attendance/leave notifications come back from the backend without a
+// notificationType set at all, so normalizeNotificationToPost()'s fallback
+// tags them as GENERAL and they slip past the blockedTypes check above,
+// showing up mislabeled under the "General" celebration tab. Catch these by
+// title as a second line of defence — title text the backend uses for
+// these operational alerts, regardless of what notificationType (or lack
+// thereof) came with them.
+const OPERATIONAL_TITLE_RE = /^(late check-?in|missed check-?out|absent|leave (applied|update|approved|rejected|cancelled))$/i;
+
 const easeOut = [0.16, 1, 0.3, 1];
 const fadeUp = {
   hidden: { opacity: 0, y: 18 },
@@ -104,6 +122,8 @@ const stagger = { hidden: {}, show: { transition: { staggerChildren: 0.07, delay
 export default function CelebrationWall() {
   const { user } = useAuth();
   const [notifications, setNotifications] = useState([]);
+  const [holidays, setHolidays] = useState([]);
+  const [approvedLeaves, setApprovedLeaves] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [active, setActive] = useState('ALL');
@@ -118,13 +138,69 @@ export default function CelebrationWall() {
   const [employees, setEmployees] = useState([]);
   const [tagSearch, setTagSearch] = useState('');
   const canCreateCelebration = ['HR_ADMIN', 'SUPER_ADMIN'].includes(user?.role || user?.roles?.[0]);
+  // Edit/Delete are disabled for now: the backend has no PUT/DELETE
+  // /notifications/announcement/{id} endpoints (only POST create exists),
+  // so calling them throws a 404 (NoResourceFoundException). Flip this to
+  // `canCreateCelebration` once those endpoints are added.
+  const canEditCelebration = false;
 
   const loadData = async () => {
     setLoading(true);
     setError('');
     try {
-      const res = await getNotifications({ page: 0, size: 100 });
-      setNotifications(res?.content || []);
+      // getHolidays() is the same existing /holidays endpoint the Holidays
+      // page uses — fetched here too so the full company holiday list can
+      // show under the "Holiday" filter tab, not just holiday-type
+      // celebration posts someone created manually.
+      //
+      // For "Approved": the backend never actually creates a notification
+      // when a manager/HR approves leave (LEAVE_MANAGER_APPROVED exists as
+      // an enum value but nothing triggers it), so there's no notification
+      // data to source this from. Instead we pull directly from the
+      // existing /leave-requests endpoints and filter to status APPROVED
+      // client-side — same approach as holidays. Which endpoint is used
+      // depends on role, matching each endpoint's own access rules:
+      // HR_ADMIN/SUPER_ADMIN -> all requests, MANAGER -> team requests,
+      // everyone else -> their own requests only.
+      const role = user?.role || user?.roles?.[0];
+      const leaveFetch = ['HR_ADMIN', 'SUPER_ADMIN'].includes(role)
+        ? getAllLeaveRequests()
+        : role === 'MANAGER'
+          ? getTeamLeaveRequests()
+          : getMyLeaveRequests();
+
+      const [notifResult, holidayResult, leaveResult] = await Promise.allSettled([
+        getNotifications({ page: 0, size: 100 }),
+        getHolidays({ page: 0, size: 100, sortBy: 'holidayDate', sortDirection: 'asc' }),
+        leaveFetch,
+      ]);
+
+      if (notifResult.status === 'fulfilled') {
+        setNotifications(notifResult.value?.content || []);
+      } else {
+        setError(notifResult.reason?.message || 'Failed to load celebrations.');
+      }
+      setHolidays(holidayResult.status === 'fulfilled' ? (holidayResult.value?.content || []) : []);
+
+      const leaveData =
+        leaveResult.status === 'fulfilled'
+          ? (
+              leaveResult.value?.content ||
+              leaveResult.value?.data?.content ||
+              leaveResult.value?.data ||
+              leaveResult.value ||
+              []
+            )
+          : [];
+
+      setApprovedLeaves(
+        Array.isArray(leaveData)
+          ? leaveData.filter(
+              (leave) =>
+                String(leave.status).toUpperCase() === 'APPROVED'
+            )
+          : []
+      );
     } catch (err) {
       setError(err.message || 'Failed to load celebrations.');
     } finally {
@@ -162,6 +238,22 @@ export default function CelebrationWall() {
     const endOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
 
     (notifications || []).forEach((item) => {
+      const blockedTypes = [
+        'LATE_CHECK_IN',
+        'MISSED_CHECKOUT',
+        'ABSENT',
+        'LEAVE_APPLIED',
+        'LEAVE_REJECTED',
+        'LEAVE_MANAGER_APPROVED',
+        'LEAVE_HR_APPROVED',
+      ];
+
+      if (blockedTypes.includes(item.notificationType)) {
+        return;
+      }
+      if (OPERATIONAL_TITLE_RE.test((item.title || '').trim())) {
+        return;
+      }
       if (item.notificationType === 'ANNOUNCEMENT') {
         const celebrationMeta = parseCelebrationMeta(item.message || '');
         if (celebrationMeta) {
@@ -198,6 +290,7 @@ export default function CelebrationWall() {
       }
 
       const post = normalizeNotificationToPost(item);
+      if (!CELEBRATION_TYPES.includes(post.type)) return; // skip attendance/leave-lifecycle alerts — not celebration content
       const dateVal = new Date(post.eventDate || post.createdAt);
 
       if (dateVal > endOfToday) {
@@ -207,12 +300,66 @@ export default function CelebrationWall() {
       }
     });
 
+    // Approved leave requests from the existing /leave-requests endpoints
+    // (see loadData) — synthetic posts, same pattern as holidays. No
+    // announcementId, so Edit/Delete never render for these.
+    (approvedLeaves || []).forEach((leave) => {
+      rawFeed.push({
+        id: `leave-${leave.id}`,
+        type: 'APPROVED',
+        title: `${leave.employeeName || 'Someone'}'s Leave Approved`,
+        message: `${leave.leaveType || 'Leave'} · ${
+          leave.totalDays || 0
+        } day(s)${
+          leave.reason ? ` — ${leave.reason}` : ''
+        }`,
+        createdAt:
+          leave.approvedDate ||
+          leave.updatedAt ||
+          leave.createdAt ||
+          new Date().toISOString(),
+        eventDate: null,
+        images: [],
+        isRead: true,
+        priority: 'LOW',
+        taggedPeople: [],
+        announcementId: null,
+      });
+    });
+
+    // Company holidays from the existing /holidays endpoint — synthetic
+    // posts (no announcementId, so Edit/Delete never render for these,
+    // since they aren't announcements and can't be edited from here).
+    // Every holiday goes into the Holiday tab regardless of date (past or
+    // future); future ones are also mirrored into the "Upcoming events"
+    // sidebar widget.
+    (holidays || []).forEach((holiday) => {
+      const post = {
+        id: `holiday-${holiday.id}`,
+        type: 'HOLIDAY',
+        title: holiday.holidayName || 'Holiday',
+        message: holiday.description || '',
+        createdAt: holiday.holidayDate,
+        eventDate: holiday.holidayDate,
+        images: [],
+        isRead: true,
+        priority: 'LOW',
+        taggedPeople: [],
+        announcementId: null,
+      };
+      rawFeed.push(post);
+      const dateVal = new Date(post.eventDate);
+      if (dateVal > endOfToday) {
+        rawUpcoming.push(post);
+      }
+    });
+
     return {
       celebrationFeed: sortRecent(rawFeed),
       upcomingEvents: sortRecent(rawUpcoming),
       announcements: sortRecent(rawAnnouncements).slice(0, 4),
     };
-  }, [notifications]);
+  }, [notifications, holidays, approvedLeaves]);
 
   const visibleFeed = useMemo(() => {
     if (active === 'ALL') return celebrationFeed;
@@ -253,10 +400,10 @@ export default function CelebrationWall() {
       setCelebrationFiles([]);
       setTagSearch('');
       setComposerOpen(false);
-      setSuccess('Celebration added successfully.');
+      setSuccess('Celebration Added Successfully.');
       await loadData();
     } catch (err) {
-      setError(err.message || 'Failed to add celebration.');
+      setError(err.message || 'Failed to Add Celebration.');
     } finally {
       setCreating(false);
     }
@@ -268,13 +415,13 @@ export default function CelebrationWall() {
     const message = window.prompt('Edit message', item.message || '');
     if (message === null || !title.trim() || !message.trim()) return;
     try { await updateAnnouncement(item.announcementId, { title: title.trim(), message: message.trim() }); setSuccess('Post updated successfully.'); await loadData(); }
-    catch (err) { setError(err?.response?.data?.message || err.message || 'Failed to update post.'); }
+    catch (err) { setError(err?.response?.data?.message || err.message || 'Failed to Update Post.'); }
   };
 
   const deleteWallPost = async (item) => {
-    if (!window.confirm(`Delete “${item.title}”? This cannot be undone.`)) return;
-    try { await deleteAnnouncement(item.announcementId); setSuccess('Post deleted successfully.'); await loadData(); }
-    catch (err) { setError(err?.response?.data?.message || err.message || 'Failed to delete post.'); }
+    if (!window.confirm(`Delete "${item.title}"? This Cannot be Undone.`)) return;
+    try { await deleteAnnouncement(item.announcementId); setSuccess('Post Deleted Successfully.'); await loadData(); }
+    catch (err) { setError(err?.response?.data?.message || err.message || 'Failed to Delete Post.'); }
   };
 
   return (
@@ -322,7 +469,7 @@ export default function CelebrationWall() {
         <div className="celebration-hero-text">
           <span className="eyebrow">Celebration Wall</span>
           <h1>Celebration Wall</h1>
-          <p>Celebrate birthdays, work anniversaries, festivals, achievements and team milestones together.</p>
+          <p>Celebrate Birthdays, Work Anniversaries, Festivals, Achievements And Team Milestones Together.</p>
         </div>
         <div className="celebration-hero-illustration" aria-hidden="true">
           <svg viewBox="0 0 320 200" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -405,7 +552,7 @@ export default function CelebrationWall() {
                       <span className="post-category-badge" style={{ background: meta.bg, color: meta.color }}>
                         <TIcon size={13} /> {meta.label}
                       </span>
-                      {canCreateCelebration && post.announcementId && <div className="celebration-card-admin"><button type="button" onClick={() => editWallPost(post)}><Pencil size={15} /> Edit</button><button type="button" className="danger" onClick={() => deleteWallPost(post)}><Trash2 size={15} /> Delete</button></div>}
+                      {canEditCelebration && post.announcementId && <div className="celebration-card-admin"><button type="button" onClick={() => editWallPost(post)}><Pencil size={15} /> Edit</button><button type="button" className="danger" onClick={() => deleteWallPost(post)}><Trash2 size={15} /> Delete</button></div>}
                     </div>
 
                     {/* Thumbnail / content */}
@@ -470,7 +617,7 @@ export default function CelebrationWall() {
               {!visibleFeed.length && (
                 <section className="panel empty-state">
                   <PartyPopper size={36} />
-                  <p>No celebration posts yet.</p>
+                  <p>No Celebration Posts Yet.</p>
                   <small>Celebrations And Company Milestones Will Appear Here.</small>
                 </section>
               )}
@@ -498,7 +645,7 @@ export default function CelebrationWall() {
             </div>
             {announcements.map((item) => (
               <div className="side-content" key={item.id}>
-                <div className="side-content-title"><strong>{item.title}</strong>{canCreateCelebration && item.announcementId && <div className="side-post-actions"><button type="button" onClick={() => editWallPost(item)} title="Edit"><Pencil size={14} /></button><button type="button" className="danger" onClick={() => deleteWallPost(item)} title="Delete"><Trash2 size={14} /></button></div>}</div>
+                <div className="side-content-title"><strong>{item.title}</strong>{canEditCelebration && item.announcementId && <div className="side-post-actions"><button type="button" onClick={() => editWallPost(item)} title="Edit"><Pencil size={14} /></button><button type="button" className="danger" onClick={() => deleteWallPost(item)} title="Delete"><Trash2 size={14} /></button></div>}</div>
                 <span>{item.message}</span>
               </div>
             ))}
@@ -525,7 +672,7 @@ export default function CelebrationWall() {
                 <span>{item.message || new Date(item.eventDate || item.createdAt).toLocaleDateString()}</span>
               </div>
             ))}
-            {!upcomingEvents.length && <p className="empty-inline">No Upcoming Events.</p>}
+            {!upcomingEvents.length && <p className="empty-inline">No upcoming events.</p>}
           </motion.section>
 
           {/* Quick links widget */}

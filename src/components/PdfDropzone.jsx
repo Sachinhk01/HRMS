@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react';
 import { FileText, UploadCloud, X, Eye } from 'lucide-react';
 
-const MAX_SIZE_MB = 4;
+const MAX_SIZE_MB = 25;
 
 function formatSize(bytes) {
   if (!bytes) return '';

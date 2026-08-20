@@ -129,7 +129,7 @@ export default function Profile() {
         updateUser({ ...user, photoUrl: saved.profilePhotoUrl });
         refreshAvatar?.()
       }
-      setMessage('Profile photo updated.');
+      setMessage('Profile Photo Updated.');
     } catch (err) {
       setError(err?.response?.data?.message || err.message || 'Failed to upload photo.');
     } finally {
@@ -138,7 +138,7 @@ export default function Profile() {
     }
   };
 
-  if (loading) return <section className="panel"><p className="empty-inline">Loading profile…</p></section>;
+  if (loading) return <section className="panel"><p className="empty-inline">Loading Profile…</p></section>;
   if (!profile) return <section className="panel"><p className="empty-inline">{error || 'Profile not found.'}</p></section>;
 
   const fullName = capitalizeName(`${profile.firstName} ${profile.lastName || ''}`.trim());
@@ -149,8 +149,8 @@ export default function Profile() {
     <div className="page-stack profile-page page-reveal">
       <PageHeader
         eyebrow="Employee Profile"
-        title={isOwnProfile ? 'My profile' : fullName}
-        description="View and manage your personal information."
+        title={isOwnProfile ? 'My Profile' : fullName}
+        description="View And Manage Your Personal Information."
       />
 
       {error && <div className="form-alert">{error}</div>}
@@ -161,7 +161,7 @@ export default function Profile() {
             ? <img className="profile-avatar" src={photoUrl} alt={fullName} />
             : <div className="profile-avatar">{initials || 'HR'}</div>}
           {isOwnProfile && (
-            <label className="profile-avatar-edit" title="Change photo">
+            <label className="profile-avatar-edit" title="Change Photo">
               <Camera size={14} />
               <input type="file" accept="image/*" onChange={handlePhotoChange} hidden disabled={photoUploading} />
             </label>
@@ -207,7 +207,7 @@ export default function Profile() {
                   </select>
                 </label>
                 {message && <div className="success-alert full-span">{message}</div>}
-                <button className="btn btn-primary full-span"><Save size={18} />Save changes</button>
+                <button className="btn btn-primary full-span"><Save size={18} />Save Changes</button>
               </form>
             ) : (
               <div className="profile-info-grid">
@@ -229,7 +229,7 @@ export default function Profile() {
               <div><span>Date of Joining</span><strong>{profile.dateOfJoining || 'Not provided'}</strong></div>
               <div><span>Employment Type</span><strong>{profile.employmentType || 'Not provided'}</strong></div>
               <div><span>Reporting Manager</span><strong>{capitalizeName(profile.reportingManagerName) || 'Not assigned'}</strong></div>
-              <div className="full-span"><small>Employment details can only be updated by HR from the Employees page.</small></div>
+              <div className="full-span"><small>Employment Details Can Only be Updated By HR From The Employees Page.</small></div>
             </div>
           )}
 
@@ -240,7 +240,7 @@ export default function Profile() {
               <label>Confirm New Password<input name="confirmPassword" type="password" required minLength={8} maxLength={20} /></label>
               {passwordError && <div className="form-alert full-span">{passwordError}</div>}
               {message && !passwordError && <div className="success-alert full-span">{message}</div>}
-              <button className="btn btn-primary full-span"><KeyRound size={18} />Update password</button>
+              <button className="btn btn-primary full-span"><KeyRound size={18} />Update Password</button>
             </form>
           )}
         </div>
