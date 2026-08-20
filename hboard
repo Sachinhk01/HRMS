@@ -1,0 +1,38 @@
+[1mdiff --git a/src/pages/Dashboard.jsx b/src/pages/Dashboard.jsx[m
+[1mindex dbe5fcd..d184f3c 100644[m
+[1m--- a/src/pages/Dashboard.jsx[m
+[1m+++ b/src/pages/Dashboard.jsx[m
+[36m@@ -33,7 +33,6 @@[m [mimport {[m
+   saveMonthlyMagazine,[m
+ } from "../services/dashboardContentService";[m
+ import { getHolidays, getUpcomingHolidays } from "../services/holidayService";[m
+[31m-import welcomePersonImg from "../assets/illustrations/welcome-person.png";[m
+ import calendarAttendanceImg from "../assets/illustrations/calendar-attendance.png";[m
+ import calendarLeaveImg from "../assets/illustrations/calendar-leave.png";[m
+ import celebrationCakeImg from "../assets/illustrations/celebration-cake.png";[m
+[36m@@ -62,6 +61,8 @@[m [mconst actionImages = {[m
+   'Events': celebrationGroupImg,[m
+ };[m
+ [m
+[32m+[m[32mconst WELCOME_BANNER_PHOTO = "https://images.unsplash.com/photo-1758873269276-9518d0cb4a0b?fm=jpg&q=80&w=1920&auto=format&fit=crop";[m
+[32m+[m
+ function formatHolidayDate(value) {[m
+   if (!value) return '';[m
+   return new Date(`${value}T00:00:00`).toLocaleDateString([], {[m
+[36m@@ -405,15 +406,12 @@[m [museEffect(() => {[m
+ [m
+   return ([m
+     <div className="page-stack dashboard-page page-reveal">[m
+[31m-      <section className="welcome-banner">[m
+[32m+[m[32m      <section className="welcome-banner" style={{ '--welcome-photo': `url(${WELCOME_BANNER_PHOTO})` }}>[m
+         <div className="welcome-banner-text">[m
+           <span className="eyebrow">{greeting}</span>[m
+           <h1>Welcome Back, {capitalizeName(user.name?.split(' ')[0])}!</h1>[m
+           <p>{role === 'EMPLOYEE' ? "Let's Make Today Productive." : role === 'HR_ADMIN' ? 'Manage People, Engagement And HR Operations.' : 'Review Team Attendance, Leave And Performance.'}</p>[m
+         </div>[m
+[31m-        <div className="welcome-banner-illustration">[m
+[31m-          <img src={welcomePersonImg} alt="Person working on laptop" />[m
+[31m-        </div>[m
+       </section>[m
+ [m
+       {attendanceError && <div className="form-alert">{attendanceError}</div>}[m

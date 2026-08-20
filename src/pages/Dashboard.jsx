@@ -33,7 +33,6 @@ import {
   saveMonthlyMagazine,
 } from "../services/dashboardContentService";
 import { getHolidays, getUpcomingHolidays } from "../services/holidayService";
-import welcomePersonImg from "../assets/illustrations/welcome-person.png";
 import calendarAttendanceImg from "../assets/illustrations/calendar-attendance.png";
 import calendarLeaveImg from "../assets/illustrations/calendar-leave.png";
 import celebrationCakeImg from "../assets/illustrations/celebration-cake.png";
@@ -61,6 +60,8 @@ const actionImages = {
   'Celebration Wall': celebrationCakeImg,
   'Events': celebrationGroupImg,
 };
+
+const WELCOME_BANNER_PHOTO = "https://images.unsplash.com/photo-1758873269276-9518d0cb4a0b?fm=jpg&q=80&w=1920&auto=format&fit=crop";
 
 function formatHolidayDate(value) {
   if (!value) return '';
@@ -409,14 +410,11 @@ useEffect(() => {
 
   return (
     <div className="page-stack dashboard-page page-reveal">
-      <section className="welcome-banner">
+      <section className="welcome-banner" style={{ '--welcome-photo': `url(${WELCOME_BANNER_PHOTO})` }}>
         <div className="welcome-banner-text">
           <span className="eyebrow">{greeting}</span>
           <h1>Welcome Back, {capitalizeName(user.name?.split(' ')[0])}!</h1>
           <p>{role === 'EMPLOYEE' ? "Let's Make Today Productive." : role === 'HR_ADMIN' ? 'Manage People, Engagement And HR Operations.' : 'Review Team Attendance, Leave And Performance.'}</p>
-        </div>
-        <div className="welcome-banner-illustration">
-          <img src={welcomePersonImg} alt="Person working on laptop" />
         </div>
       </section>
 

@@ -11,40 +11,36 @@
   position: relative;
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-start;
   gap: 24px;
-  padding: 30px 34px;
+  padding: 40px 40px;
   border-radius: var(--radius-lg);
-  background: linear-gradient(135deg, #eef2ff 0%, #e3ebfd 60%, #dce6fc 100%);
   overflow: hidden;
   box-shadow: var(--shadow);
   transition: transform .25s ease, box-shadow .25s ease;
+  min-height: 350px;
+  background-image: linear-gradient(to right, rgba(15,23,42,.88), rgba(15,23,42,.45) 60%, rgba(15,23,42,.15)), var(--welcome-photo);
+  background-size: cover;
+  background-position: center;
 }
 .welcome-banner:hover {
   transform: translateY(-4px);
   box-shadow: 0 22px 46px rgba(30, 55, 90, .12);
 }
-.welcome-banner-text { position: relative; z-index: 1; max-width: 58%; }
+.welcome-banner-text { position: relative; z-index: 1; max-width: 62%; }
 .welcome-banner-text .eyebrow {
-  display: block; font-size: 13px; font-weight: 700; color: var(--blue);
+  display: block; font-size: 13px; font-weight: 700; color: #93c5fd;
   text-transform: uppercase; letter-spacing: .04em; margin-bottom: 6px;
 }
 .welcome-banner-text h1 {
   margin: 0 0 6px; font-size: clamp(24px, 2.8vw, 32px); font-weight: 800;
-  color: var(--navy); letter-spacing: -.02em;
+  color: #fff; letter-spacing: -.02em;
 }
-.welcome-banner-text p { margin: 0; font-size: 14px; color: var(--muted); }
-
-.welcome-banner-illustration {
-  flex-shrink: 0; width: 240px; max-width: 34%; margin-right: 8px;
-}
-.welcome-banner-illustration svg,
-.welcome-banner-illustration img { width: 100%; height: auto; display: block; }
+.welcome-banner-text p { margin: 0; font-size: 14px; color: #e2e8f0; }
 
 @media (max-width: 720px) {
-  .welcome-banner { flex-direction: column; text-align: center; padding: 24px; }
+  .welcome-banner { flex-direction: column; text-align: center; padding: 28px 20px; }
   .welcome-banner-text { max-width: 100%; }
-  .welcome-banner-illustration { width: 170px; max-width: 60%; margin-right: 0; }
 }
 
 /* ---------- Summary cards ---------- */
@@ -104,10 +100,10 @@
 .tone-teal   .summary-icon { background: #e2f6f4; color: var(--teal); }
 .tone-blue   .summary-icon { background: #eaf2fe; color: var(--blue); }
 
-.summary-copy { display: flex; flex-direction: column; }
-.summary-copy span { font-size: 12px; color: var(--muted); font-weight: 600; }
-.summary-copy strong { font-size: 24px; font-weight: 800; color: var(--navy); transition: color .2s ease; }
-.summary-copy small { font-size: 11px; color: var(--muted); }
+.summary-copy { display: flex; flex-direction: column; min-width: 0; }
+.summary-copy span { font-size: 12px; color: var(--muted); font-weight: 600; white-space: nowrap; }
+.summary-copy strong { font-size: 22px; font-weight: 800; color: var(--navy); transition: color .2s ease; white-space: nowrap; }
+.summary-copy small { font-size: 11px; color: var(--muted); white-space: nowrap; }
 .summary-arrow {
   color: var(--muted); margin-left: auto; opacity: 0;
   transform: translate(-4px, 4px);
