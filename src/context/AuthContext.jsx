@@ -6,6 +6,11 @@ const AuthContext = createContext(null);
 initializeStorage();
 
 const normalizeEmail = (email = '') => email.trim().toLowerCase();
+const portalNames = {
+  EMPLOYEE: 'Employee',
+  MANAGER: 'Manager',
+  HR_ADMIN: 'HR',
+};
 const initialsFromName = (name = '') =>
   name
     .trim()
@@ -27,7 +32,7 @@ export function AuthProvider({ children }) {
   // ==========================
   // Backend Login
   // ==========================
-  const login = async ({ email, password }) => {
+  const login = async ({ email, password, expectedRole }) => {
     if (!email || !password) {
       throw new Error('Email and password are required.');
     }
@@ -40,9 +45,22 @@ export function AuthProvider({ children }) {
 
     const data = response.data.data;
 
+    const backendRole = data.user.roles?.[0] || data.user.role;
+    const normalizedRole = typeof backendRole === 'string' ? backendRole.toUpperCase() : backendRole;
+
+    if (expectedRole && normalizedRole !== expectedRole) {
+      localStorage.removeItem('hrms-user');
+      localStorage.removeItem('hrms-token');
+      localStorage.removeItem('hrms-refresh-token');
+      setUser(null);
+      throw new Error(
+        `You are not authorized to access the ${portalNames[expectedRole] || 'requested'} portal. Please use the correct login portal.`,
+      );
+    }
+
     const normalizedUser = {
       ...data.user,
-      role: data.user.roles?.[0] || data.user.role,
+      role: normalizedRole,
       name: data.user.name || data.user.fullName || data.user.username,
       photoUrl: data.user.photoUrl || data.user.profilePhotoUrl || data.user.avatarUrl || '',
       profilePhotoUrl: data.user.profilePhotoUrl || data.user.photoUrl || data.user.avatarUrl || '',

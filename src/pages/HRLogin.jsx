@@ -50,7 +50,7 @@ export function HRLogin() {
     setServerError('');
     setIsSubmitting(true);
     try {
-      await login({ email, password });
+      await login({ email, password, expectedRole: 'HR_ADMIN' });
       navigate('/dashboard');
     } catch (error) {
       setServerError(error.message || 'Unable to sign in. Please try again.');

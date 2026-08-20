@@ -50,7 +50,7 @@ export function ManagerLogin() {
     setServerError('');
     setIsSubmitting(true);
     try {
-      await login({ email, password });
+      await login({ email, password, expectedRole: 'MANAGER' });
       navigate('/dashboard');
     } catch (error) {
       setServerError(error.message || 'Unable to Sign In. Please Try Again.');
