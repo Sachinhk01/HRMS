@@ -136,7 +136,7 @@ export default function BirthdayWidget({ employees = [], onViewAll }) {
           </div>
           {onViewAll && (
             <button className="cw-view-all" onClick={onViewAll}>
-              View All <ChevronRight size={14} />
+              View all <ChevronRight size={14} />
             </button>
           )}
         </div>
@@ -170,27 +170,28 @@ export default function BirthdayWidget({ employees = [], onViewAll }) {
         ) : (
           <div className="cw-cards">
             {current.items.map((emp) => {
+              console.log("Birthday Employee:", emp);
               const dob = getDob(emp);
               const days = getDaysUntilBirthday(dob);
               const isToday = days === 0 || isBirthdayToday(dob);
+              const photoUrl = emp.profilePhotoUrl || emp.photoUrl || emp.avatarUrl;
               return (
-                <div className="cw-person-card" key={emp.id}
-                  style={{ '--card-accent': current.accent, '--card-bg': current.accentBg, '--card-border': current.accentBorder }}>
-                  <div className="cw-person-avatar" style={{ background: isToday ? 'linear-gradient(135deg,#f59e0b,#f97316)' : 'linear-gradient(135deg,#3b82f6,#6366f1)' }}>
-                    {getInitials(emp.name)}
-                  </div>
+                <div className="cw-person-card" key={emp.id}>
+                  {photoUrl ? (
+                    <img className="cw-person-avatar cw-person-avatar--photo" src={photoUrl} alt={emp.name} />
+                  ) : (
+                    <div className="cw-person-avatar" style={{ background: isToday ? 'linear-gradient(135deg,#f59e0b,#f97316)' : 'linear-gradient(135deg,#3b82f6,#6366f1)' }}>
+                      {getInitials(emp.name)}
+                    </div>
+                  )}
                   <div className="cw-person-copy">
-                    <strong>{capitalizeName(emp.name)}</strong>
-                    <span className="cw-person-role">{emp.designation || emp.department || 'Team member'}</span>
-                    {isToday ? (
-                      <span className="cw-person-tag" style={{ background: '#fff7ed', color: '#f59e0b' }}>🎂 Today!</span>
-                    ) : (
-                      <span className="cw-person-tag" style={{ background: '#eff6ff', color: '#3b82f6' }}>
-                        {formatUpcomingDate(dob)} · {days}d
-                      </span>
-                    )}
+                    <div className="cw-person-toprow">
+                      <strong>{capitalizeName(emp.name)}</strong>
+                      <span className="cw-confetti">{isToday ? '🎂' : '🎉'}</span>
+                    </div>
+                    <span className="cw-person-type">Birthday</span>
+                    <span className="cw-person-date">{isToday ? 'Today' : `${formatUpcomingDate(dob)} · ${days}d`}</span>
                   </div>
-                  {isToday && <span className="cw-confetti">🎉</span>}
                 </div>
               );
             })}
