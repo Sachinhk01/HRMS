@@ -16,7 +16,17 @@
 }
 .emp-hero::before { content: ''; position: absolute; top: -60px; right: -40px; width: 220px; height: 220px; background: radial-gradient(circle, rgba(37, 99, 235, .14), transparent 70%); pointer-events: none; }
 .emp-hero-text { position: relative; z-index: 1; max-width: 58%; }
-.emp-hero-text .eyebrow { display: block; font-size: 12px; font-weight: 700; color: #2563eb; text-transform: uppercase; letter-spacing: .05em; margin-bottom: 6px; }
+
+.emp-hero-text .eyebrow {
+  display: block;
+  font-size: 13px;
+  font-weight: 750;
+  color: #2563eb;
+  text-transform: none;
+  letter-spacing: .05em;
+  margin-bottom: 6px;
+}
+
 .emp-hero-text h1 { margin: 0 0 8px; font-size: clamp(26px, 3vw, 34px); font-weight: 800; color: #0f172a; letter-spacing: -.02em; }
 .emp-hero-text p { margin: 0; font-size: 14px; color: #64748b; }
 .emp-hero-illustration { flex-shrink: 0; width: 320px; max-width: 40%; }
