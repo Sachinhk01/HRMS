@@ -61,6 +61,15 @@
 .attendance-hero-illustration {
   flex-shrink: 0; width: 320px; max-width: 40%;
 }
+.attendance-hero-illustration--late { position: relative; }
+.attendance-late-caption {
+  margin: 8px 4px 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: #92400e;
+  text-align: center;
+  line-height: 1.4;
+}
 .attendance-hero-illustration svg { width: 100%; height: auto; display: block; }
 
 @media (max-width: 768px) {

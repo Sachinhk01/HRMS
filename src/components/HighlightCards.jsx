@@ -54,15 +54,11 @@ export default function HighlightCards({ magazine, employeeOfMonth }) {
       {/* ---------- Employee of the Month ---------- */}
       <article className="hl-card hl-employee">
         <div className="hl-eom-cover">
-          {employeeOfMonth?.photoUrl ? (
-            <img src={employeeOfMonth.photoUrl} alt={employeeOfMonth.employeeName || 'Employee of the month'} />
-          ) : employeeOfMonth?.employeeName ? (
-            <div className="hl-eom-initials">
-              {employeeOfMonth.employeeName.split(' ').map((p) => p[0]).join('').slice(0, 2)}
-            </div>
-          ) : (
-            <img src={EOM_PHOTO} alt="Employee of the month" />
-          )}
+          <img
+            src={employeeOfMonth?.photoUrl || EOM_PHOTO}
+            alt={employeeOfMonth?.employeeName || 'Employee of the month'}
+            onError={(e) => { e.currentTarget.src = EOM_PHOTO; }}
+          />
         </div>
         <div className="hl-content">
           <div className="hl-badge hl-badge--warm">
