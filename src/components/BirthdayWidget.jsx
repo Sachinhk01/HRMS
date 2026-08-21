@@ -170,7 +170,6 @@ export default function BirthdayWidget({ employees = [], onViewAll }) {
         ) : (
           <div className="cw-cards">
             {current.items.map((emp) => {
-              console.log("Birthday Employee:", emp);
               const dob = getDob(emp);
               const days = getDaysUntilBirthday(dob);
               const isToday = days === 0 || isBirthdayToday(dob);

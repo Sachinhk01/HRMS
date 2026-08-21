@@ -39,7 +39,11 @@ export default function PdfDropzone({ url, fileName, fileSize, onChange, hiddenF
     const reader = new FileReader();
     reader.onload = () => {
       setBusy(false);
-      onChange({ url: reader.result, name: file.name, size: file.size });
+      // `url` here is a base64 preview only, for showing the picked file
+      // before it's saved. Callers that persist to the backend should
+      // upload `file` itself (multipart) rather than storing this base64
+      // string — it's just for the in-browser preview/thumbnail.
+      onChange({ url: reader.result, name: file.name, size: file.size, file });
     };
     reader.onerror = () => {
       setBusy(false);
@@ -56,7 +60,7 @@ export default function PdfDropzone({ url, fileName, fileSize, onChange, hiddenF
 
   function removeFile() {
     setError('');
-    onChange({ url: '', name: '', size: 0 });
+    onChange({ url: '', name: '', size: 0, file: null });
     if (inputRef.current) inputRef.current.value = '';
   }
 
@@ -87,7 +91,7 @@ export default function PdfDropzone({ url, fileName, fileSize, onChange, hiddenF
           onDragLeave={() => setDragActive(false)}
           onDrop={handleDrop}
         >
-          <UploadCloud size={22} />
+          <div className="pdf-dropzone-icon"><UploadCloud size={20} /></div>
           <span className="pdf-dropzone-title">{busy ? 'Reading file…' : 'Drag & drop the magazine PDF'}</span>
           <span className="pdf-dropzone-sub">or click to browse · PDF up to {MAX_SIZE_MB}MB</span>
           <input

@@ -23,14 +23,18 @@ import SummaryCard from "../components/SummaryCard";
 import PdfDropzone from "../components/PdfDropzone";
 import { useAuth } from "../context/AuthContext";
 import { getEmployees, normalizeEmployeeName } from "../services/employeeService";
-import { getNotifications, getUpcomingBirthdays } from "../services/notificationService";
+import {
+  getNotifications,
+  getUpcomingBirthdays,
+  getLatestMagazine,
+  createAnnouncement,
+  encodeMagazineCover,
+} from "../services/notificationService";
 import { getAttendanceDashboard, getAttendanceHistory } from "../services/attendanceService";
 import { getMyLeaveBalances, getTeamLeaveRequests } from "../services/leaveService";
 import {
   getEmployeeOfMonth,
-  getMonthlyMagazine,
   saveEmployeeOfMonth,
-  saveMonthlyMagazine,
 } from "../services/dashboardContentService";
 import { getHolidays, getUpcomingHolidays } from "../services/holidayService";
 import calendarAttendanceImg from "../assets/illustrations/calendar-attendance.png";
@@ -83,16 +87,35 @@ export default function Dashboard() {
     return hour < 12 ? 'Good Morning' : hour < 17 ? 'Good Afternoon' : 'Good Evening';
   }, []);
 
-  const [magazine, setMagazine] = useState(getMonthlyMagazine());
+  const [magazine, setMagazine] = useState(null);
+  const [magazineLoading, setMagazineLoading] = useState(true);
   const [employeeOfMonth, setEmployeeOfMonth] = useState(getEmployeeOfMonth());
   const [message, setMessage] = useState('');
-  const [magazineFile, setMagazineFile] = useState({
-    url: getMonthlyMagazine()?.documentUrl || '',
-    name: getMonthlyMagazine()?.documentName || '',
-    size: getMonthlyMagazine()?.documentSize || 0,
-  });
+  const [magazineFile, setMagazineFile] = useState({ url: '', name: '', size: 0, file: null });
   const [employees, setEmployees] = useState([]);
   const [employeesLoading, setEmployeesLoading] = useState(true);
+
+  // Every role can read the latest magazine — it's published once and
+  // seen by the whole company, same as before, but now from the backend
+  // instead of the publishing manager's own browser storage.
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadMagazine() {
+      setMagazineLoading(true);
+      try {
+        const latest = await getLatestMagazine();
+        if (!cancelled) setMagazine(latest);
+      } catch {
+        if (!cancelled) setMagazine(null);
+      } finally {
+        if (!cancelled) setMagazineLoading(false);
+      }
+    }
+
+    loadMagazine();
+    return () => { cancelled = true; };
+  }, []);
 
 useEffect(() => {
   let cancelled = false;
@@ -377,19 +400,39 @@ useEffect(() => {
     ];
   }
 
-  function updateMagazine(event) {
+  async function updateMagazine(event) {
     event.preventDefault();
-    const form = new FormData(event.currentTarget);
+    const fields = Object.fromEntries(new FormData(event.currentTarget).entries());
     try {
-      const next = saveMonthlyMagazine(user, {
-        ...Object.fromEntries(form.entries()),
-        documentName: magazineFile.name,
-        documentSize: magazineFile.size,
+      await createAnnouncement({
+        title: fields.title,
+        message: encodeMagazineCover(fields.description, fields.coverUrl),
+        uploadType: 'MAGAZINE',
+        attachments: magazineFile.file ? [magazineFile.file] : [],
       });
-      setMagazine(next);
-      setMagazineFile({ url: next.documentUrl || '', name: next.documentName || '', size: next.documentSize || 0 });
+      // The publish endpoint doesn't return the saved record, and there's
+      // no GET endpoint yet to re-fetch the real backend URL — so show the
+      // card from what was just submitted instead. The PDF preview URL is
+      // a local base64 blob until the backend read endpoint exists; it'll
+      // still open/download correctly in this browser tab, it just won't
+      // persist or show up for other employees until that endpoint is added.
+      setMagazine({
+        title: fields.title,
+        description: fields.description,
+        coverUrl: fields.coverUrl,
+        documentUrl: magazineFile.url,
+        documentName: magazineFile.name,
+        month: new Date().toLocaleDateString([], { month: 'long', year: 'numeric' }),
+      });
       setMessage('Monthly Magazine Updated.');
-    } catch (error) { setMessage(error.message); }
+    } catch (error) {
+      const isTimeout = error?.code === 'ECONNABORTED' || /timeout/i.test(error?.message || '');
+      setMessage(
+        isTimeout
+          ? 'The Upload Took Too Long — Try A Smaller PDF Or Check Your Connection.'
+          : (error?.response?.data?.message || error.message || 'Failed to publish magazine.')
+      );
+    }
   }
 
   function updateEmployeeOfMonth(event) {
@@ -493,10 +536,6 @@ useEffect(() => {
                 <label className="ef-field ef-full">
                   <span>Title</span>
                   <input name="title" defaultValue={magazine?.title || ''} placeholder="e.g. MyHourly Times — August Edition" required />
-                </label>
-                <label className="ef-field">
-                  <span>Edition Month</span>
-                  <input name="month" type="month" defaultValue={magazine?.month || ''} />
                 </label>
                 <label className="ef-field">
                   <span>Cover Image URL</span>

@@ -15,6 +15,46 @@ export async function getUpcomingBirthdays(days = 0) {
   return data.data;
 }
 
+// The Announcement entity has no dedicated `coverUrl` field, so a manually
+// pasted cover image URL is encoded as a trailing metadata line in the
+// message body — same convention already used for celebration metadata
+// (see parseCelebrationMeta below). Kept out of the visible description.
+const MAGAZINE_COVER_RE = /\n\nCover:\s*([^\n]+)\s*$/;
+
+export function encodeMagazineCover(description, coverUrl) {
+  const clean = (description || '').trim();
+  return coverUrl ? `${clean}\n\nCover: ${coverUrl}` : clean;
+}
+
+// Maps a backend Announcement (uploadType=MAGAZINE) to the shape
+// HighlightCards/Dashboard expect. `month` is derived from the real
+// createdAt timestamp rather than being a manually-typed field, since the
+// backend doesn't store one.
+export function mapAnnouncementToMagazine(announcement) {
+  if (!announcement) return null;
+  const coverMatch = (announcement.message || '').match(MAGAZINE_COVER_RE);
+  const description = (announcement.message || '').replace(MAGAZINE_COVER_RE, '').trim();
+  const documentUrl = announcement.attachmentUrls?.[0] || '';
+  const month = announcement.createdAt
+    ? new Date(announcement.createdAt).toLocaleDateString([], { month: 'long', year: 'numeric' })
+    : '';
+
+  return {
+    title: announcement.title || '',
+    description,
+    coverUrl: coverMatch ? coverMatch[1].trim() : '',
+    documentUrl,
+    documentName: documentUrl ? documentUrl.split('/').pop() : '',
+    month,
+    updatedAt: announcement.createdAt || '',
+  };
+}
+
+export async function getLatestMagazine() {
+  const { data } = await api.get('/notifications/magazine/latest');
+  return mapAnnouncementToMagazine(data.data);
+}
+
 export async function getUnreadCount() {
   const { data } = await api.get('/notifications/unread-count');
   return data.data;
@@ -34,8 +74,17 @@ async function postAnnouncement({ title, message, uploadType = 'POST', attachmen
   const formData = new FormData();
   formData.append('request', new Blob([JSON.stringify({ title, message, uploadType })], { type: 'application/json' }));
   attachments.forEach((file) => formData.append('attachments', file));
+
+  // Attachments (e.g. a 20MB+ magazine PDF) take a lot longer to upload
+  // than a normal API call — the app-wide 15–60s timeout was built for
+  // small JSON requests and cuts a large upload off mid-transfer. Scale
+  // the timeout to the payload size instead of using the global default.
+  const totalBytes = attachments.reduce((sum, file) => sum + (file?.size || 0), 0);
+  const uploadTimeout = Math.max(60000, Math.ceil(totalBytes / (256 * 1024)) * 1000); // ~256KB/s floor
+
   const { data } = await api.post('/notifications/announcement', formData, {
     headers: { 'Content-Type': 'multipart/form-data' },
+    timeout: uploadTimeout,
   });
   return data.data;
 }

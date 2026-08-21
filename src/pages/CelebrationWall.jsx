@@ -9,21 +9,23 @@ import PageHeader from '../components/PageHeader';
 import Pagination from '../components/Pagination';
 import usePagination, { sortRecent } from '../hooks/usePagination';
 import { useAuth } from '../context/AuthContext';
-import { createCelebration, deleteAnnouncement, getNotifications, updateAnnouncement } from '../services/notificationService';
+import { createCelebration, getNotifications, updateAnnouncement } from '../services/notificationService';
 import { getEmployeeDropdown } from '../services/employeeService';
-import { getHolidays } from '../services/holidayService';
-import { getMyLeaveRequests, getTeamLeaveRequests, getAllLeaveRequests } from '../services/leaveService';
 import './CelebrationWall.css';
 
 // Filter tabs — must contain 'ALL' plus exact backend NotificationType values for calendar events
-const types = ['ALL', 'BIRTHDAY', 'WORK_ANNIVERSARY', 'HOLIDAY', 'GENERAL', 'APPROVED'];
+const types = ['ALL', 'BIRTHDAY', 'WORK_ANNIVERSARY', 'GENERAL'];
+const CELEBRATION_BANNER_PHOTO = 'https://images.unsplash.com/photo-1764175760157-d27ce39e7955?q=80&w=1170&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D';
 
 // Only these are genuine celebration/social content. Notifications like
 // LATE_CHECK_IN, ABSENT, MISSED_CHECKOUT, LEAVE_APPLIED, LEAVE_REJECTED etc.
 // are operational alerts, not celebration posts — they're excluded from the
 // wall entirely (they still show up normally in the notification bell /
 // Announcements page, just not here).
-const CELEBRATION_TYPES = ['BIRTHDAY', 'WORK_ANNIVERSARY', 'HOLIDAY', 'GENERAL'];
+const CELEBRATION_TYPES = ['BIRTHDAY', 'WORK_ANNIVERSARY', 'GENERAL'];
+
+// Frontend-only "delete": hidden ids are remembered only in this browser.
+const HIDDEN_POSTS_KEY = 'celebrationWall.hiddenPostIds';
 
 // Keys match backend NotificationType enum exactly
 const CATEGORY_META = {
@@ -122,8 +124,13 @@ const stagger = { hidden: {}, show: { transition: { staggerChildren: 0.07, delay
 export default function CelebrationWall() {
   const { user } = useAuth();
   const [notifications, setNotifications] = useState([]);
-  const [holidays, setHolidays] = useState([]);
-  const [approvedLeaves, setApprovedLeaves] = useState([]);
+  const [hiddenPostIds, setHiddenPostIds] = useState(() => {
+    try {
+      return new Set(JSON.parse(localStorage.getItem(HIDDEN_POSTS_KEY) || '[]'));
+    } catch {
+      return new Set();
+    }
+  });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [active, setActive] = useState('ALL');
@@ -138,69 +145,15 @@ export default function CelebrationWall() {
   const [employees, setEmployees] = useState([]);
   const [tagSearch, setTagSearch] = useState('');
   const canCreateCelebration = ['HR_ADMIN', 'SUPER_ADMIN'].includes(user?.role || user?.roles?.[0]);
-  // Edit/Delete are disabled for now: the backend has no PUT/DELETE
-  // /notifications/announcement/{id} endpoints (only POST create exists),
-  // so calling them throws a 404 (NoResourceFoundException). Flip this to
-  // `canCreateCelebration` once those endpoints are added.
   const canEditCelebration = false;
+  const canDeleteCelebration = canCreateCelebration;
 
   const loadData = async () => {
     setLoading(true);
     setError('');
     try {
-      // getHolidays() is the same existing /holidays endpoint the Holidays
-      // page uses — fetched here too so the full company holiday list can
-      // show under the "Holiday" filter tab, not just holiday-type
-      // celebration posts someone created manually.
-      //
-      // For "Approved": the backend never actually creates a notification
-      // when a manager/HR approves leave (LEAVE_MANAGER_APPROVED exists as
-      // an enum value but nothing triggers it), so there's no notification
-      // data to source this from. Instead we pull directly from the
-      // existing /leave-requests endpoints and filter to status APPROVED
-      // client-side — same approach as holidays. Which endpoint is used
-      // depends on role, matching each endpoint's own access rules:
-      // HR_ADMIN/SUPER_ADMIN -> all requests, MANAGER -> team requests,
-      // everyone else -> their own requests only.
-      const role = user?.role || user?.roles?.[0];
-      const leaveFetch = ['HR_ADMIN', 'SUPER_ADMIN'].includes(role)
-        ? getAllLeaveRequests()
-        : role === 'MANAGER'
-          ? getTeamLeaveRequests()
-          : getMyLeaveRequests();
-
-      const [notifResult, holidayResult, leaveResult] = await Promise.allSettled([
-        getNotifications({ page: 0, size: 100 }),
-        getHolidays({ page: 0, size: 100, sortBy: 'holidayDate', sortDirection: 'asc' }),
-        leaveFetch,
-      ]);
-
-      if (notifResult.status === 'fulfilled') {
-        setNotifications(notifResult.value?.content || []);
-      } else {
-        setError(notifResult.reason?.message || 'Failed to load celebrations.');
-      }
-      setHolidays(holidayResult.status === 'fulfilled' ? (holidayResult.value?.content || []) : []);
-
-      const leaveData =
-        leaveResult.status === 'fulfilled'
-          ? (
-              leaveResult.value?.content ||
-              leaveResult.value?.data?.content ||
-              leaveResult.value?.data ||
-              leaveResult.value ||
-              []
-            )
-          : [];
-
-      setApprovedLeaves(
-        Array.isArray(leaveData)
-          ? leaveData.filter(
-              (leave) =>
-                String(leave.status).toUpperCase() === 'APPROVED'
-            )
-          : []
-      );
+      const notifResult = await getNotifications({ page: 0, size: 100 });
+      setNotifications(notifResult?.content || []);
     } catch (err) {
       setError(err.message || 'Failed to load celebrations.');
     } finally {
@@ -256,7 +209,7 @@ export default function CelebrationWall() {
       }
       if (item.notificationType === 'ANNOUNCEMENT') {
         const celebrationMeta = parseCelebrationMeta(item.message || '');
-        if (celebrationMeta) {
+        if (celebrationMeta && CELEBRATION_TYPES.includes(celebrationMeta.type)) {
           const post = {
             id: item.id,
             type: celebrationMeta.type,
@@ -300,66 +253,21 @@ export default function CelebrationWall() {
       }
     });
 
-    // Approved leave requests from the existing /leave-requests endpoints
-    // (see loadData) — synthetic posts, same pattern as holidays. No
-    // announcementId, so Edit/Delete never render for these.
-    (approvedLeaves || []).forEach((leave) => {
-      rawFeed.push({
-        id: `leave-${leave.id}`,
-        type: 'APPROVED',
-        title: `${leave.employeeName || 'Someone'}'s Leave Approved`,
-        message: `${leave.leaveType || 'Leave'} · ${
-          leave.totalDays || 0
-        } day(s)${
-          leave.reason ? ` — ${leave.reason}` : ''
-        }`,
-        createdAt:
-          leave.approvedDate ||
-          leave.updatedAt ||
-          leave.createdAt ||
-          new Date().toISOString(),
-        eventDate: null,
-        images: [],
-        isRead: true,
-        priority: 'LOW',
-        taggedPeople: [],
-        announcementId: null,
-      });
-    });
-
-    // Company holidays from the existing /holidays endpoint — synthetic
-    // posts (no announcementId, so Edit/Delete never render for these,
-    // since they aren't announcements and can't be edited from here).
-    // Every holiday goes into the Holiday tab regardless of date (past or
-    // future); future ones are also mirrored into the "Upcoming events"
-    // sidebar widget.
-    (holidays || []).forEach((holiday) => {
-      const post = {
-        id: `holiday-${holiday.id}`,
-        type: 'HOLIDAY',
-        title: holiday.holidayName || 'Holiday',
-        message: holiday.description || '',
-        createdAt: holiday.holidayDate,
-        eventDate: holiday.holidayDate,
-        images: [],
-        isRead: true,
-        priority: 'LOW',
-        taggedPeople: [],
-        announcementId: null,
-      };
-      rawFeed.push(post);
-      const dateVal = new Date(post.eventDate);
-      if (dateVal > endOfToday) {
-        rawUpcoming.push(post);
-      }
-    });
-
+    // Approved leave requests and company holidays are intentionally NOT
+    // pulled into this feed. Leave approvals live on Leave; holidays live
+    // on Holidays.
     return {
-      celebrationFeed: sortRecent(rawFeed),
-      upcomingEvents: sortRecent(rawUpcoming),
-      announcements: sortRecent(rawAnnouncements).slice(0, 4),
+      celebrationFeed: sortRecent(rawFeed).filter((post) => !hiddenPostIds.has(String(post.id))),
+      upcomingEvents: sortRecent(rawUpcoming).filter((post) => !hiddenPostIds.has(String(post.id))),
+      announcements: sortRecent(rawAnnouncements).filter((post) => !hiddenPostIds.has(String(post.id))).slice(0, 4),
     };
-  }, [notifications, holidays, approvedLeaves]);
+  }, [notifications, hiddenPostIds]);
+
+  // Use the most recent uploaded celebration photo in the hero when available.
+  const heroPhoto = useMemo(() => {
+    const withPhoto = celebrationFeed.find((post) => post.images?.length);
+    return withPhoto ? withPhoto.images[0] : null;
+  }, [celebrationFeed]);
 
   const visibleFeed = useMemo(() => {
     if (active === 'ALL') return celebrationFeed;
@@ -418,10 +326,15 @@ export default function CelebrationWall() {
     catch (err) { setError(err?.response?.data?.message || err.message || 'Failed to Update Post.'); }
   };
 
-  const deleteWallPost = async (item) => {
-    if (!window.confirm(`Delete "${item.title}"? This Cannot be Undone.`)) return;
-    try { await deleteAnnouncement(item.announcementId); setSuccess('Post Deleted Successfully.'); await loadData(); }
-    catch (err) { setError(err?.response?.data?.message || err.message || 'Failed to Delete Post.'); }
+  const deleteWallPost = (item) => {
+    if (!window.confirm(`Hide "${item.title}" from your view? This won't delete it for other people.`)) return;
+    setHiddenPostIds((current) => {
+      const next = new Set(current);
+      next.add(String(item.id));
+      try { localStorage.setItem(HIDDEN_POSTS_KEY, JSON.stringify([...next])); } catch { /* storage unavailable, ignore */ }
+      return next;
+    });
+    setSuccess('Post hidden from your view.');
   };
 
   return (
@@ -439,7 +352,7 @@ export default function CelebrationWall() {
         <section className="panel celebration-composer">
           <div className="celebration-composer-head"><div><span className="eyebrow">HR Celebration</span><h2>Add a Celebration</h2></div><button type="button" className="icon-btn" onClick={() => setComposerOpen(false)} aria-label="Close"><X size={18} /></button></div>
           <form className="celebration-form" onSubmit={handleCreateCelebration}>
-            <label>Celebration Type<select value={celebrationForm.type} onChange={(e) => setCelebrationForm((value) => ({ ...value, type: e.target.value }))}><option value="GENERAL">General Celebration</option><option value="BIRTHDAY">Birthday</option><option value="WORK_ANNIVERSARY">Work Anniversary</option><option value="HOLIDAY">Festival / Holiday</option><option value="APPROVED">Achievement</option></select></label>
+            <label>Celebration Type<select value={celebrationForm.type} onChange={(e) => setCelebrationForm((value) => ({ ...value, type: e.target.value }))}><option value="GENERAL">General Celebration</option><option value="BIRTHDAY">Birthday</option><option value="WORK_ANNIVERSARY">Work Anniversary</option></select></label>
             <label>Celebration Date<input type="date" value={celebrationForm.eventDate} onChange={(e) => setCelebrationForm((value) => ({ ...value, eventDate: e.target.value }))} /></label>
             <label className="full-span">Title<input value={celebrationForm.title} maxLength={120} onChange={(e) => setCelebrationForm((value) => ({ ...value, title: e.target.value }))} required /></label>
             <label className="full-span">Message<textarea rows={4} value={celebrationForm.message} maxLength={1000} onChange={(e) => setCelebrationForm((value) => ({ ...value, message: e.target.value }))} required /></label>
@@ -462,6 +375,7 @@ export default function CelebrationWall() {
       {/* ---------- Hero banner ---------- */}
       <motion.section
         className="celebration-hero"
+        style={{ '--celebration-photo': `url(${CELEBRATION_BANNER_PHOTO})` }}
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6, ease: easeOut }}
@@ -471,31 +385,18 @@ export default function CelebrationWall() {
           <h1>Celebration Wall</h1>
           <p>Celebrate Birthdays, Work Anniversaries, Festivals, Achievements And Team Milestones Together.</p>
         </div>
-        <div className="celebration-hero-illustration" aria-hidden="true">
-          <svg viewBox="0 0 320 200" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <circle cx="250" cy="55" r="58" fill="#dbeafe" opacity="0.5" />
-            <circle cx="60" cy="155" r="42" fill="#bfdbfe" opacity="0.4" />
-            {/* Confetti */}
-            <rect x="90" y="30" width="6" height="6" rx="2" fill="#fbbf24" transform="rotate(20 93 33)" />
-            <rect x="120" y="22" width="5" height="5" rx="2" fill="#ec4899" transform="rotate(-15 122 24)" />
-            <rect x="200" y="28" width="6" height="6" rx="2" fill="#22d3ee" transform="rotate(30 203 31)" />
-            <rect x="240" y="40" width="5" height="5" rx="2" fill="#a78bfa" transform="rotate(-20 242 42)" />
-            {/* Cake */}
-            <rect x="130" y="100" width="80" height="55" rx="10" fill="#fff" stroke="#bfdbfe" strokeWidth="2" />
-            <rect x="130" y="100" width="80" height="14" rx="7" fill="#fde68a" />
-            <path d="M150 100 V88 M170 100 V82 M190 100 V88" stroke="#ec4899" strokeWidth="2" strokeLinecap="round" />
-            <circle cx="150" cy="84" r="3" fill="#fbbf24" />
-            <circle cx="170" cy="78" r="3" fill="#fbbf24" />
-            <circle cx="190" cy="84" r="3" fill="#fbbf24" />
-            {/* People */}
-            <circle cx="110" cy="140" r="12" fill="#2563eb" />
-            <rect x="98" y="150" width="24" height="20" rx="8" fill="#2563eb" />
-            <circle cx="230" cy="140" r="12" fill="#0891b2" />
-            <rect x="218" y="150" width="24" height="20" rx="8" fill="#0891b2" />
-            {/* Sparkles */}
-            <path d="M260 120 l3 6 l6 3 l-6 3 l-3 6 l-3 -6 l-6 -3 l6 -3 z" fill="#fbbf24" />
-          </svg>
-        </div>
+        {heroPhoto && (
+          <div className="celebration-hero-photo">
+            <img
+              src={heroPhoto}
+              alt="Recent team celebration"
+              loading="lazy"
+              onError={(event) => {
+                event.currentTarget.closest('.celebration-hero-photo').style.display = 'none';
+              }}
+            />
+          </div>
+        )}
       </motion.section>
 
       <div className="celebration-layout">
@@ -552,16 +453,29 @@ export default function CelebrationWall() {
                       <span className="post-category-badge" style={{ background: meta.bg, color: meta.color }}>
                         <TIcon size={13} /> {meta.label}
                       </span>
-                      {canEditCelebration && post.announcementId && <div className="celebration-card-admin"><button type="button" onClick={() => editWallPost(post)}><Pencil size={15} /> Edit</button><button type="button" className="danger" onClick={() => deleteWallPost(post)}><Trash2 size={15} /> Delete</button></div>}
+                      {((canEditCelebration && post.announcementId) || canDeleteCelebration) && (
+                        <div className="celebration-card-admin">
+                          {canEditCelebration && post.announcementId && <button type="button" onClick={() => editWallPost(post)}><Pencil size={15} /> Edit</button>}
+                          {canDeleteCelebration && <button type="button" className="danger" onClick={() => deleteWallPost(post)}><Trash2 size={15} /> Delete</button>}
+                        </div>
+                      )}
                     </div>
 
                     {/* Thumbnail / content */}
                     <div className="post-thumbnail" style={{ background: meta.soft, borderColor: meta.bg }}>
-                      <TIcon size={32} style={{ color: meta.color }} />
+                      {post.images.length === 0 && <TIcon size={32} style={{ color: meta.color }} />}
                       <strong>{post.title}</strong>
                       {post.message && <span className="post-message">{post.message}</span>}
                       {post.taggedPeople.length > 0 && <div className="post-tagged-people"><Users size={15} /><span>With {post.taggedPeople.map((person) => person.name).join(', ')}</span></div>}
                     </div>
+
+                    {post.images.length > 0 && (
+                      <div className={`post-image-grid count-${Math.min(post.images.length, 4)}`}>
+                        {post.images.slice(0, 4).map((src, idx) => (
+                          <img key={idx} src={src} alt={`${post.title} attachment ${idx + 1}`} loading="lazy" />
+                        ))}
+                      </div>
+                    )}
 
                     {/* Actions */}
                     <div className="post-actions">
@@ -645,7 +559,15 @@ export default function CelebrationWall() {
             </div>
             {announcements.map((item) => (
               <div className="side-content" key={item.id}>
-                <div className="side-content-title"><strong>{item.title}</strong>{canEditCelebration && item.announcementId && <div className="side-post-actions"><button type="button" onClick={() => editWallPost(item)} title="Edit"><Pencil size={14} /></button><button type="button" className="danger" onClick={() => deleteWallPost(item)} title="Delete"><Trash2 size={14} /></button></div>}</div>
+                <div className="side-content-title">
+                  <strong>{item.title}</strong>
+                  {((canEditCelebration && item.announcementId) || canDeleteCelebration) && (
+                    <div className="side-post-actions">
+                      {canEditCelebration && item.announcementId && <button type="button" onClick={() => editWallPost(item)} title="Edit"><Pencil size={14} /></button>}
+                      {canDeleteCelebration && <button type="button" className="danger" onClick={() => deleteWallPost(item)} title="Delete"><Trash2 size={14} /></button>}
+                    </div>
+                  )}
+                </div>
                 <span>{item.message}</span>
               </div>
             ))}
