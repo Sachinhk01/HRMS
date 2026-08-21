@@ -410,20 +410,30 @@ useEffect(() => {
         uploadType: 'MAGAZINE',
         attachments: magazineFile.file ? [magazineFile.file] : [],
       });
-      // The publish endpoint doesn't return the saved record, and there's
-      // no GET endpoint yet to re-fetch the real backend URL — so show the
-      // card from what was just submitted instead. The PDF preview URL is
-      // a local base64 blob until the backend read endpoint exists; it'll
-      // still open/download correctly in this browser tab, it just won't
-      // persist or show up for other employees until that endpoint is added.
-      setMagazine({
-        title: fields.title,
-        description: fields.description,
-        coverUrl: fields.coverUrl,
-        documentUrl: magazineFile.url,
-        documentName: magazineFile.name,
-        month: new Date().toLocaleDateString([], { month: 'long', year: 'numeric' }),
-      });
+      // The publish endpoint doesn't return the saved record, but a real
+      // GET endpoint already exists (the same one used on page load) and
+      // now has the freshly published announcement. Re-fetch through that
+      // so the card gets the real backend attachment URL — not the local
+      // base64 preview string, which is only meant for the in-browser
+      // "before you save" preview and is too long to open reliably as a
+      // direct link once the file is more than a page or two.
+      try {
+        const latest = await getLatestMagazine();
+        setMagazine(latest);
+      } catch {
+        // Backend read failed right after a successful write (rare) — fall
+        // back to the local preview so the manager still sees something,
+        // rather than clearing the card.
+        setMagazine({
+          title: fields.title,
+          description: fields.description,
+          coverUrl: fields.coverUrl,
+          documentUrl: magazineFile.url,
+          documentName: magazineFile.name,
+          month: new Date().toLocaleDateString([], { month: 'long', year: 'numeric' }),
+        });
+      }
+      setMagazineFile({ url: '', name: '', size: 0, file: null });
       setMessage('Monthly Magazine Updated.');
     } catch (error) {
       const isTimeout = error?.code === 'ECONNABORTED' || /timeout/i.test(error?.message || '');

@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react';
 import { FileText, UploadCloud, X, Eye } from 'lucide-react';
+import { openPdfDocument } from '../utils/openPdf';
 
 const MAX_SIZE_MB = 25;
 
@@ -76,9 +77,14 @@ export default function PdfDropzone({ url, fileName, fileSize, onChange, hiddenF
             <span>{fileSize ? `${formatSize(fileSize)} · ` : ''}Employees Can Open or Download This All Month</span>
           </div>
           <div className="pdf-file-actions">
-            <a href={url} target="_blank" rel="noreferrer" className="pdf-file-btn" title="Preview PDF">
+            <button
+              type="button"
+              className="pdf-file-btn"
+              title="Preview PDF"
+              onClick={() => openPdfDocument(url)}
+            >
               <Eye size={15} />
-            </a>
+            </button>
             <button type="button" className="pdf-file-btn pdf-file-btn--danger" onClick={removeFile} title="Remove PDF">
               <X size={15} />
             </button>

@@ -1,6 +1,7 @@
 import { createContext, useContext, useMemo, useState } from 'react';
 import api from '../services/api';
 import { getSection, initializeStorage, setSection } from '../services/localStorageService';
+import { getStoredUser, saveSession, updateStoredUser, clearSession } from '../services/authStorage';
 
 const AuthContext = createContext(null);
 initializeStorage();
@@ -21,18 +22,18 @@ const initialsFromName = (name = '') =>
     .join('');
 
 export function AuthProvider({ children }) {
-  const [user, setUser] = useState(() => {
-    try {
-      return JSON.parse(localStorage.getItem('hrms-user')) || null;
-    } catch {
-      return null;
-    }
-  });
+  const [user, setUser] = useState(() => getStoredUser());
 
   // ==========================
   // Backend Login
   // ==========================
-  const login = async ({ email, password, expectedRole }) => {
+  // rememberMe (from the login form's "Remember me" checkbox) decides
+  // *where* the session is stored: checked -> localStorage, so the person
+  // is still signed in after closing and reopening the browser; unchecked
+  // -> sessionStorage, so the session disappears once the browser/tab is
+  // closed. Defaults to false so an unchecked box behaves like a normal
+  // session-only login, matching what the checkbox visually implies.
+  const login = async ({ email, password, expectedRole, rememberMe = false }) => {
     if (!email || !password) {
       throw new Error('Email and password are required.');
     }
@@ -49,9 +50,7 @@ export function AuthProvider({ children }) {
     const normalizedRole = typeof backendRole === 'string' ? backendRole.toUpperCase() : backendRole;
 
     if (expectedRole && normalizedRole !== expectedRole) {
-      localStorage.removeItem('hrms-user');
-      localStorage.removeItem('hrms-token');
-      localStorage.removeItem('hrms-refresh-token');
+      clearSession();
       setUser(null);
       throw new Error(
         `You are not authorized to access the ${portalNames[expectedRole] || 'requested'} portal. Please use the correct login portal.`,
@@ -66,9 +65,12 @@ export function AuthProvider({ children }) {
       profilePhotoUrl: data.user.profilePhotoUrl || data.user.photoUrl || data.user.avatarUrl || '',
     };
 
-    localStorage.setItem('hrms-token', data.accessToken);
-    localStorage.setItem('hrms-refresh-token', data.refreshToken);
-    localStorage.setItem('hrms-user', JSON.stringify(normalizedUser));
+    saveSession({
+      accessToken: data.accessToken,
+      refreshToken: data.refreshToken,
+      user: normalizedUser,
+      rememberMe,
+    });
 
     setUser(normalizedUser);
 
@@ -108,8 +110,11 @@ export function AuthProvider({ children }) {
 
     const { password: _password, ...safeUser } = created;
 
-    localStorage.setItem('hrms-user', JSON.stringify(safeUser));
-    localStorage.setItem('hrms-token', `local-${safeUser.id}-${Date.now()}`);
+    saveSession({
+      accessToken: `local-${safeUser.id}-${Date.now()}`,
+      user: safeUser,
+      rememberMe: true,
+    });
 
     setUser(safeUser);
 
@@ -140,14 +145,12 @@ export function AuthProvider({ children }) {
       photoUrl: next?.photoUrl || next?.profilePhotoUrl || user?.photoUrl || user?.profilePhotoUrl || '',
       profilePhotoUrl: next?.profilePhotoUrl || next?.photoUrl || user?.profilePhotoUrl || user?.photoUrl || '',
     };
-    localStorage.setItem('hrms-user', JSON.stringify(merged));
+    updateStoredUser(merged);
     setUser(merged);
   };
 
   const logout = () => {
-    localStorage.removeItem('hrms-user');
-    localStorage.removeItem('hrms-token');
-    localStorage.removeItem('hrms-refresh-token');
+    clearSession();
     setUser(null);
   };
 

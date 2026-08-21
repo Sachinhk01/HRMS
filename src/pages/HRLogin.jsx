@@ -5,6 +5,7 @@ import Logo from '../components/Logo.jsx';
 import {
   ArrowLeft,
   ArrowRight,
+  Check,
   Clock,
   Eye,
   EyeOff,
@@ -41,6 +42,7 @@ export function HRLogin() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [rememberMe, setRememberMe] = useState(false);
   const [staffOpen, setStaffOpen] = useState(false);
   const [serverError, setServerError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -50,7 +52,7 @@ export function HRLogin() {
     setServerError('');
     setIsSubmitting(true);
     try {
-      await login({ email, password, expectedRole: 'HR_ADMIN' });
+      await login({ email, password, expectedRole: 'HR_ADMIN', rememberMe });
       navigate('/dashboard');
     } catch (error) {
       setServerError(error.message || 'Unable to sign in. Please try again.');
@@ -192,8 +194,15 @@ export function HRLogin() {
 
               <div className="hrms-login__row">
                 <label className="hrms-check">
-                  <input type="checkbox" />
-                  <span className="hrms-check__box" />
+                  <input
+                    type="checkbox"
+                    checked={rememberMe}
+                    onChange={(e) => setRememberMe(e.target.checked)}
+                    autoComplete="off"
+                  />
+                  <span className={`hrms-check__box${rememberMe ? ' hrms-check__box--checked' : ''}`}>
+                    <Check strokeWidth={3} />
+                  </span>
                   Remember me
                 </label>
                 <Link to="/forgot-password" className="hrms-login__forgot">

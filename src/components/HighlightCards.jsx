@@ -1,5 +1,6 @@
 import { Award, BookOpen, ChevronRight, ExternalLink, Star } from 'lucide-react';
 import { capitalizeName } from '../utils/formatName';
+import { openPdfDocument } from '../utils/openPdf';
 
 const MAGAZINE_PHOTO = "https://images.unsplash.com/photo-1769794371055-54436b54577e?fm=jpg&q=80&w=800&auto=format&fit=crop";
 const EOM_PHOTO = "https://images.unsplash.com/photo-1758691737584-a8f17fb34475?fm=jpg&q=80&w=800&auto=format&fit=crop";
@@ -39,9 +40,13 @@ export default function HighlightCards({ magazine, employeeOfMonth }) {
           <h3 className="hl-title">{magazine?.title || 'No Magazine Published Yet'}</h3>
           <p className="hl-desc">{magazine?.description || 'HR or Manager Can Publish The Company Magazine Here For Everyone to Read.'}</p>
           {magazine?.documentUrl && (
-            <a className="hl-cta" href={magazine.documentUrl} target="_blank" rel="noreferrer">
+            <button
+              type="button"
+              className="hl-cta"
+              onClick={() => openPdfDocument(magazine.documentUrl)}
+            >
               Read This Edition <ExternalLink size={14} />
-            </a>
+            </button>
           )}
         </div>
       </article>

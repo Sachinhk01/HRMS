@@ -395,15 +395,13 @@
   border-radius: 5px;
   border: 1.5px solid var(--color-slate-300);
   background: var(--color-white);
+  color: transparent;
   transition: background var(--transition-base), border-color var(--transition-base);
 }
 
-.hrms-check__box::after {
-  content: '';
-  width: 9px;
-  height: 9px;
-  border-radius: 2px;
-  background: var(--color-white);
+.hrms-check__box svg {
+  width: 12px;
+  height: 12px;
   transform: scale(0);
   transition: transform 0.15s ease;
 }
@@ -413,7 +411,24 @@
   border-color: var(--color-primary);
 }
 
-.hrms-check input:checked + .hrms-check__box::after {
+.hrms-check input:checked + .hrms-check__box svg {
+  transform: scale(1);
+}
+
+/* Browser autofill can silently tick a "Remember me" checkbox at the DOM
+   level (as part of restoring a saved login) without going through React's
+   onChange — which would make the box above look checked while the app's
+   actual rememberMe state is still false. This class is toggled directly
+   from React state instead, so the visible box always matches what the
+   app will actually do, regardless of what autofill does to the hidden
+   native input. */
+.hrms-check__box--checked {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: var(--color-white);
+}
+
+.hrms-check__box--checked svg {
   transform: scale(1);
 }
 
