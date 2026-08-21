@@ -333,6 +333,8 @@ if (failures.length) {
   const state = dashboard?.employeeStatus || null;
   const hasCheckedIn = Boolean(dashboard?.checkedIn);
   const hasCheckedOut = Boolean(dashboard?.checkedOut);
+  const isLateToday = normalizeAttendanceStatus(dashboard?.attendanceStatus) === 'LATE'
+    && (state === ATTENDANCE_STATE.WORKING || state === ATTENDANCE_STATE.ON_BREAK || hasCheckedOut);
   const totalElapsedLabel = formatMinutesLabel((dashboard?.workingMinutes || 0) + (dashboard?.breakMinutes || 0));
 
   // ---- UI-only derived views (do not touch data flow) ----
@@ -468,19 +470,48 @@ if (failures.length) {
             </div>
           </div>
         </div>
-        <div className="attendance-hero-illustration" aria-hidden="true">
-          <svg viewBox="0 0 320 200" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <circle cx="250" cy="50" r="60" fill="#dbeafe" opacity="0.5" />
-            <circle cx="60" cy="160" r="44" fill="#bfdbfe" opacity="0.4" />
-            <rect x="120" y="50" width="130" height="100" rx="16" fill="#fff" stroke="#bfdbfe" strokeWidth="2" />
-            <circle cx="185" cy="92" r="30" fill="none" stroke="#2563eb" strokeWidth="4" />
-            <path d="M185 76 V92 L196 100" stroke="#2563eb" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
-            <rect x="140" y="120" width="30" height="6" rx="3" fill="#dbeafe" />
-            <rect x="180" y="120" width="50" height="6" rx="3" fill="#eef2ff" />
-            <circle cx="250" cy="150" r="14" fill="#10b981" opacity="0.8" />
-            <path d="M244 150 l4 5 l8 -9" stroke="#fff" strokeWidth="2.5" fill="none" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-        </div>
+        {isLateToday ? (
+          <div className="attendance-hero-illustration attendance-hero-illustration--late" aria-hidden="true">
+            <svg viewBox="0 0 320 200" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <circle cx="250" cy="46" r="54" fill="#fef3c7" opacity="0.6" />
+              <circle cx="56" cy="158" r="40" fill="#fde68a" opacity="0.35" />
+              <path d="M18 168 H302" stroke="#fcd34d" strokeWidth="2" strokeDasharray="3 7" strokeLinecap="round" opacity="0.6" />
+              <g transform="translate(238,58)">
+                <circle r="30" fill="#fff" stroke="#f59e0b" strokeWidth="4" />
+                <path d="M0 -16 V0 L12 8" stroke="#f59e0b" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
+                <path d="M-30 34 q-8 -6 -14 0" stroke="#f59e0b" strokeWidth="3" strokeLinecap="round" fill="none" />
+                <path d="M-34 44 q-8 -6 -14 0" stroke="#f59e0b" strokeWidth="2.5" strokeLinecap="round" fill="none" opacity="0.6" />
+              </g>
+              <g transform="translate(70,128)">
+                <ellipse cx="-24" cy="30" rx="8" ry="6" fill="#65a30d" />
+                <ellipse cx="26" cy="30" rx="8" ry="6" fill="#65a30d" />
+                <ellipse cx="0" cy="8" rx="46" ry="30" fill="#84cc16" />
+                <path d="M-30 8 a30 22 0 0 1 60 0" fill="none" stroke="#4d7c0f" strokeWidth="2" opacity="0.5" />
+                <path d="M-20 -2 L-8 12 M0 -8 V14 M20 -2 L8 12" stroke="#4d7c0f" strokeWidth="2" strokeLinecap="round" opacity="0.5" />
+                <circle cx="52" cy="4" r="14" fill="#a3e635" />
+                <circle cx="58" cy="0" r="2" fill="#365314" />
+                <path d="M40 -14 q4 6 0 10 q-4 -4 0 -10 Z" fill="#38bdf8" />
+                <circle cx="-46" cy="18" r="3" fill="#bef264" opacity="0.7" />
+                <circle cx="-56" cy="24" r="2" fill="#bef264" opacity="0.5" />
+              </g>
+            </svg>
+            <p className="attendance-late-caption">Slow and steady lost the race today &mdash; you clocked in after the tortoise did.</p>
+          </div>
+        ) : (
+          <div className="attendance-hero-illustration" aria-hidden="true">
+            <svg viewBox="0 0 320 200" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <circle cx="250" cy="50" r="60" fill="#dbeafe" opacity="0.5" />
+              <circle cx="60" cy="160" r="44" fill="#bfdbfe" opacity="0.4" />
+              <rect x="120" y="50" width="130" height="100" rx="16" fill="#fff" stroke="#bfdbfe" strokeWidth="2" />
+              <circle cx="185" cy="92" r="30" fill="none" stroke="#2563eb" strokeWidth="4" />
+              <path d="M185 76 V92 L196 100" stroke="#2563eb" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
+              <rect x="140" y="120" width="30" height="6" rx="3" fill="#dbeafe" />
+              <rect x="180" y="120" width="50" height="6" rx="3" fill="#eef2ff" />
+              <circle cx="250" cy="150" r="14" fill="#10b981" opacity="0.8" />
+              <path d="M244 150 l4 5 l8 -9" stroke="#fff" strokeWidth="2.5" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </div>
+        )}
       </motion.section>
 
       {/* ---------- Segmented tabs ---------- */}
