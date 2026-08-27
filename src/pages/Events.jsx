@@ -7,7 +7,6 @@ import PageHeader from '../components/PageHeader';
 import Pagination from '../components/Pagination';
 import usePagination, { sortRecent } from '../hooks/usePagination';
 import { getNotifications, buildUpcomingEvents } from '../services/notificationService';
-import { getHolidays } from '../services/holidayService';
 import './Events.css';
 
 const easeOut = [0.16, 1, 0.3, 1];
@@ -19,29 +18,24 @@ const stagger = { hidden: {}, show: { transition: { staggerChildren: 0.07, delay
 
 export default function Events() {
   const [notifications, setNotifications] = useState([]);
-  const [holidays, setHolidays] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  // Same two sources the Celebration Wall's "Upcoming events" widget
-  // pulls from: celebration-type notifications and company holidays.
-  // One source failing (e.g. a role-gated holidays endpoint) doesn't
-  // blank out the other.
+  // Company holidays are shown on their own Holidays view (and in the
+  // Celebration Wall's "Upcoming events" sidebar) — they're fixed calendar
+  // dates, not something the company "conducts". This page is only for
+  // real company-run activities and celebrations, so it loads notifications
+  // alone and never fetches holidays.
   const loadData = async () => {
     setLoading(true);
     setError('');
-    const [notifResult, holidayResult] = await Promise.allSettled([
-      getNotifications({ page: 0, size: 100 }),
-      getHolidays({ page: 0, size: 100, sortBy: 'holidayDate', sortDirection: 'asc' }),
-    ]);
-
-    if (notifResult.status === 'fulfilled') {
-      setNotifications(notifResult.value?.content || []);
-    } else {
+    try {
+      const notifResult = await getNotifications({ page: 0, size: 100 });
+      setNotifications(notifResult?.content || []);
+    } catch (err) {
       setNotifications([]);
-      setError(notifResult.reason?.message || 'Failed to load events.');
+      setError(err?.message || 'Failed to load events.');
     }
-    setHolidays(holidayResult.status === 'fulfilled' ? (holidayResult.value?.content || []) : []);
     setLoading(false);
   };
 
@@ -49,12 +43,13 @@ export default function Events() {
     loadData();
   }, []);
 
-  // Exactly what the Celebration Wall's "Upcoming events" sidebar shows —
-  // birthdays, work anniversaries, general celebration posts, and
-  // holidays whose date is still ahead of today.
+  // Same celebration-type filtering the Celebration Wall's "Upcoming
+  // events" sidebar uses (birthdays, work anniversaries, general
+  // celebration posts) — just without holidays mixed in, since those
+  // aren't company-conducted events.
   const eventsList = useMemo(
-    () => sortRecent(buildUpcomingEvents(notifications, holidays)),
-    [notifications, holidays]
+    () => sortRecent(buildUpcomingEvents(notifications)),
+    [notifications]
   );
 
   const { page, pageItems, pageSize, setPage } = usePagination(eventsList, 6);

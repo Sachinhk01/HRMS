@@ -15,26 +15,53 @@ export async function getUpcomingBirthdays(days = 0) {
   return data.data;
 }
 
-// The Announcement entity has no dedicated `coverUrl` field, so a manually
-// pasted cover image URL is encoded as a trailing metadata line in the
-// message body — same convention already used for celebration metadata
-// (see parseCelebrationMeta below). Kept out of the visible description.
+// The Announcement entity has no dedicated `coverUrl` field. When the admin
+// pastes a link to an already-hosted image (rather than uploading a file),
+// that link is encoded as a trailing metadata line in the message body —
+// same convention already used for celebration metadata (see
+// parseCelebrationMeta below). Kept out of the visible description.
+//
+// IMPORTANT: this is only ever used for a real, short http(s) URL. The
+// backend caps `message` at 1000 characters (AnnouncementRequest.message),
+// so a pasted base64 data: URI (tens of thousands of characters) blows
+// straight through that limit and the whole publish fails with
+// "Message cannot exceed 1000 characters". When the admin instead uploads
+// an image file (ImageDropzone), it's sent as a real multipart attachment
+// (see Dashboard.jsx's updateMagazine) and never touches this text field at
+// all — that's the reliable path and should be preferred whenever possible.
 const MAGAZINE_COVER_RE = /\n\nCover:\s*([^\n]+)\s*$/;
+const MAX_ENCODED_COVER_URL_LENGTH = 800; // leaves headroom under the 1000-char message cap
 
 export function encodeMagazineCover(description, coverUrl) {
   const clean = (description || '').trim();
-  return coverUrl ? `${clean}\n\nCover: ${coverUrl}` : clean;
+  const trimmedCover = (coverUrl || '').trim();
+  if (!trimmedCover) return clean;
+
+  if (trimmedCover.startsWith('data:') || trimmedCover.length > MAX_ENCODED_COVER_URL_LENGTH) {
+    throw new Error(
+      'Cover image link is too long to save as a URL. Please upload the image file instead using the cover image uploader.'
+    );
+  }
+  return `${clean}\n\nCover: ${trimmedCover}`;
 }
 
 // Maps a backend Announcement (uploadType=MAGAZINE) to the shape
 // HighlightCards/Dashboard expect. `month` is derived from the real
 // createdAt timestamp rather than being a manually-typed field, since the
 // backend doesn't store one.
+//
+// Attachments are uploaded in a fixed order by updateMagazine: the PDF
+// first, then the cover image file (if the admin used the uploader instead
+// of pasting a URL) — so attachmentUrls[0] is always the PDF and
+// attachmentUrls[1], when present, is the real hosted cover image. That
+// takes priority over a "Cover: <url>" line in the message, which is only
+// ever the fallback for a manually pasted link.
 export function mapAnnouncementToMagazine(announcement) {
   if (!announcement) return null;
   const coverMatch = (announcement.message || '').match(MAGAZINE_COVER_RE);
   const description = (announcement.message || '').replace(MAGAZINE_COVER_RE, '').trim();
   const documentUrl = announcement.attachmentUrls?.[0] || '';
+  const uploadedCoverUrl = announcement.attachmentUrls?.[1] || '';
   const month = announcement.createdAt
     ? new Date(announcement.createdAt).toLocaleDateString([], { month: 'long', year: 'numeric' })
     : '';
@@ -42,7 +69,7 @@ export function mapAnnouncementToMagazine(announcement) {
   return {
     title: announcement.title || '',
     description,
-    coverUrl: coverMatch ? coverMatch[1].trim() : '',
+    coverUrl: uploadedCoverUrl || (coverMatch ? coverMatch[1].trim() : ''),
     documentUrl,
     documentName: documentUrl ? documentUrl.split('/').pop() : '',
     month,
@@ -50,9 +77,31 @@ export function mapAnnouncementToMagazine(announcement) {
   };
 }
 
+// NOTE ON THIS FUNCTION: there is no dedicated "latest magazine" endpoint on
+// the backend (that's what was causing the magazine to vanish — it was
+// calling a URL that 404s, so the catch-block cleared it back to null on
+// every load, for every role). Since we can't add a backend endpoint right
+// now, this instead reuses the existing, already-working
+// GET /notifications/announcement/today endpoint, which really does query
+// the shared database and is already open to EMPLOYEE/MANAGER/HR_ADMIN/
+// SUPER_ADMIN — so a published magazine now genuinely shows up for everyone,
+// not just the browser that published it.
+//
+// The trade-off: that endpoint only returns announcements created *today*.
+// So the magazine will correctly show for every role on the day it's
+// published, but will stop appearing once the calendar day rolls over,
+// until a new one is published. Removing that limitation needs a real
+// backend "latest magazine" endpoint — this is the best fix possible
+// without touching backend code.
 export async function getLatestMagazine() {
-  const { data } = await api.get('/notifications/magazine/latest');
-  return mapAnnouncementToMagazine(data.data);
+  const { data } = await api.get('/notifications/announcement/today');
+  const todaysAnnouncements = data.data || [];
+  // Already ordered by createdAt desc from the backend, so the first
+  // MAGAZINE-type entry is the most recently published one.
+  const latestMagazine = todaysAnnouncements.find(
+    (announcement) => announcement.uploadType === 'MAGAZINE'
+  );
+  return mapAnnouncementToMagazine(latestMagazine);
 }
 
 export async function getUnreadCount() {

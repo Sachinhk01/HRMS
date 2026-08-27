@@ -114,6 +114,7 @@ input:focus, select:focus, textarea:focus {
 }
 
 .field-error { color: var(--red); margin-top: 4px; font-size: 11px; }
+.ef-hint { color: var(--text-muted, #6b7280); margin-top: 8px; font-size: 12px; text-align: center; }
 .success-alert, .form-alert {
   padding: 11px 12px;
   border-radius: var(--radius-sm);
@@ -123,7 +124,7 @@ input:focus, select:focus, textarea:focus {
   gap: 8px;
 }
 .success-alert { background: #e7f8f0; color: #087c50; }
-.form-alert { background: #ffedf0; color: #bd314b; }
+.form-alert { background: #ffedf0; color: var(--red); }
 
 .empty-inline {
   margin: 0;

@@ -282,8 +282,9 @@
 .celebration-card-admin { display: flex; gap: 7px; margin-left: auto; }
 .celebration-card-admin button { display: inline-flex; align-items: center; gap: 5px; padding: 7px 10px; border: 1px solid #bfdbfe; border-radius: 9px; background: #fff; color: #2563eb; font: inherit; font-size: 11px; font-weight: 700; cursor: pointer; }
 .celebration-card-admin button.danger { color: #dc2626; border-color: #fecaca; }
-.side-content-title { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
-.side-post-actions { display: flex; gap: 4px; }
+.side-content-title { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; min-width: 0; }
+.side-content-title > strong { flex: 1 1 auto; min-width: 0; }
+.side-post-actions { display: flex; gap: 4px; flex-shrink: 0; }
 .side-post-actions button { width: 28px; height: 28px; display: grid; place-items: center; border: 1px solid #bfdbfe; border-radius: 8px; background: #fff; color: #2563eb; cursor: pointer; }
 .side-post-actions button.danger { color: #dc2626; border-color: #fecaca; }
 
@@ -364,8 +365,8 @@
 .comment-composer input:focus { border-color: #2563eb; background: #fff; box-shadow: 0 0 0 3px rgba(37, 99, 235, .12); }
 
 /* ---------- Sidebar ---------- */
-.celebration-side { display: flex; flex-direction: column; gap: 16px; position: sticky; top: 20px; }
-.side-widget { padding: 20px; }
+.celebration-side { display: flex; flex-direction: column; gap: 16px; position: sticky; top: 20px; min-width: 0; }
+.side-widget { padding: 20px; min-width: 0; overflow: hidden; }
 .side-widget-head { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
 .side-widget-icon {
   width: 38px; height: 38px; border-radius: 11px;
@@ -375,10 +376,19 @@
 .side-content {
   padding: 12px 0; border-bottom: 1px solid #f1f5f9;
   display: flex; flex-direction: column; gap: 2px;
+  min-width: 0;
 }
 .side-content:last-of-type { border-bottom: 0; padding-bottom: 0; }
-.side-content strong { font-size: 13px; font-weight: 700; color: #0f172a; }
-.side-content span { font-size: 12px; color: #64748b; line-height: 1.4; }
+.side-content-title { min-width: 0; }
+.side-content-title strong { min-width: 0; overflow-wrap: anywhere; word-break: break-word; }
+.side-content strong {
+  font-size: 13px; font-weight: 700; color: #0f172a;
+  overflow-wrap: anywhere; word-break: break-word;
+}
+.side-content span {
+  font-size: 12px; color: #64748b; line-height: 1.4;
+  overflow-wrap: anywhere; word-break: break-word; white-space: pre-wrap;
+}
 .empty-inline { font-size: 13px; color: #94a3b8; padding: 10px 0; margin: 0; }
 
 .quick-links { display: flex; flex-direction: column; gap: 8px; }

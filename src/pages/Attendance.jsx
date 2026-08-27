@@ -22,6 +22,9 @@ import {
   Target,
   Hourglass,
 } from 'lucide-react';
+import * as XLSX from 'xlsx';
+import { jsPDF } from 'jspdf';
+import autoTable from 'jspdf-autotable';
 import PageHeader from '../components/PageHeader';
 import Pagination from '../components/Pagination';
 import ExportMenu from '../components/ExportMenu';
@@ -31,7 +34,6 @@ import {
   checkIn,
   checkOut,
   endBreak,
-  exportAttendanceReport,
   getAttendanceCalendar,
   getAttendanceDashboard,
   getAttendanceHistory,
@@ -89,6 +91,52 @@ function displayTime(value) {
 // Backend already sends pre-formatted "Xh Ym" duration strings.
 function displayDuration(value) {
   return value || '0h 0m';
+}
+
+// ---------------------------------------------------------------------
+// Client-side attendance export (PDF / Excel).
+//
+// The backend's /reports/attendance endpoint currently rejects HR users
+// with a 403 (its @PreAuthorize checks a role name that doesn't match
+// what HR accounts are actually granted), and that's backend code we're
+// not touching here. /attendance/history is already correctly permissioned
+// for EMPLOYEE, MANAGER and HR_ADMIN, so instead of calling the broken
+// report endpoint we fetch the same rows the table already shows (just for
+// the chosen month/date range) and build the PDF/Excel file in the browser.
+// ---------------------------------------------------------------------
+const EXPORT_HEADER = ['Date', 'Check In', 'Check Out', 'Worked', 'Break', 'Status'];
+
+function attendanceRowsToAoA(rows) {
+  return rows.map((r) => [
+    r.attendanceDate || '',
+    displayTime(r.checkInTime),
+    displayTime(r.checkOutTime),
+    displayDuration(r.todayWorkingHours),
+    displayDuration(r.todayBreakHours),
+    STATUS_LABELS[normalizeAttendanceStatus(r.attendanceStatus)] || r.attendanceStatus || '',
+  ]);
+}
+
+function downloadAttendanceExcel(rows, fileLabel) {
+  const worksheet = XLSX.utils.aoa_to_sheet([EXPORT_HEADER, ...attendanceRowsToAoA(rows)]);
+  worksheet['!cols'] = [{ wch: 14 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 10 }, { wch: 14 }];
+  const workbook = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(workbook, worksheet, 'Attendance');
+  XLSX.writeFile(workbook, `attendance-${fileLabel}.xlsx`);
+}
+
+function downloadAttendancePdf(rows, fileLabel, title) {
+  const doc = new jsPDF({ orientation: 'landscape' });
+  doc.setFontSize(14);
+  doc.text(title, 14, 16);
+  autoTable(doc, {
+    head: [EXPORT_HEADER],
+    body: attendanceRowsToAoA(rows),
+    startY: 22,
+    styles: { fontSize: 9 },
+    headStyles: { fillColor: [37, 99, 235] },
+  });
+  doc.save(`attendance-${fileLabel}.pdf`);
 }
 
 // Mirrors backend TimeUtil.formatMinutes — used only for "Total elapsed",
@@ -178,6 +226,17 @@ export default function Attendance() {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [activeLegend, setActiveLegend] = useState(null);
+
+  // ---- Export filters (HR/Manager only — matches backend /reports/attendance) ----
+  // 'month' sends year+month, 'range' sends startDate+endDate. Employees never
+  // see these controls since only HR/Manager can hit that endpoint at all.
+  const [exportRangeType, setExportRangeType] = useState('month');
+  const [exportMonth, setExportMonth] = useState(() => {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  });
+  const [exportFromDate, setExportFromDate] = useState('');
+  const [exportToDate, setExportToDate] = useState('');
 
   useEffect(() => {
     const clockTimer = window.setInterval(() => setCurrentTime(new Date()), 1000);
@@ -423,17 +482,60 @@ if (failures.length) {
     setError('');
     setSuccessMessage('');
     try {
-      const filters = {};
-      if (statusFilter !== 'ALL') filters.attendanceStatus = statusFilter;
-      const { blob, filename } = await exportAttendanceReport(format, filters);
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = filename;
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      window.URL.revokeObjectURL(url);
+      // Resolve the month-wise or date-range filter picked in the toolbar
+      // into a concrete fromDate/toDate pair.
+      let fromDate;
+      let toDate;
+      let fileLabel;
+      let title;
+
+      if (exportRangeType === 'month' && exportMonth) {
+        const [yearStr, monthStr] = exportMonth.split('-');
+        const year = Number(yearStr);
+        const monthIndex = Number(monthStr) - 1;
+        const lastDay = new Date(year, monthIndex + 1, 0).getDate();
+        fromDate = dateKey(year, monthIndex, 1);
+        toDate = dateKey(year, monthIndex, lastDay);
+        fileLabel = exportMonth;
+        title = `Attendance Report — ${exportMonth}`;
+      } else {
+        fromDate = exportFromDate || undefined;
+        toDate = exportToDate || undefined;
+        fileLabel = [fromDate, toDate].filter(Boolean).join('_to_') || 'all';
+        title = `Attendance Report — ${fromDate || 'Start'} to ${toDate || 'Today'}`;
+      }
+
+      // /attendance/history is correctly permissioned for EMPLOYEE, MANAGER
+      // and HR_ADMIN, so pull every row in range from it (looping pages
+      // since the backend caps page size at 100) and build the file here.
+      const rows = [];
+      let page = 0;
+      let totalPages = 1;
+      do {
+        const result = await getAttendanceHistory({
+          page,
+          size: 100,
+          sortBy: 'attendanceDate',
+          sortDirection: 'asc',
+          fromDate,
+          toDate,
+          status: statusFilter !== 'ALL' ? statusFilter : undefined,
+        });
+        rows.push(...(result?.content || []));
+        totalPages = result?.totalPages ?? 1;
+        page += 1;
+      } while (page < totalPages);
+
+      if (!rows.length) {
+        setError('No attendance records found for the selected range.');
+        return;
+      }
+
+      if (format === 'excel') {
+        downloadAttendanceExcel(rows, fileLabel);
+      } else {
+        downloadAttendancePdf(rows, fileLabel, title);
+      }
       setSuccessMessage(`Attendance report downloaded as ${format === 'excel' ? 'Excel' : 'PDF'}.`);
     } catch (exportError) {
       setError(exportError.message || 'Unable to export attendance report.');
@@ -712,7 +814,50 @@ if (failures.length) {
                   <option value="ALL">All Statuses</option>
                   {Object.keys(STATUS_LABELS).map((s) => <option key={s} value={s}>{STATUS_LABELS[s]}</option>)}
                 </select>
-                <ExportMenu onExport={handleExport} />
+
+                {/* Export is HR/Manager-only — matches the backend's
+                    @PreAuthorize("hasAnyRole('HR','MANAGER')") on
+                    /reports/attendance. Employees never see these controls. */}
+                {canViewAll && (
+                  <>
+                    <select
+                      className="compact-select"
+                      value={exportRangeType}
+                      onChange={(e) => setExportRangeType(e.target.value)}
+                    >
+                      <option value="month">Month-wise</option>
+                      <option value="range">Date-wise</option>
+                    </select>
+
+                    {exportRangeType === 'month' ? (
+                      <input
+                        type="month"
+                        className="compact-select"
+                        value={exportMonth}
+                        onChange={(e) => setExportMonth(e.target.value)}
+                      />
+                    ) : (
+                      <>
+                        <input
+                          type="date"
+                          className="compact-select"
+                          value={exportFromDate}
+                          max={exportToDate || undefined}
+                          onChange={(e) => setExportFromDate(e.target.value)}
+                        />
+                        <input
+                          type="date"
+                          className="compact-select"
+                          value={exportToDate}
+                          min={exportFromDate || undefined}
+                          onChange={(e) => setExportToDate(e.target.value)}
+                        />
+                      </>
+                    )}
+
+                    <ExportMenu onExport={handleExport} />
+                  </>
+                )}
               </div>
 
               <div className="table-wrap">

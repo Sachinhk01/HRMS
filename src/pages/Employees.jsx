@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Search, LayoutGrid, List, Phone, Mail, Eye, X,
@@ -72,10 +73,22 @@ export default function Employees() {
   const userRole = user?.roles?.[0] || user?.role;
   const canCreate = CAN_CREATE_ROLES.includes(userRole);
 
+  // Picks up ?search= from the global TopBar search so landing here from
+  // "Search anything..." arrives with the query already applied.
+  const [searchParams, setSearchParams] = useSearchParams();
+
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState('');
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState(() => searchParams.get('search') || '');
+
+  useEffect(() => {
+    const fromUrl = searchParams.get('search') || '';
+    setSearchQuery((current) => (fromUrl !== current ? fromUrl : current));
+    // Only react to the URL changing (e.g. a fresh TopBar search while this
+    // page is already open) — typing in the box shouldn't fight this effect.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
   const [deptFilter, setDeptFilter] = useState('ALL');
   const [desigFilter, setDesigFilter] = useState('ALL');
   const [statusFilter, setStatusFilter] = useState('ALL');

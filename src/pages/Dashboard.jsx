@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import SummaryCard from "../components/SummaryCard";
 import PdfDropzone from "../components/PdfDropzone";
+import ImageDropzone from "../components/ImageDropzone";
 import { useAuth } from "../context/AuthContext";
 import { getEmployees, normalizeEmployeeName } from "../services/employeeService";
 import {
@@ -91,9 +92,35 @@ export default function Dashboard() {
   const [magazineLoading, setMagazineLoading] = useState(true);
   const [employeeOfMonth, setEmployeeOfMonth] = useState(getEmployeeOfMonth());
   const [message, setMessage] = useState('');
+  // Drives the alert color explicitly instead of guessing from the message
+  // text (the old `message.includes('updated')` check was case-sensitive
+  // and never matched "Updated", so the success alert always rendered red).
+  const [messageType, setMessageType] = useState('success');
   const [magazineFile, setMagazineFile] = useState({ url: '', name: '', size: 0, file: null });
+  const [magazineCoverFile, setMagazineCoverFile] = useState({ url: '', name: '', size: 0, file: null });
+  const [magazineErrors, setMagazineErrors] = useState({});
+  const MAGAZINE_DESCRIPTION_LIMIT = 500;
+  const [magazineCoverUrl, setMagazineCoverUrl] = useState('');
+  const [magazineDescription, setMagazineDescription] = useState('');
+  // Publishing a magazine uploads a real PDF (and maybe a cover image) to
+  // storage, which can take a while on a slow connection — without this the
+  // button gave no feedback while that upload was in flight, so it looked
+  // "stuck" and invited repeat clicks (which fired duplicate uploads).
+  const [magazineSaving, setMagazineSaving] = useState(false);
   const [employees, setEmployees] = useState([]);
   const [employeesLoading, setEmployeesLoading] = useState(true);
+  // Controlled fields for Employee of the Month, so we can validate the
+  // Photo URL and enforce a character limit on the Recognition Message the
+  // same way the magazine's Description field already does.
+  const [eomPhotoUrl, setEomPhotoUrl] = useState('');
+  const [eomMessage, setEomMessage] = useState('');
+  const [eomErrors, setEomErrors] = useState({});
+  const EOM_MESSAGE_LIMIT = 500;
+  // Only accept a real, direct https image link — this is what gets set as
+  // an <img src>, so a non-image page (or a local file path pasted in by
+  // mistake, e.g. "C:\Users\...") would otherwise just render as a broken
+  // image with no explanation.
+  const PHOTO_URL_PATTERN = /^https:\/\/[^\s]+\.(jpg|jpeg|png|webp|gif)(\?[^\s]*)?$/i;
 
   // Every role can read the latest magazine — it's published once and
   // seen by the whole company, same as before, but now from the backend
@@ -116,6 +143,27 @@ export default function Dashboard() {
     loadMagazine();
     return () => { cancelled = true; };
   }, []);
+
+  // Keep the controlled Cover URL / Description fields in sync with
+  // whatever magazine record is currently loaded (initial load, and again
+  // after a successful publish re-fetches the saved copy).
+  useEffect(() => {
+    setMagazineCoverUrl(magazine?.coverUrl || '');
+    setMagazineDescription(magazine?.description || '');
+    // Clear any picked-but-not-yet-saved cover file once a fresh magazine
+    // record comes in (e.g. right after a successful publish) so the form
+    // doesn't keep showing a stale local preview.
+    setMagazineCoverFile({ url: '', name: '', size: 0, file: null });
+  }, [magazine]);
+
+  // Same idea as the magazine's sync effect above: keep the controlled
+  // Photo URL / Recognition Message fields in sync with whatever Employee
+  // of the Month record is currently loaded (initial load, and again after
+  // a successful publish).
+  useEffect(() => {
+    setEomPhotoUrl(employeeOfMonth?.photoUrl || '');
+    setEomMessage(employeeOfMonth?.message || '');
+  }, [employeeOfMonth]);
 
 useEffect(() => {
   let cancelled = false;
@@ -403,45 +451,96 @@ useEffect(() => {
   async function updateMagazine(event) {
     event.preventDefault();
     const fields = Object.fromEntries(new FormData(event.currentTarget).entries());
+
+    // ---- Validation: PDF, a cover image (either an uploaded file or a
+    // pasted URL), and Description length are all required client-side
+    // before this ever reaches the API. ----
+    const errors = {};
+    if (!magazineFile.file) {
+      errors.pdf = 'Please upload the magazine PDF before publishing.';
+    }
+    const hasCoverFile = Boolean(magazineCoverFile.file);
+    const trimmedCoverUrl = magazineCoverUrl.trim();
+    if (!hasCoverFile && !trimmedCoverUrl) {
+      errors.coverUrl = 'Upload a cover image or paste an image URL.';
+    } else if (!hasCoverFile && trimmedCoverUrl.startsWith('data:')) {
+      // A pasted base64 image string is what previously broke publishing:
+      // it blows past the backend's 1000-character message limit and the
+      // save silently fails. Catch it here with a clear fix instead.
+      errors.coverUrl = 'That looks like pasted image data, not a link. Use the cover image uploader below instead.';
+    }
+    if (magazineDescription.length > MAGAZINE_DESCRIPTION_LIMIT) {
+      errors.description = `Description cannot exceed ${MAGAZINE_DESCRIPTION_LIMIT} characters.`;
+    }
+
+    if (Object.keys(errors).length > 0) {
+      setMagazineErrors(errors);
+      setMessageType('error');
+      setMessage('Please fix the highlighted fields before publishing.');
+      return;
+    }
+
+    if (magazineSaving) return; // already publishing — ignore repeat clicks
+
+    setMagazineErrors({});
+    setMagazineSaving(true);
+
     try {
+      // Attachment order matters: the backend stores attachmentUrls in the
+      // order they're uploaded, and mapAnnouncementToMagazine reads the PDF
+      // back from index 0 and an uploaded cover image from index 1. Always
+      // send the PDF first, then the cover image file only if one was
+      // uploaded (as opposed to a plain pasted URL).
+      const attachments = [magazineFile.file];
+      if (hasCoverFile) attachments.push(magazineCoverFile.file);
+
+      // If the admin uploaded a real cover image file, don't also try to
+      // encode a URL into the message — there isn't one. Only a manually
+      // pasted link goes through encodeMagazineCover, and that function
+      // itself now guards against anything long enough to blow the
+      // backend's 1000-character message limit.
+      // The backend requires a non-blank message. When the cover comes from
+      // an uploaded file there's no URL to encode, so fall back to a short
+      // default if the (optional) description was left empty — otherwise
+      // an empty description + uploaded cover would fail "Message is
+      // required." on the backend.
+      const message = hasCoverFile
+        ? ((magazineDescription || '').trim() || `${fields.title || 'Monthly Magazine'} — new edition published.`)
+        : encodeMagazineCover(magazineDescription, trimmedCoverUrl);
+
       await createAnnouncement({
         title: fields.title,
-        message: encodeMagazineCover(fields.description, fields.coverUrl),
+        message,
         uploadType: 'MAGAZINE',
-        attachments: magazineFile.file ? [magazineFile.file] : [],
+        attachments,
       });
-      // The publish endpoint doesn't return the saved record, but a real
-      // GET endpoint already exists (the same one used on page load) and
-      // now has the freshly published announcement. Re-fetch through that
-      // so the card gets the real backend attachment URL — not the local
-      // base64 preview string, which is only meant for the in-browser
-      // "before you save" preview and is too long to open reliably as a
-      // direct link once the file is more than a page or two.
-      try {
-        const latest = await getLatestMagazine();
-        setMagazine(latest);
-      } catch {
-        // Backend read failed right after a successful write (rare) — fall
-        // back to the local preview so the manager still sees something,
-        // rather than clearing the card.
-        setMagazine({
-          title: fields.title,
-          description: fields.description,
-          coverUrl: fields.coverUrl,
-          documentUrl: magazineFile.url,
-          documentName: magazineFile.name,
-          month: new Date().toLocaleDateString([], { month: 'long', year: 'numeric' }),
-        });
-      }
+      // The publish endpoint doesn't return the saved record, so re-fetch
+      // the real thing through the same GET used on page load — this gets
+      // back the actual stored attachment URL, not a local blob: preview.
+      //
+      // NOTE: this used to fall back to showing the manager's own local
+      // file preview (magazineFile.url) if this re-fetch failed, "so they
+      // see something". That was actively misleading — a blob: URL only
+      // exists in the publishing manager's own browser tab, so it always
+      // opened fine for them specifically while silently telling nobody
+      // that the publish either failed to save or failed to be readable
+      // back. If the re-fetch fails, surface that honestly instead.
+      const latest = await getLatestMagazine();
+      setMagazine(latest);
       setMagazineFile({ url: '', name: '', size: 0, file: null });
+      setMagazineCoverFile({ url: '', name: '', size: 0, file: null });
+      setMessageType('success');
       setMessage('Monthly Magazine Updated.');
     } catch (error) {
       const isTimeout = error?.code === 'ECONNABORTED' || /timeout/i.test(error?.message || '');
+      setMessageType('error');
       setMessage(
         isTimeout
           ? 'The Upload Took Too Long — Try A Smaller PDF Or Check Your Connection.'
-          : (error?.response?.data?.message || error.message || 'Failed to publish magazine.')
+          : (error?.response?.data?.message || error.message || 'Failed to publish magazine. Please refresh and check whether it saved before trying again.')
       );
+    } finally {
+      setMagazineSaving(false);
     }
   }
 
@@ -449,16 +548,45 @@ useEffect(() => {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
     const selected = employees.find((item) => String(item.id) === form.get('employeeId'));
+
+    // ---- Validation: Photo URL is required and must be a direct https
+    // image link, and the Recognition Message can't exceed the limit. ----
+    const errors = {};
+    const trimmedPhotoUrl = eomPhotoUrl.trim();
+    if (!trimmedPhotoUrl) {
+      errors.photoUrl = 'Please add a photo URL.';
+    } else if (!PHOTO_URL_PATTERN.test(trimmedPhotoUrl)) {
+      errors.photoUrl = 'Enter a direct https image link, e.g. https://example.com/photo.jpg';
+    }
+    if (eomMessage.length > EOM_MESSAGE_LIMIT) {
+      errors.message = `Recognition message cannot exceed ${EOM_MESSAGE_LIMIT} characters.`;
+    }
+
+    if (Object.keys(errors).length > 0) {
+      setEomErrors(errors);
+      setMessageType('error');
+      setMessage('Please fix the highlighted fields before publishing.');
+      return;
+    }
+
+    setEomErrors({});
+
     try {
       const next = saveEmployeeOfMonth(user, {
         ...Object.fromEntries(form.entries()),
+        photoUrl: trimmedPhotoUrl,
+        message: eomMessage.trim(),
         employeeName: selected ? normalizeEmployeeName(selected) : '',
         designation: selected?.designationName || selected?.jobTitle || '',
         department: selected?.departmentName || '',
       });
       setEmployeeOfMonth(next);
+      setMessageType('success');
       setMessage('Employee of The Month Updated.');
-    } catch (error) { setMessage(error.message); }
+    } catch (error) {
+      setMessageType('error');
+      setMessage(error.message);
+    }
   }
 
   return (
@@ -529,7 +657,7 @@ useEffect(() => {
           </div>
 
           {message && (
-            <div className={message.includes('updated') ? 'success-alert' : 'form-alert'}>{message}</div>
+            <div className={messageType === 'success' ? 'success-alert' : 'form-alert'}>{message}</div>
           )}
 
           <div className="highlights-editor-grid">
@@ -547,13 +675,53 @@ useEffect(() => {
                   <span>Title</span>
                   <input name="title" defaultValue={magazine?.title || ''} placeholder="e.g. MyHourly Times — August Edition" required />
                 </label>
-                <label className="ef-field">
-                  <span>Cover Image URL</span>
-                  <input name="coverUrl" type="url" defaultValue={magazine?.coverUrl || ''} placeholder="https://…" />
-                </label>
+                <div className="ef-field ef-full">
+                  <span>Cover Image</span>
+                  <ImageDropzone
+                    url={magazineCoverFile.url}
+                    fileName={magazineCoverFile.name}
+                    fileSize={magazineCoverFile.size}
+                    onChange={(next) => {
+                      setMagazineCoverFile(next);
+                      if (magazineErrors.coverUrl) setMagazineErrors((prev) => ({ ...prev, coverUrl: '' }));
+                    }}
+                  />
+                  {!magazineCoverFile.file && (
+                    <label className="ef-field" style={{ marginTop: 8 }}>
+                      <span>Or Paste An Image URL</span>
+                      <input
+                        name="coverUrl"
+                        type="url"
+                        value={magazineCoverUrl}
+                        onChange={(e) => {
+                          setMagazineCoverUrl(e.target.value);
+                          if (magazineErrors.coverUrl) setMagazineErrors((prev) => ({ ...prev, coverUrl: '' }));
+                        }}
+                        placeholder="https://…"
+                        aria-invalid={Boolean(magazineErrors.coverUrl)}
+                      />
+                    </label>
+                  )}
+                  {magazineErrors.coverUrl && <p className="field-error">{magazineErrors.coverUrl}</p>}
+                </div>
                 <label className="ef-field ef-full">
-                  <span>Description</span>
-                  <textarea name="description" rows="3" defaultValue={magazine?.description || ''} placeholder="What's inside this edition?" />
+                  <span>
+                    Description {" "}
+                    <span className="ef-char-count">{magazineDescription.length}/{MAGAZINE_DESCRIPTION_LIMIT}</span>
+                  </span>
+                  <textarea
+                    name="description"
+                    rows="3"
+                    value={magazineDescription}
+                    maxLength={MAGAZINE_DESCRIPTION_LIMIT}
+                    onChange={(e) => {
+                      setMagazineDescription(e.target.value);
+                      if (magazineErrors.description) setMagazineErrors((prev) => ({ ...prev, description: '' }));
+                    }}
+                    placeholder="What's inside this edition?"
+                    aria-invalid={Boolean(magazineErrors.description)}
+                  />
+                  {magazineErrors.description && <p className="field-error">{magazineErrors.description}</p>}
                 </label>
                 <div className="ef-field ef-full">
                   <span>Magazine PDF</span>
@@ -561,12 +729,23 @@ useEffect(() => {
                     url={magazineFile.url}
                     fileName={magazineFile.name}
                     fileSize={magazineFile.size}
-                    onChange={(next) => setMagazineFile(next)}
+                    onChange={(next) => {
+                      setMagazineFile(next);
+                      if (magazineErrors.pdf) setMagazineErrors((prev) => ({ ...prev, pdf: '' }));
+                    }}
                   />
+                  {magazineErrors.pdf && <p className="field-error">{magazineErrors.pdf}</p>}
                 </div>
               </div>
 
-              <button className="btn btn-primary btn-block"><Save size={17} /> Save &amp; Publish Magazine</button>
+              <button className="btn btn-primary btn-block" type="submit" disabled={magazineSaving} aria-busy={magazineSaving}>
+                <Save size={17} /> {magazineSaving ? 'Publishing…' : 'Save & Publish Magazine'}
+              </button>
+              {magazineSaving && (
+                <p className="ef-hint" role="status">
+                  Uploading the PDF{magazineCoverFile.file ? ' and cover image' : ''} — this can take a little while on a larger file. Please don't close this tab.
+                </p>
+              )}
             </form>
 
             <form className="editor-card editor-card--warm" onSubmit={updateEmployeeOfMonth}>
@@ -592,11 +771,38 @@ useEffect(() => {
                 </label>
                 <label className="ef-field">
                   <span>Photo URL</span>
-                  <input name="photoUrl" type="url" defaultValue={employeeOfMonth?.photoUrl || ''} placeholder="https://… (optional)" />
+                  <input
+                    name="photoUrl"
+                    type="url"
+                    value={eomPhotoUrl}
+                    onChange={(e) => {
+                      setEomPhotoUrl(e.target.value);
+                      if (eomErrors.photoUrl) setEomErrors((prev) => ({ ...prev, photoUrl: '' }));
+                    }}
+                    placeholder="https://example.com/photo.jpg"
+                    aria-invalid={Boolean(eomErrors.photoUrl)}
+                    required
+                  />
+                  {eomErrors.photoUrl && <p className="field-error">{eomErrors.photoUrl}</p>}
                 </label>
                 <label className="ef-field ef-full">
-                  <span>Recognition Message</span>
-                  <textarea name="message" rows="4" defaultValue={employeeOfMonth?.message || ''} placeholder="Why they earned it this month" />
+                  <span>
+                    Recognition Message  {" "}
+                    <span className="ef-char-count">{eomMessage.length}/{EOM_MESSAGE_LIMIT}</span>
+                  </span>
+                  <textarea
+                    name="message"
+                    rows="4"
+                    value={eomMessage}
+                    maxLength={EOM_MESSAGE_LIMIT}
+                    onChange={(e) => {
+                      setEomMessage(e.target.value);
+                      if (eomErrors.message) setEomErrors((prev) => ({ ...prev, message: '' }));
+                    }}
+                    placeholder="Why they earned it this month"
+                    aria-invalid={Boolean(eomErrors.message)}
+                  />
+                  {eomErrors.message && <p className="field-error">{eomErrors.message}</p>}
                 </label>
               </div>
 
