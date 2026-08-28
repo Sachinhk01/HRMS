@@ -21,7 +21,6 @@ import {
 } from "lucide-react";
 import SummaryCard from "../components/SummaryCard";
 import PdfDropzone from "../components/PdfDropzone";
-import ImageDropzone from "../components/ImageDropzone";
 import { useAuth } from "../context/AuthContext";
 import { getEmployees, normalizeEmployeeName } from "../services/employeeService";
 import {
@@ -29,7 +28,6 @@ import {
   getUpcomingBirthdays,
   getLatestMagazine,
   createAnnouncement,
-  encodeMagazineCover,
 } from "../services/notificationService";
 import { getAttendanceDashboard, getAttendanceHistory } from "../services/attendanceService";
 import { getMyLeaveBalances, getTeamLeaveRequests } from "../services/leaveService";
@@ -97,13 +95,11 @@ export default function Dashboard() {
   // and never matched "Updated", so the success alert always rendered red).
   const [messageType, setMessageType] = useState('success');
   const [magazineFile, setMagazineFile] = useState({ url: '', name: '', size: 0, file: null });
-  const [magazineCoverFile, setMagazineCoverFile] = useState({ url: '', name: '', size: 0, file: null });
   const [magazineErrors, setMagazineErrors] = useState({});
   const MAGAZINE_DESCRIPTION_LIMIT = 500;
-  const [magazineCoverUrl, setMagazineCoverUrl] = useState('');
   const [magazineDescription, setMagazineDescription] = useState('');
-  // Publishing a magazine uploads a real PDF (and maybe a cover image) to
-  // storage, which can take a while on a slow connection — without this the
+  // Publishing a magazine uploads a real PDF to storage, which can take a
+  // while on a slow connection — without this the
   // button gave no feedback while that upload was in flight, so it looked
   // "stuck" and invited repeat clicks (which fired duplicate uploads).
   const [magazineSaving, setMagazineSaving] = useState(false);
@@ -144,16 +140,9 @@ export default function Dashboard() {
     return () => { cancelled = true; };
   }, []);
 
-  // Keep the controlled Cover URL / Description fields in sync with
-  // whatever magazine record is currently loaded (initial load, and again
-  // after a successful publish re-fetches the saved copy).
+  // Keep the controlled Description field in sync with the loaded magazine.
   useEffect(() => {
-    setMagazineCoverUrl(magazine?.coverUrl || '');
     setMagazineDescription(magazine?.description || '');
-    // Clear any picked-but-not-yet-saved cover file once a fresh magazine
-    // record comes in (e.g. right after a successful publish) so the form
-    // doesn't keep showing a stale local preview.
-    setMagazineCoverFile({ url: '', name: '', size: 0, file: null });
   }, [magazine]);
 
   // Same idea as the magazine's sync effect above: keep the controlled
@@ -452,22 +441,11 @@ useEffect(() => {
     event.preventDefault();
     const fields = Object.fromEntries(new FormData(event.currentTarget).entries());
 
-    // ---- Validation: PDF, a cover image (either an uploaded file or a
-    // pasted URL), and Description length are all required client-side
+    // ---- Validation: PDF and Description length are checked client-side
     // before this ever reaches the API. ----
     const errors = {};
     if (!magazineFile.file) {
       errors.pdf = 'Please upload the magazine PDF before publishing.';
-    }
-    const hasCoverFile = Boolean(magazineCoverFile.file);
-    const trimmedCoverUrl = magazineCoverUrl.trim();
-    if (!hasCoverFile && !trimmedCoverUrl) {
-      errors.coverUrl = 'Upload a cover image or paste an image URL.';
-    } else if (!hasCoverFile && trimmedCoverUrl.startsWith('data:')) {
-      // A pasted base64 image string is what previously broke publishing:
-      // it blows past the backend's 1000-character message limit and the
-      // save silently fails. Catch it here with a clear fix instead.
-      errors.coverUrl = 'That looks like pasted image data, not a link. Use the cover image uploader below instead.';
     }
     if (magazineDescription.length > MAGAZINE_DESCRIPTION_LIMIT) {
       errors.description = `Description cannot exceed ${MAGAZINE_DESCRIPTION_LIMIT} characters.`;
@@ -486,33 +464,14 @@ useEffect(() => {
     setMagazineSaving(true);
 
     try {
-      // Attachment order matters: the backend stores attachmentUrls in the
-      // order they're uploaded, and mapAnnouncementToMagazine reads the PDF
-      // back from index 0 and an uploaded cover image from index 1. Always
-      // send the PDF first, then the cover image file only if one was
-      // uploaded (as opposed to a plain pasted URL).
-      const attachments = [magazineFile.file];
-      if (hasCoverFile) attachments.push(magazineCoverFile.file);
-
-      // If the admin uploaded a real cover image file, don't also try to
-      // encode a URL into the message — there isn't one. Only a manually
-      // pasted link goes through encodeMagazineCover, and that function
-      // itself now guards against anything long enough to blow the
-      // backend's 1000-character message limit.
-      // The backend requires a non-blank message. When the cover comes from
-      // an uploaded file there's no URL to encode, so fall back to a short
-      // default if the (optional) description was left empty — otherwise
-      // an empty description + uploaded cover would fail "Message is
-      // required." on the backend.
-      const message = hasCoverFile
-        ? ((magazineDescription || '').trim() || `${fields.title || 'Monthly Magazine'} — new edition published.`)
-        : encodeMagazineCover(magazineDescription, trimmedCoverUrl);
+      const message = (magazineDescription || '').trim()
+        || `${fields.title || 'Monthly Magazine'} — new edition published.`;
 
       await createAnnouncement({
         title: fields.title,
         message,
         uploadType: 'MAGAZINE',
-        attachments,
+        attachments: [magazineFile.file],
       });
       // The publish endpoint doesn't return the saved record, so re-fetch
       // the real thing through the same GET used on page load — this gets
@@ -528,7 +487,6 @@ useEffect(() => {
       const latest = await getLatestMagazine();
       setMagazine(latest);
       setMagazineFile({ url: '', name: '', size: 0, file: null });
-      setMagazineCoverFile({ url: '', name: '', size: 0, file: null });
       setMessageType('success');
       setMessage('Monthly Magazine Updated.');
     } catch (error) {
@@ -675,35 +633,6 @@ useEffect(() => {
                   <span>Title</span>
                   <input name="title" defaultValue={magazine?.title || ''} placeholder="e.g. MyHourly Times — August Edition" required />
                 </label>
-                <div className="ef-field ef-full">
-                  <span>Cover Image</span>
-                  <ImageDropzone
-                    url={magazineCoverFile.url}
-                    fileName={magazineCoverFile.name}
-                    fileSize={magazineCoverFile.size}
-                    onChange={(next) => {
-                      setMagazineCoverFile(next);
-                      if (magazineErrors.coverUrl) setMagazineErrors((prev) => ({ ...prev, coverUrl: '' }));
-                    }}
-                  />
-                  {!magazineCoverFile.file && (
-                    <label className="ef-field" style={{ marginTop: 8 }}>
-                      <span>Or Paste An Image URL</span>
-                      <input
-                        name="coverUrl"
-                        type="url"
-                        value={magazineCoverUrl}
-                        onChange={(e) => {
-                          setMagazineCoverUrl(e.target.value);
-                          if (magazineErrors.coverUrl) setMagazineErrors((prev) => ({ ...prev, coverUrl: '' }));
-                        }}
-                        placeholder="https://…"
-                        aria-invalid={Boolean(magazineErrors.coverUrl)}
-                      />
-                    </label>
-                  )}
-                  {magazineErrors.coverUrl && <p className="field-error">{magazineErrors.coverUrl}</p>}
-                </div>
                 <label className="ef-field ef-full">
                   <span>
                     Description {" "}
@@ -743,7 +672,7 @@ useEffect(() => {
               </button>
               {magazineSaving && (
                 <p className="ef-hint" role="status">
-                  Uploading the PDF{magazineCoverFile.file ? ' and cover image' : ''} — this can take a little while on a larger file. Please don't close this tab.
+                  Uploading the PDF — this can take a little while on a larger file. Please don't close this tab.
                 </p>
               )}
             </form>

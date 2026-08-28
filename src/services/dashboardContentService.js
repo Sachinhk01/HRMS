@@ -1,35 +1,8 @@
 import { getSection, setSection } from './localStorageService';
 
-const MAGAZINE_KEY = 'monthlyMagazine';
 const EMPLOYEE_KEY = 'employeeOfMonth';
 
-const emptyMagazine = { title: '', month: '', description: '', coverUrl: '', documentUrl: '', documentName: '', documentSize: 0, updatedAt: '' };
 const emptyEmployee = { employeeId: '', employeeName: '', designation: '', department: '', month: '', message: '', photoUrl: '', updatedAt: '' };
-
-export function getMonthlyMagazine() {
-  return getSection(MAGAZINE_KEY) || emptyMagazine;
-}
-
-export function saveMonthlyMagazine(actor, data) {
-  if (!['HR_ADMIN', 'MANAGER'].includes(actor?.role)) throw new Error('Only HR or Manager can update the monthly magazine.');
-  const item = {
-    ...emptyMagazine,
-    ...data,
-    title: data.title?.trim() || '',
-    description: data.description?.trim() || '',
-    updatedAt: new Date().toISOString(),
-    updatedBy: actor.id,
-  };
-  try {
-    setSection(MAGAZINE_KEY, item);
-  } catch (error) {
-    if (error?.name === 'QuotaExceededError') {
-      throw new Error('This browser storage is full — the PDF is too large to save locally. Try a smaller file (this limit goes away once the backend upload endpoint is live).');
-    }
-    throw error;
-  }
-  return item;
-}
 
 export function getEmployeeOfMonth() {
   return getSection(EMPLOYEE_KEY) || emptyEmployee;

@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react';
 import {
-  Bell, CalendarCheck2, CalendarX2, CheckCheck, Megaphone,
+  Bell, BookOpen, CalendarCheck2, CalendarX2, CheckCheck, Megaphone,
   PartyPopper, TimerReset, UserX,
 } from 'lucide-react';
 import PageHeader from '../components/PageHeader';
 import EmptyState from '../components/EmptyState';
-import { getNotifications, markAllNotificationsRead, markNotificationRead } from '../services/notificationService';
+import { getNotifications, markAllNotificationsRead, markNotificationRead, isMagazineNotification } from '../services/notificationService';
 import { useNotifications } from '../context/NotificationContext';
 import './Notifications.css';
 
@@ -90,7 +90,9 @@ export default function Notifications() {
           <EmptyState title="You're All Caught Up" text="No New Notifications." />
         )}
         {!loading && !error && items.map((item) => {
-          const meta = TYPE_META[item.notificationType] || TYPE_META.GENERAL;
+          const meta = isMagazineNotification(item)
+            ? { icon: BookOpen, tone: 'tone-purple' }
+            : (TYPE_META[item.notificationType] || TYPE_META.GENERAL);
           const Icon = meta.icon;
           return (
             <div

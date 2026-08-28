@@ -6,7 +6,7 @@ import {
 import PageHeader from '../components/PageHeader';
 import Pagination from '../components/Pagination';
 import usePagination, { sortRecent } from '../hooks/usePagination';
-import { getNotifications, parseNotificationContent } from '../services/notificationService';
+import { getNotifications, parseNotificationContent, isMagazineNotification } from '../services/notificationService';
 import './Announcements.css';
 
 const easeOut = [0.16, 1, 0.3, 1];
@@ -41,7 +41,7 @@ export default function Announcements() {
 
   const announcements = useMemo(() => {
     const items = (notifications || [])
-      .filter((n) => n.notificationType === 'ANNOUNCEMENT')
+      .filter((n) => n.notificationType === 'ANNOUNCEMENT' && !isMagazineNotification(n))
       .map((n) => {
         const parsed = parseNotificationContent(n);
         return {

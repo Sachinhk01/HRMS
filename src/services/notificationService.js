@@ -15,61 +15,35 @@ export async function getUpcomingBirthdays(days = 0) {
   return data.data;
 }
 
-// The Announcement entity has no dedicated `coverUrl` field. When the admin
-// pastes a link to an already-hosted image (rather than uploading a file),
-// that link is encoded as a trailing metadata line in the message body —
-// same convention already used for celebration metadata (see
-// parseCelebrationMeta below). Kept out of the visible description.
-//
-// IMPORTANT: this is only ever used for a real, short http(s) URL. The
-// backend caps `message` at 1000 characters (AnnouncementRequest.message),
-// so a pasted base64 data: URI (tens of thousands of characters) blows
-// straight through that limit and the whole publish fails with
-// "Message cannot exceed 1000 characters". When the admin instead uploads
-// an image file (ImageDropzone), it's sent as a real multipart attachment
-// (see Dashboard.jsx's updateMagazine) and never touches this text field at
-// all — that's the reliable path and should be preferred whenever possible.
-const MAGAZINE_COVER_RE = /\n\nCover:\s*([^\n]+)\s*$/;
-const MAX_ENCODED_COVER_URL_LENGTH = 800; // leaves headroom under the 1000-char message cap
+// The general notification response has no uploadType field. Magazine
+// publishes always include the PDF as the first attachment, while plain
+// announcements do not attach PDFs.
+function isPdfUrl(url = '') {
+  return /\.pdf(\?|#|$)/i.test((url || '').split('/').pop() || '');
+}
 
-export function encodeMagazineCover(description, coverUrl) {
-  const clean = (description || '').trim();
-  const trimmedCover = (coverUrl || '').trim();
-  if (!trimmedCover) return clean;
+export function hasPdfAttachment(item = {}) {
+  return (item.attachmentUrls || []).some(isPdfUrl);
+}
 
-  if (trimmedCover.startsWith('data:') || trimmedCover.length > MAX_ENCODED_COVER_URL_LENGTH) {
-    throw new Error(
-      'Cover image link is too long to save as a URL. Please upload the image file instead using the cover image uploader.'
-    );
-  }
-  return `${clean}\n\nCover: ${trimmedCover}`;
+export function isMagazineNotification(item = {}) {
+  return item.notificationType === 'ANNOUNCEMENT' && hasPdfAttachment(item);
 }
 
 // Maps a backend Announcement (uploadType=MAGAZINE) to the shape
 // HighlightCards/Dashboard expect. `month` is derived from the real
 // createdAt timestamp rather than being a manually-typed field, since the
 // backend doesn't store one.
-//
-// Attachments are uploaded in a fixed order by updateMagazine: the PDF
-// first, then the cover image file (if the admin used the uploader instead
-// of pasting a URL) — so attachmentUrls[0] is always the PDF and
-// attachmentUrls[1], when present, is the real hosted cover image. That
-// takes priority over a "Cover: <url>" line in the message, which is only
-// ever the fallback for a manually pasted link.
 export function mapAnnouncementToMagazine(announcement) {
   if (!announcement) return null;
-  const coverMatch = (announcement.message || '').match(MAGAZINE_COVER_RE);
-  const description = (announcement.message || '').replace(MAGAZINE_COVER_RE, '').trim();
   const documentUrl = announcement.attachmentUrls?.[0] || '';
-  const uploadedCoverUrl = announcement.attachmentUrls?.[1] || '';
   const month = announcement.createdAt
     ? new Date(announcement.createdAt).toLocaleDateString([], { month: 'long', year: 'numeric' })
     : '';
 
   return {
     title: announcement.title || '',
-    description,
-    coverUrl: uploadedCoverUrl || (coverMatch ? coverMatch[1].trim() : ''),
+    description: (announcement.message || '').trim(),
     documentUrl,
     documentName: documentUrl ? documentUrl.split('/').pop() : '',
     month,
@@ -169,6 +143,7 @@ export function parseNotificationContent(item = {}) {
     message: item.message || '',
     date: item.createdAt || null,
     attachmentUrls: item.attachmentUrls || [],
+    isMagazine: isMagazineNotification(item),
   };
 }
 

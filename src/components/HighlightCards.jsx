@@ -29,11 +29,7 @@ export default function HighlightCards({ magazine, employeeOfMonth }) {
       {/* ---------- Monthly Magazine ---------- */}
       <article className="hl-card hl-magazine">
         <div className="hl-magazine-cover">
-          <img
-            src={magazine?.coverUrl || MAGAZINE_PHOTO}
-            alt="Monthly magazine cover"
-            onError={(e) => { e.currentTarget.src = MAGAZINE_PHOTO; }}
-          />
+          <img src={MAGAZINE_PHOTO} alt="Monthly magazine cover" />
         </div>
         <div className="hl-content">
           <div className="hl-badge hl-badge--blue">

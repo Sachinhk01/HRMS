@@ -38,6 +38,7 @@
 .notification-icon.tone-pink   { background: #fdeaf3; color: var(--pink); }
 .notification-icon.tone-red    { background: #fdeaee; color: var(--red); }
 .notification-icon.tone-teal   { background: #e5f7f5; color: var(--teal); }
+.notification-icon.tone-purple { background: #f1eafe; color: #7c3aed; }
 
 .notification-body {
   flex: 1;

@@ -10,7 +10,6 @@ export const emptyStore = {
   events: [],
   performanceRecords: [],
   notifications: [],
-  monthlyMagazine: null,
   employeeOfMonth: null,
   settings: { notifications: true, theme: 'light', sessionTimeout: 30 },
 };
