@@ -593,7 +593,7 @@ if (failures.length) {
                 <circle cx="-56" cy="24" r="2" fill="#bef264" opacity="0.5" />
               </g>
             </svg>
-            <p className="attendance-late-caption">Slow and steady lost the race today &mdash; you clocked in after the tortoise did.</p>
+            <p className="attendance-late-caption">Looks like you’re running a little late today! ⏰</p>
           </div>
         ) : (
           <div className="attendance-hero-illustration" aria-hidden="true">
