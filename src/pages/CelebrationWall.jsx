@@ -9,6 +9,7 @@ import PageHeader from '../components/PageHeader';
 import Pagination from '../components/Pagination';
 import usePagination, { sortRecent } from '../hooks/usePagination';
 import { useAuth } from '../context/AuthContext';
+import { useToast } from '../context/ToastContext';
 import { createCelebration, getNotifications, updateAnnouncement } from '../services/notificationService';
 import { getEmployeeDropdown } from '../services/employeeService';
 import './CelebrationWall.css';
@@ -133,13 +134,13 @@ export default function CelebrationWall() {
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const { showToast } = useToast();
   const [active, setActive] = useState('ALL');
   const [likedPosts, setLikedPosts] = useState({});
   const [commentsState, setCommentsState] = useState({});
   const [commentDrafts, setCommentDrafts] = useState({});
   const [composerOpen, setComposerOpen] = useState(false);
   const [creating, setCreating] = useState(false);
-  const [success, setSuccess] = useState('');
   const [celebrationForm, setCelebrationForm] = useState({ type: 'GENERAL', title: '', message: '', eventDate: '', taggedPeople: [] });
   const [celebrationFiles, setCelebrationFiles] = useState([]);
   const [employees, setEmployees] = useState([]);
@@ -300,18 +301,16 @@ export default function CelebrationWall() {
   const handleCreateCelebration = async (event) => {
     event.preventDefault();
     setCreating(true);
-    setError('');
-    setSuccess('');
     try {
       await createCelebration({ ...celebrationForm, attachments: celebrationFiles });
       setCelebrationForm({ type: 'GENERAL', title: '', message: '', eventDate: '', taggedPeople: [] });
       setCelebrationFiles([]);
       setTagSearch('');
       setComposerOpen(false);
-      setSuccess('Celebration Added Successfully.');
+      showToast('Celebration Added Successfully.', 'success');
       await loadData();
     } catch (err) {
-      setError(err.message || 'Failed to Add Celebration.');
+      showToast(err.message || 'Failed to Add Celebration.', 'error');
     } finally {
       setCreating(false);
     }
@@ -322,8 +321,8 @@ export default function CelebrationWall() {
     if (title === null) return;
     const message = window.prompt('Edit message', item.message || '');
     if (message === null || !title.trim() || !message.trim()) return;
-    try { await updateAnnouncement(item.announcementId, { title: title.trim(), message: message.trim() }); setSuccess('Post updated successfully.'); await loadData(); }
-    catch (err) { setError(err?.response?.data?.message || err.message || 'Failed to Update Post.'); }
+    try { await updateAnnouncement(item.announcementId, { title: title.trim(), message: message.trim() }); showToast('Post updated successfully.', 'success'); await loadData(); }
+    catch (err) { showToast(err?.response?.data?.message || err.message || 'Failed to Update Post.', 'error'); }
   };
 
   const deleteWallPost = (item) => {
@@ -334,7 +333,7 @@ export default function CelebrationWall() {
       try { localStorage.setItem(HIDDEN_POSTS_KEY, JSON.stringify([...next])); } catch { /* storage unavailable, ignore */ }
       return next;
     });
-    setSuccess('Post hidden from your view.');
+    showToast('Post hidden from your view.', 'success');
   };
 
   return (
@@ -346,7 +345,6 @@ export default function CelebrationWall() {
         action={canCreateCelebration ? <button type="button" className="btn celebration-add-btn" onClick={() => setComposerOpen(true)}><Plus size={18} /> Add Celebration</button> : null}
       />
 
-      {success && <div className="success-alert">{success}</div>}
 
       {canCreateCelebration && composerOpen && (
         <section className="panel celebration-composer">

@@ -29,6 +29,7 @@ import PageHeader from '../components/PageHeader';
 import Pagination from '../components/Pagination';
 import ExportMenu from '../components/ExportMenu';
 import { useAuth } from '../context/AuthContext';
+import { useToast } from '../context/ToastContext';
 import {
   ATTENDANCE_STATE,
   checkIn,
@@ -204,8 +205,7 @@ export default function Attendance() {
   const [historyItems, setHistoryItems] = useState([]);
   const [historyTotalItems, setHistoryTotalItems] = useState(0);
   const [calendarEntries, setCalendarEntries] = useState([]);
-  const [error, setError] = useState('');
-  const [successMessage, setSuccessMessage] = useState('');
+  const { showToast } = useToast();
   const [locationText, setLocationText] = useState('Fetching location...');
   const [activeTab, setActiveTab] = useState('mark');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -269,7 +269,6 @@ export default function Attendance() {
   }, []);
 
   async function loadAttendanceData() {
-    setError('');
     setIsLoading(true);
     try {
       const monthStartStr = dateKey(visibleMonth.getFullYear(), visibleMonth.getMonth(), 1);
@@ -351,7 +350,7 @@ if (calendarResult.status === "fulfilled") {
 // silently dropped (e.g. history staying empty with no indication why).
 // Surface it the same way a thrown error would be.
 if (failures.length) {
-  setError(`Failed to load: ${failures.join(', ')}.`);
+  showToast(`Failed to load: ${failures.join(', ')}.`, 'error');
   console.error('Attendance load failures:', {
     dashboard: dashboardResult.status === 'rejected' ? dashboardResult.reason : null,
     history: historyResult.status === 'rejected' ? historyResult.reason : null,
@@ -360,7 +359,7 @@ if (failures.length) {
 }
 
     } catch (loadError) {
-      setError(loadError.message || 'Unable to load attendance details.');
+      showToast(loadError.message || 'Unable to load attendance details.', 'error');
     } finally {
       setIsLoading(false);
     }
@@ -424,8 +423,6 @@ if (failures.length) {
   const ringOffset = ringCircumference - (progressPercent / 100) * ringCircumference;
 
   async function handleLocationAwareAction(action, actionName) {
-    setError('');
-    setSuccessMessage('');
     setIsSubmitting(true);
     try {
       const coords = actionName === 'checkIn' || actionName === 'checkOut'
@@ -446,17 +443,18 @@ if (failures.length) {
         setTodayOvertimeMinutes(actionResult.overtimeMinutes);
       }
       await loadAttendanceData();
-      setSuccessMessage(
+      showToast(
         actionName === 'checkIn'
           ? 'Checked in successfully.'
           : actionName === 'checkOut'
           ? 'Checked out successfully.'
           : actionName === 'startBreak'
           ? 'Break started.'
-          : 'Break ended.'
+          : 'Break ended.',
+        'success'
       );
     } catch (attendanceError) {
-      setError(attendanceError.message || `Unable to ${actionName}.`);
+      showToast(attendanceError.message || `Unable to ${actionName}.`, 'error');
     } finally {
       setIsSubmitting(false);
     }
@@ -479,8 +477,6 @@ if (failures.length) {
   }
 
   async function handleExport(format) {
-    setError('');
-    setSuccessMessage('');
     try {
       // Resolve the month-wise or date-range filter picked in the toolbar
       // into a concrete fromDate/toDate pair.
@@ -527,7 +523,7 @@ if (failures.length) {
       } while (page < totalPages);
 
       if (!rows.length) {
-        setError('No attendance records found for the selected range.');
+        showToast('No attendance records found for the selected range.', 'error');
         return;
       }
 
@@ -536,9 +532,9 @@ if (failures.length) {
       } else {
         downloadAttendancePdf(rows, fileLabel, title);
       }
-      setSuccessMessage(`Attendance report downloaded as ${format === 'excel' ? 'Excel' : 'PDF'}.`);
+      showToast(`Attendance report downloaded as ${format === 'excel' ? 'Excel' : 'PDF'}.`, 'success');
     } catch (exportError) {
-      setError(exportError.message || 'Unable to export attendance report.');
+      showToast(exportError.message || 'Unable to export attendance report.', 'error');
     }
   }
 
@@ -665,37 +661,6 @@ if (failures.length) {
           </button>
         </div>
       </motion.div>
-
-      {/* ---------- Toasts ---------- */}
-      <AnimatePresence>
-        {error && (
-          <motion.div
-            className="toast toast-error"
-            initial={{ opacity: 0, y: -24, scale: 0.96 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -24, scale: 0.96 }}
-            transition={{ duration: 0.3, ease: easeOut }}
-          >
-            <XCircle size={18} /> {error}
-          </motion.div>
-        )}
-      </AnimatePresence>
-      <AnimatePresence>
-        {successMessage && (
-          <motion.div
-            className="toast toast-success"
-            initial={{ opacity: 0, y: -24, scale: 0.96 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -24, scale: 0.96 }}
-            transition={{ duration: 0.3, ease: easeOut }}
-            onAnimationComplete={() => {
-              if (successMessage) window.setTimeout(() => setSuccessMessage(''), 3500);
-            }}
-          >
-            <CheckCircle2 size={18} /> {successMessage}
-          </motion.div>
-        )}
-      </AnimatePresence>
 
       {/* ---------- MARK ATTENDANCE TAB ---------- */}
       <AnimatePresence mode="wait">

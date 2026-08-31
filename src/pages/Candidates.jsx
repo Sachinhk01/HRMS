@@ -4,10 +4,12 @@ import PageHeader from '../components/PageHeader';
 import Pagination from '../components/Pagination';
 import usePagination, { sortRecent } from '../hooks/usePagination';
 import { useAuth } from '../context/AuthContext';
+import { useToast } from '../context/ToastContext';
 import { addCandidate, deleteCandidate, generateTemporaryPassword, getCandidates, regenerateCandidateCredentials } from '../services/candidateService';
 
 export default function Candidates() {
   const { user } = useAuth();
+  const { showToast } = useToast();
   const [rows, setRows] = useState(getCandidates());
   const [password, setPassword] = useState(generateTemporaryPassword());
   const [credentials, setCredentials] = useState(null);
@@ -30,7 +32,8 @@ export default function Candidates() {
       event.currentTarget.reset();
       setPassword(generateTemporaryPassword());
       refresh(); setPage(1);
-    } catch (err) { setError(err.message); }
+      showToast('Candidate added and login credentials generated.', 'success');
+    } catch (err) { setError(err.message); showToast(err.message, 'error'); }
   };
 
   const copyCredentials = async () => {
@@ -59,7 +62,7 @@ export default function Candidates() {
     </section>
     <section className="panel">
       <div className="table-wrap"><table><thead><tr><th>Candidate</th><th>DOB</th><th>Position</th><th>Status</th><th>Login Email</th><th>Actions</th></tr></thead><tbody>
-        {pageItems.map((row) => <tr key={row.id}><td><strong>{row.name}</strong><br/><small>{row.phone || '—'}</small></td><td>{row.dob}</td><td>{row.position || '—'}</td><td><span className={`status-badge status-${row.status.toLowerCase()}`}>{row.status}</span></td><td>{row.email}</td><td><div className="table-actions"><button className="icon-btn" title="Regenerate credentials" onClick={() => { const next = regenerateCandidateCredentials(user, row.id); setCredentials(next); refresh(); }}><KeyRound size={17}/></button><button className="icon-btn danger" title="Delete candidate" onClick={() => { if (confirm('Delete candidate and generated login account?')) { deleteCandidate(user, row.id); refresh(); } }}><Trash2 size={17}/></button></div></td></tr>)}
+        {pageItems.map((row) => <tr key={row.id}><td><strong>{row.name}</strong><br/><small>{row.phone || '—'}</small></td><td>{row.dob}</td><td>{row.position || '—'}</td><td><span className={`status-badge status-${row.status.toLowerCase()}`}>{row.status}</span></td><td>{row.email}</td><td><div className="table-actions"><button className="icon-btn" title="Regenerate credentials" onClick={() => { const next = regenerateCandidateCredentials(user, row.id); setCredentials(next); refresh(); showToast('Login credentials regenerated.', 'success'); }}><KeyRound size={17}/></button><button className="icon-btn danger" title="Delete candidate" onClick={() => { if (confirm('Delete candidate and generated login account?')) { deleteCandidate(user, row.id); refresh(); showToast('Candidate deleted.', 'success'); } }}><Trash2 size={17}/></button></div></td></tr>)}
       </tbody></table>{!ordered.length && <p className="empty-inline">No candidates added yet.</p>}</div>
       <Pagination page={page} totalItems={ordered.length} pageSize={pageSize} onPageChange={setPage}/>
     </section>

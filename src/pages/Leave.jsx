@@ -24,6 +24,7 @@ import Pagination from '../components/Pagination';
 import StatusBadge from '../components/StatusBadge';
 import usePagination, { sortRecent } from '../hooks/usePagination';
 import { useAuth } from '../context/AuthContext';
+import { useToast } from '../context/ToastContext';
 import {
   applyLeave,
   cancelLeave,
@@ -90,8 +91,7 @@ export default function Leave() {
   const [balances, setBalances] = useState([]);
   const [leaveTypes, setLeaveTypes] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [msg, setMsg] = useState('');
-  const [err, setErr] = useState('');
+  const { showToast } = useToast();
 
   // UI-only state
   const [searchQuery, setSearchQuery] = useState('');
@@ -105,7 +105,6 @@ export default function Leave() {
 
   const load = async () => {
     setLoading(true);
-    setErr('');
     try {
       const [requestsRes, balancesRes, typesRes] = await Promise.allSettled([
         getMyLeaveRequests(),
@@ -121,7 +120,7 @@ export default function Leave() {
       setBalances(Array.isArray(balancesData) ? balancesData : []);
       setLeaveTypes(Array.isArray(typesData) ? typesData : []);
     } catch (error) {
-      setErr(error.message || 'Failed to load leave data.');
+      showToast(error.message || 'Failed to load leave data.', 'error');
     } finally {
       setLoading(false);
     }
@@ -187,8 +186,6 @@ export default function Leave() {
   const submit = async (event) => {
     event.preventDefault();
     const formEl = event.currentTarget;
-    setMsg('');
-    setErr('');
     const form = new FormData(formEl);
     const leaveTypeId = Number(form.get('leaveTypeId'));
     const startDate = form.get('from');
@@ -196,11 +193,11 @@ export default function Leave() {
     const reason = form.get('reason');
 
     if (!leaveTypeId || !startDate || !endDate || !reason?.trim()) {
-      setErr('Please complete all leave fields.');
+      showToast('Please complete all leave fields.', 'error');
       return;
     }
     if (new Date(endDate) < new Date(startDate)) {
-      setErr('To date cannot be before from date.');
+      showToast('To date cannot be before from date.', 'error');
       return;
     }
 
@@ -214,23 +211,22 @@ export default function Leave() {
       setFormTo('');
       await load();
       setPage(1);
-      setMsg('Leave Request Submitted Successfully.');
+      showToast('Leave Request Submitted Successfully.', 'success');
     } catch (error) {
-      setErr(error.message || 'Failed To Submit Leave Request.');
+      showToast(error.message || 'Failed To Submit Leave Request.', 'error');
     } finally {
       setSubmitting(false);
     }
   };
 
   const handleCancel = async (id) => {
-    setErr('');
     setCancelTarget(null);
     try {
       await cancelLeave(id);
       await load();
-      setMsg('Leave Request Cancelled.');
+      showToast('Leave Request Cancelled.', 'success');
     } catch (error) {
-      setErr(error.message || 'Failed To Cancel Leave Request.');
+      showToast(error.message || 'Failed To Cancel Leave Request.', 'error');
     }
   };
 
@@ -301,22 +297,6 @@ export default function Leave() {
           </svg>
         </div>
       </motion.section>
-
-      {/* ---------- Toasts ---------- */}
-      <AnimatePresence>
-        {err && (
-          <motion.div className="toast toast-error" initial={{ opacity: 0, y: -24, scale: 0.96 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -24, scale: 0.96 }} transition={{ duration: 0.3, ease: easeOut }}>
-            <AlertTriangle size={18} /> {err}
-          </motion.div>
-        )}
-      </AnimatePresence>
-      <AnimatePresence>
-        {msg && (
-          <motion.div className="toast toast-success" initial={{ opacity: 0, y: -24, scale: 0.96 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -24, scale: 0.96 }} transition={{ duration: 0.3, ease: easeOut }} onAnimationComplete={() => { if (msg) window.setTimeout(() => setMsg(''), 3500); }}>
-            <CheckCircle2 size={18} /> {msg}
-          </motion.div>
-        )}
-      </AnimatePresence>
 
       {/* ---------- Summary cards ---------- */}
       <motion.div className="leave-overview-grid" initial="hidden" animate="show" variants={stagger}>

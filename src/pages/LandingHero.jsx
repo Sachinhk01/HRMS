@@ -143,13 +143,6 @@ export function LandingHero() {
               MyHourly HRMS Brings Attendance, Leave, Approvals, And Announcements
               Into One Calm, Reliable Workspace For Your Whole Team.
             </motion.p>
-
-            <motion.div className="hrms-hero__cta-row" variants={rise}>
-              <Link to="/login" className="hrms-btn hrms-btn--primary hrms-btn--lg">
-                Employee Login
-                <ArrowRight />
-              </Link>
-            </motion.div>
           </motion.div>
 
           {/* Floating UI cards — exactly 2, drifting independently */}

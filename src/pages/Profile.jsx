@@ -3,6 +3,7 @@ import { Camera, KeyRound, Save } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
 import PageHeader from '../components/PageHeader';
 import { useAuth } from '../context/AuthContext';
+import { useToast } from '../context/ToastContext';
 import { hrmsService } from '../services/hrmsService';
 
 import { getEmployeeById, getProfilePhotoUrl } from '../services/employeeService';
@@ -13,6 +14,7 @@ const TABS = ['Personal Info', 'Employment Details', 'Change Password'];
 
 export default function Profile() {
   const { user, updateUser, refreshAvatar } = useAuth();
+  const { showToast } = useToast();
   const [searchParams] = useSearchParams();
   const requestedUserId = searchParams.get('user');
   const isOwnProfile = !requestedUserId || requestedUserId === String(user?.id);
@@ -70,8 +72,11 @@ export default function Profile() {
       setProfile(saved);
       updateUser({ ...user, name: `${saved.firstName} ${saved.lastName || ''}`.trim() });
       setMessage('Profile updated.');
+      showToast('Profile updated.', 'success');
     } catch (err) {
-      setError(err?.response?.data?.message || err.message || 'Failed to update profile.');
+      const msg = err?.response?.data?.message || err.message || 'Failed to update profile.';
+      setError(msg);
+      showToast(msg, 'error');
     }
   };
 
@@ -97,9 +102,12 @@ export default function Profile() {
     try {
       await hrmsService.changePassword({ oldPassword, newPassword, confirmPassword });
       setMessage('Password changed successfully.');
+      showToast('Password changed successfully.', 'success');
       formEl.reset();
     } catch (err) {
-      setPasswordError(err?.response?.data?.message || err.message || 'Could not change password.');
+      const msg = err?.response?.data?.message || err.message || 'Could not change password.';
+      setPasswordError(msg);
+      showToast(msg, 'error');
     }
   };
 
@@ -111,6 +119,7 @@ export default function Profile() {
     const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png'];
     if (!allowedTypes.includes(file.type)) {
       setError('Only JPG, JPEG and PNG images are allowed.');
+      showToast('Only JPG, JPEG and PNG images are allowed.', 'error');
       event.target.value = '';
       return;
     }
@@ -118,6 +127,7 @@ export default function Profile() {
 
     if (file.size > MAX_PHOTO_SIZE) {
       setError('Profile photo size cannot exceed 5 MB.');
+      showToast('Profile photo size cannot exceed 5 MB.', 'error');
       event.target.value = '';
       return;
     }
@@ -130,8 +140,11 @@ export default function Profile() {
         refreshAvatar?.()
       }
       setMessage('Profile Photo Updated.');
+      showToast('Profile Photo Updated.', 'success');
     } catch (err) {
-      setError(err?.response?.data?.message || err.message || 'Failed to upload photo.');
+      const msg = err?.response?.data?.message || err.message || 'Failed to upload photo.';
+      setError(msg);
+      showToast(msg, 'error');
     } finally {
       setPhotoUploading(false);
       event.target.value = '';
@@ -196,7 +209,7 @@ export default function Profile() {
                 <label>First Name<input name="firstName" defaultValue={profile.firstName} required /></label>
                 <label>Last Name<input name="lastName" defaultValue={profile.lastName} /></label>
                 <label>Email<input value={profile.email} disabled /></label>
-                <label>Phone<input name="phoneNumber" defaultValue={profile.phoneNumber} /></label>
+                <label>Phone Number<input name="phoneNumber" defaultValue={profile.phoneNumber} /></label>
                 <label>Date of Birth<input name="dateOfBirth" type="date" defaultValue={profile.dateOfBirth} /></label>
                 <label>
                   Gender

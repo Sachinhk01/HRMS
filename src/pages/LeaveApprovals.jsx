@@ -25,6 +25,7 @@ import ExportMenu from '../components/ExportMenu';
 import usePagination, { sortRecent } from '../hooks/usePagination';
 import { getAllLeaveRequests, getTeamLeaveRequests, managerLeaveAction, exportLeaveReport } from '../services/leaveService';
 import { capitalizeName } from '../utils/formatName';
+import { useToast } from '../context/ToastContext';
 import './LeaveApprovals.css';
 
 const easeOut = [0.16, 1, 0.3, 1];
@@ -41,8 +42,7 @@ function initials(name = '') {
 export default function LeaveApprovals() {
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [err, setErr] = useState('');
-  const [msg, setMsg] = useState('');
+  const { showToast } = useToast();
 
   // UI-only state
   const [searchQuery, setSearchQuery] = useState('');
@@ -56,7 +56,6 @@ export default function LeaveApprovals() {
 
   const load = async () => {
     setLoading(true);
-    setErr('');
     try {
       let requests = [];
       try {
@@ -66,7 +65,7 @@ export default function LeaveApprovals() {
       }
       setRows(Array.isArray(requests) ? requests : []);
     } catch (error) {
-      setErr(error.message || 'Failed to load leave requests.');
+      showToast(error.message || 'Failed to load leave requests.', 'error');
     } finally {
       setLoading(false);
     }
@@ -102,14 +101,13 @@ export default function LeaveApprovals() {
   }, [ordered]);
 
   const decide = async (id, action, reason) => {
-    setErr('');
     setActing(true);
     try {
       await managerLeaveAction(id, action, reason || '');
       await load();
-      setMsg(action === 'APPROVE' ? 'Leave Request Approved.' : 'Leave Request Rejected.');
+      showToast(action === 'APPROVE' ? 'Leave Request Approved.' : 'Leave Request Rejected.', 'success');
     } catch (error) {
-      setErr(error.message || 'Failed to record decision.');
+      showToast(error.message || 'Failed to record decision.', 'error');
     } finally {
       setActing(false);
     }
@@ -129,8 +127,6 @@ export default function LeaveApprovals() {
   }
 
   async function handleExport(format) {
-    setErr('');
-    setMsg('');
     try {
       const filters = {};
       if (statusFilter !== 'ALL') filters.leaveStatus = statusFilter;
@@ -143,9 +139,9 @@ export default function LeaveApprovals() {
       link.click();
       link.remove();
       window.URL.revokeObjectURL(url);
-      setMsg(`Leave report downloaded as ${format === 'excel' ? 'Excel' : 'PDF'}.`);
+      showToast(`Leave report downloaded as ${format === 'excel' ? 'Excel' : 'PDF'}.`, 'success');
     } catch (error) {
-      setErr(error.message || 'Unable to export leave report.');
+      showToast(error.message || 'Unable to export leave report.', 'error');
     }
   }
 
@@ -188,22 +184,6 @@ export default function LeaveApprovals() {
           </svg>
         </div>
       </motion.section>
-
-      {/* ---------- Toasts ---------- */}
-      <AnimatePresence>
-        {err && (
-          <motion.div className="toast toast-error" initial={{ opacity: 0, y: -24, scale: 0.96 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -24, scale: 0.96 }} transition={{ duration: 0.3, ease: easeOut }}>
-            <AlertTriangle size={18} /> {err}
-          </motion.div>
-        )}
-      </AnimatePresence>
-      <AnimatePresence>
-        {msg && (
-          <motion.div className="toast toast-success" initial={{ opacity: 0, y: -24, scale: 0.96 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -24, scale: 0.96 }} transition={{ duration: 0.3, ease: easeOut }} onAnimationComplete={() => { if (msg) window.setTimeout(() => setMsg(''), 3500); }}>
-            <CheckCircle2 size={18} /> {msg}
-          </motion.div>
-        )}
-      </AnimatePresence>
 
       {/* ---------- Summary cards ---------- */}
       <motion.div className="la-overview-grid" initial="hidden" animate="show" variants={stagger}>
@@ -269,18 +249,26 @@ export default function LeaveApprovals() {
                   <td className="reason-cell"><span title={row.reason}>{row.reason}</span></td>
                   <td><span className={`status-pill ${String(row.status || '').toLowerCase()}`}><StatusBadge>{row.status}</StatusBadge></span></td>
                   <td>
-                    {String(row.status || '').toUpperCase() === 'PENDING' ? (
-                      <div className="la-actions">
-                        <motion.button className="btn btn-small btn-gradient-green" whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} disabled={acting} onClick={() => setApproveTarget(row)}>
-                          <Check size={15} /> Approve
-                        </motion.button>
-                        <motion.button className="btn btn-small btn-gradient-red" whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} disabled={acting} onClick={() => { setRejectTarget(row); setRejectReason(''); }}>
-                          <X size={15} /> Reject
-                        </motion.button>
-                      </div>
-                    ) : (
-                      <span className="la-actions-done">—</span>
-                    )}
+                    <div className="la-actions">
+                      <motion.button
+                        className="btn btn-small btn-gradient-green"
+                        whileHover={String(row.status || '').toUpperCase() === 'PENDING' ? { scale: 1.05 } : undefined}
+                        whileTap={String(row.status || '').toUpperCase() === 'PENDING' ? { scale: 0.95 } : undefined}
+                        disabled={acting || String(row.status || '').toUpperCase() !== 'PENDING'}
+                        onClick={() => setApproveTarget(row)}
+                      >
+                        <Check size={15} /> Approve
+                      </motion.button>
+                      <motion.button
+                        className="btn btn-small btn-gradient-red"
+                        whileHover={String(row.status || '').toUpperCase() === 'PENDING' ? { scale: 1.05 } : undefined}
+                        whileTap={String(row.status || '').toUpperCase() === 'PENDING' ? { scale: 0.95 } : undefined}
+                        disabled={acting || String(row.status || '').toUpperCase() !== 'PENDING'}
+                        onClick={() => { setRejectTarget(row); setRejectReason(''); }}
+                      >
+                        <X size={15} /> Reject
+                      </motion.button>
+                    </div>
                   </td>
                 </motion.tr>
               ))}

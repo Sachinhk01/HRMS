@@ -4,6 +4,7 @@ import PageHeader from '../components/PageHeader';
 import Pagination from '../components/Pagination';
 import usePagination from '../hooks/usePagination';
 import { useAuth } from '../context/AuthContext';
+import { useToast } from '../context/ToastContext';
 import {
   createHoliday,
   deleteHoliday,
@@ -51,8 +52,8 @@ export default function Holidays() {
   const [year, setYear] = useState(String(new Date().getFullYear()));
   const [form, setForm] = useState(EMPTY_FORM);
   const [editingId, setEditingId] = useState(null);
-  const [message, setMessage] = useState('');
   const [error, setError] = useState('');
+  const { showToast } = useToast();
 
   async function refresh() {
     setLoading(true);
@@ -94,20 +95,18 @@ export default function Holidays() {
 
   async function submit(event) {
     event.preventDefault();
-    setError('');
-    setMessage('');
     try {
       if (editingId) {
         await updateHoliday(editingId, { ...form, attendanceAllowed: false, recurring: false, active: true });
-        setMessage('Holiday updated successfully.');
+        showToast('Holiday updated successfully.', 'success');
       } else {
         await createHoliday(form);
-        setMessage('Holiday added successfully.');
+        showToast('Holiday added successfully.', 'success');
       }
       resetForm();
       await refresh();
     } catch (actionError) {
-      setError(actionError?.response?.data?.message || actionError.message || 'Action failed.');
+      showToast(actionError?.response?.data?.message || actionError.message || 'Action failed.', 'error');
     }
   }
 
@@ -124,14 +123,12 @@ export default function Holidays() {
 
   async function remove(item) {
     if (!window.confirm(`Delete ${item.holidayName}?`)) return;
-    setError('');
-    setMessage('');
     try {
       await deleteHoliday(item.id);
       await refresh();
-      setMessage('Holiday deleted successfully.');
+      showToast('Holiday deleted successfully.', 'success');
     } catch (actionError) {
-      setError(actionError?.response?.data?.message || actionError.message || 'Failed to delete holiday.');
+      showToast(actionError?.response?.data?.message || actionError.message || 'Failed to delete holiday.', 'error');
     }
   }
 
@@ -140,7 +137,6 @@ export default function Holidays() {
       <PageHeader eyebrow="Organisation calendar" title="Holiday List" description="View Company Holidays And Plan Attendance And Leave In Advance." />
 
       {error && <div className="form-alert">{error}</div>}
-      {message && <div className="success-alert">{message}</div>}
 
       <div className="holiday-overview-grid">
         <section className="panel holiday-upcoming-card">

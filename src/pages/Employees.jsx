@@ -10,6 +10,7 @@ import PageHeader from '../components/PageHeader';
 import Pagination from '../components/Pagination';
 import usePagination from '../hooks/usePagination';
 import { useAuth } from '../context/AuthContext';
+import { useToast } from '../context/ToastContext';
 import {
   getEmployees, createEmployee, getDepartments, getDesignations, getJobTitles, getEmployeeDropdown,
   getProfilePhotoUrl,
@@ -94,7 +95,7 @@ export default function Employees() {
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [view, setView] = useState('grid');
   const [drawerEmp, setDrawerEmp] = useState(null);
-  const [successMsg, setSuccessMsg] = useState('');
+  const { showToast } = useToast();
 
   // ---------- Add Employee modal state ----------
   const [showAdd, setShowAdd] = useState(false);
@@ -353,7 +354,7 @@ export default function Employees() {
       setShowAdd(false);
       setForm(EMPTY_FORM);
       setAddStep(1);
-      setSuccessMsg(`${form.firstName} ${form.lastName} was added successfully.`);
+      showToast(`${form.firstName} ${form.lastName} was added successfully.`, 'success');
       load();
     } catch (error) {
       setFormErr(error?.response?.data?.message || error.message || 'Failed to create employee. Please check the details and try again.');
@@ -391,20 +392,6 @@ export default function Employees() {
           </svg>
         </div>
       </motion.section>
-
-      {/* ---------- Success toast ---------- */}
-      <AnimatePresence>
-        {successMsg && (
-          <motion.div
-            className="toast toast-success"
-            initial={{ opacity: 0, y: -24, scale: 0.96 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -24, scale: 0.96 }}
-            transition={{ duration: 0.3, ease: easeOut }}
-            onAnimationComplete={() => { if (successMsg) window.setTimeout(() => setSuccessMsg(''), 3500); }}
-          >
-            <CheckCircle2 size={18} /> {successMsg}
-          </motion.div>
-        )}
-      </AnimatePresence>
 
       {/* ---------- Error banner (real API failure, not mock fallback) ---------- */}
       <AnimatePresence>

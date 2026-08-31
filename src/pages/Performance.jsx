@@ -7,6 +7,7 @@ import {
 import PageHeader from '../components/PageHeader';
 import { getEmployees } from '../services/employeeService';
 import { capitalizeName } from '../utils/formatName';
+import { useToast } from '../context/ToastContext';
 import './Performance.css';
 
 const easeOut = [0.16, 1, 0.3, 1];
@@ -48,7 +49,7 @@ export default function Performance() {
   const [goals, setGoals] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [reviews, setReviews] = useState([]);
-  const [msg, setMsg] = useState('');
+  const { showToast } = useToast();
 
   useEffect(() => {
     let cancelled = false;
@@ -77,8 +78,7 @@ export default function Performance() {
     setReviews((prev) => [newReview, ...prev]);
     setSelectedEmp(''); setRating(0); setPeriod('Q1 2026'); setFeedback(''); setStrengths(''); setImprovements(''); setGoals('');
     setSubmitting(false);
-    setMsg('Review submitted successfully.');
-    window.setTimeout(() => setMsg(''), 3500);
+    showToast('Review submitted successfully.', 'success');
   };
 
   const SUMMARY = [
@@ -114,11 +114,6 @@ export default function Performance() {
           </svg>
         </div>
       </motion.section>
-
-      {/* ---------- Toast ---------- */}
-      <AnimatePresence>
-        {msg && <motion.div className="toast toast-success" initial={{ opacity: 0, y: -24, scale: 0.96 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -24, scale: 0.96 }} transition={{ duration: 0.3, ease: easeOut }}><CheckCircle2 size={18} /> {msg}</motion.div>}
-      </AnimatePresence>
 
       {/* ---------- Summary cards ---------- */}
       <motion.div className="perf-summary-grid" initial="hidden" animate="show" variants={stagger}>

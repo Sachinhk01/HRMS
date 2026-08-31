@@ -23,7 +23,8 @@ import SummaryCard from "../components/SummaryCard";
 import PdfDropzone from "../components/PdfDropzone";
 import ImageDropzone from "../components/ImageDropzone";
 import { useAuth } from "../context/AuthContext";
-import { getEmployees, normalizeEmployeeName } from "../services/employeeService";
+import { useToast } from "../context/ToastContext";
+import { getEmployees, normalizeEmployeeName, getProfilePhotoUrl } from "../services/employeeService";
 import {
   getNotifications,
   getUpcomingBirthdays,
@@ -91,11 +92,7 @@ export default function Dashboard() {
   const [magazine, setMagazine] = useState(null);
   const [magazineLoading, setMagazineLoading] = useState(true);
   const [employeeOfMonth, setEmployeeOfMonth] = useState(getEmployeeOfMonth());
-  const [message, setMessage] = useState('');
-  // Drives the alert color explicitly instead of guessing from the message
-  // text (the old `message.includes('updated')` check was case-sensitive
-  // and never matched "Updated", so the success alert always rendered red).
-  const [messageType, setMessageType] = useState('success');
+  const { showToast } = useToast();
   const [magazineFile, setMagazineFile] = useState({ url: '', name: '', size: 0, file: null });
   const [magazineCoverFile, setMagazineCoverFile] = useState({ url: '', name: '', size: 0, file: null });
   const [magazineErrors, setMagazineErrors] = useState({});
@@ -216,6 +213,7 @@ useEffect(() => {
           empResult.status === "fulfilled" && Array.isArray(empResult.value)
             ? empResult.value.map((b) => ({
                 id: b.employeeId,
+                employeeId: b.employeeId,
                 name: b.employeeName,
                 dateOfBirth: b.dateOfBirth,
                 nextBirthday: b.upcomingBirthdayDate,
@@ -232,6 +230,10 @@ useEffect(() => {
           .filter((n) => n.notificationType === 'BIRTHDAY')
           .map((n) => ({
             id: `notif-${n.id}`,
+            // Birthday notifications always reference the birthday employee
+            // (see BirthdayScheduler), so this lets us look up their real
+            // profile photo even though the notification itself has none.
+            employeeId: n.referenceType === 'EMPLOYEE' ? n.referenceId : null,
             name: n.title || 'Happy Birthday 🎉',
             dateOfBirth: n.createdAt,
             designation: n.message || 'Birthday Celebration',
@@ -260,6 +262,47 @@ useEffect(() => {
       window.removeEventListener('focus', loadBirthdays);
     };
   }, []);
+
+  // ---------- Real profile photos for the Celebration Wall ----------
+  // Mirrors the caching pattern used on the Employees page: fetch each
+  // birthday person's photo once by id and reuse it, falling back to
+  // initials (handled inside BirthdayWidget) when a person has none.
+  const [birthdayPhotoUrls, setBirthdayPhotoUrls] = useState({});
+
+  useEffect(() => {
+    const toFetch = birthdayEmployees
+      .map((emp) => emp.employeeId ?? emp.id)
+      .filter((empId) => empId != null && !(empId in birthdayPhotoUrls));
+
+    if (!toFetch.length) return;
+    let cancelled = false;
+
+    toFetch.forEach((empId) => {
+      getProfilePhotoUrl(empId)
+        .then((url) => {
+          if (cancelled) return;
+          setBirthdayPhotoUrls((prev) => (empId in prev ? prev : { ...prev, [empId]: url }));
+        })
+        .catch(() => {
+          if (cancelled) return;
+          setBirthdayPhotoUrls((prev) => (empId in prev ? prev : { ...prev, [empId]: '' }));
+        });
+    });
+
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [birthdayEmployees]);
+
+  useEffect(() => () => {
+    Object.values(birthdayPhotoUrls).forEach((url) => { if (url) URL.revokeObjectURL(url); });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const birthdayEmployeesWithPhotos = birthdayEmployees.map((emp) => {
+    const empId = emp.employeeId ?? emp.id;
+    const photoUrl = empId != null ? birthdayPhotoUrls[empId] : '';
+    return photoUrl ? { ...emp, profilePhotoUrl: photoUrl } : emp;
+  });
 
   const [upcomingHoliday, setUpcomingHoliday] = useState(null);
   const [upcomingHolidays, setUpcomingHolidays] = useState([]);
@@ -475,8 +518,7 @@ useEffect(() => {
 
     if (Object.keys(errors).length > 0) {
       setMagazineErrors(errors);
-      setMessageType('error');
-      setMessage('Please fix the highlighted fields before publishing.');
+      showToast('Please fix the highlighted fields before publishing.', 'error');
       return;
     }
 
@@ -529,15 +571,14 @@ useEffect(() => {
       setMagazine(latest);
       setMagazineFile({ url: '', name: '', size: 0, file: null });
       setMagazineCoverFile({ url: '', name: '', size: 0, file: null });
-      setMessageType('success');
-      setMessage('Monthly Magazine Updated.');
+      showToast('Monthly Magazine Updated.', 'success');
     } catch (error) {
       const isTimeout = error?.code === 'ECONNABORTED' || /timeout/i.test(error?.message || '');
-      setMessageType('error');
-      setMessage(
+      showToast(
         isTimeout
           ? 'The Upload Took Too Long — Try A Smaller PDF Or Check Your Connection.'
-          : (error?.response?.data?.message || error.message || 'Failed to publish magazine. Please refresh and check whether it saved before trying again.')
+          : (error?.response?.data?.message || error.message || 'Failed to publish magazine. Please refresh and check whether it saved before trying again.'),
+        'error'
       );
     } finally {
       setMagazineSaving(false);
@@ -564,8 +605,7 @@ useEffect(() => {
 
     if (Object.keys(errors).length > 0) {
       setEomErrors(errors);
-      setMessageType('error');
-      setMessage('Please fix the highlighted fields before publishing.');
+      showToast('Please fix the highlighted fields before publishing.', 'error');
       return;
     }
 
@@ -581,11 +621,9 @@ useEffect(() => {
         department: selected?.departmentName || '',
       });
       setEmployeeOfMonth(next);
-      setMessageType('success');
-      setMessage('Employee of The Month Updated.');
+      showToast('Employee of The Month Updated.', 'success');
     } catch (error) {
-      setMessageType('error');
-      setMessage(error.message);
+      showToast(error.message, 'error');
     }
   }
 
@@ -604,7 +642,7 @@ useEffect(() => {
 
       <div className="summary-grid">{cards.map(([Icon, label, value, meta, tone, path]) => <SummaryCard key={label} icon={Icon} label={label} value={value} meta={meta} tone={tone} onClick={() => nav(path)} />)}</div>
 
-      <BirthdayWidget employees={birthdayEmployees} onViewAll={() => nav('/celebrations')} />
+      <BirthdayWidget employees={birthdayEmployeesWithPhotos} onViewAll={() => nav('/celebrations')} />
 
       <section
         className="panel dashboard-holiday-banner"
@@ -655,10 +693,6 @@ useEffect(() => {
             </div>
             <div className="highlights-editor-badge"><Sparkles size={14} /> Live This Month</div>
           </div>
-
-          {message && (
-            <div className={messageType === 'success' ? 'success-alert' : 'form-alert'}>{message}</div>
-          )}
 
           <div className="highlights-editor-grid">
             <form className="editor-card editor-card--blue" onSubmit={updateMagazine}>

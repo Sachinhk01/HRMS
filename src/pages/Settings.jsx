@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Save } from 'lucide-react';
 import PageHeader from '../components/PageHeader';
 import { hrmsService } from '../services/hrmsService';
+import { useToast } from '../context/ToastContext';
 import './Profile.css';
 
 // Each tab maps 1:1 to a SettingController group (GET/PUT /settings/{group}).
@@ -132,15 +133,14 @@ export default function Settings() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [message, setMessage] = useState('');
   const [error, setError] = useState('');
+  const { showToast } = useToast();
 
   const tab = TABS.find((t) => t.key === activeTab);
 
   useEffect(() => {
     setLoading(true);
     setError('');
-    setMessage('');
     tab.get()
       .then(setData)
       .catch((err) => setError(err?.response?.data?.message || err.message || 'Failed to load settings.'))
@@ -152,7 +152,6 @@ export default function Settings() {
   const save = async (event) => {
     event.preventDefault();
     setSaving(true);
-    setMessage('');
     setError('');
     try {
       const payload = { ...data };
@@ -161,9 +160,11 @@ export default function Settings() {
       }
       const saved = await tab.save(payload);
       setData(saved);
-      setMessage(`${tab.label} settings saved.`);
+      showToast(`${tab.label} settings saved.`, 'success');
     } catch (err) {
-      setError(err?.response?.data?.message || err.message || 'Failed to save settings.');
+      const msg = err?.response?.data?.message || err.message || 'Failed to save settings.';
+      setError(msg);
+      showToast(msg, 'error');
     } finally {
       setSaving(false);
     }
@@ -237,7 +238,6 @@ export default function Settings() {
               ))}
 
               {error && <div className="form-alert full-span">{error}</div>}
-              {message && <div className="success-alert full-span">{message}</div>}
 
               <button className="btn btn-primary full-span" disabled={saving}>
                 <Save size={18} />
