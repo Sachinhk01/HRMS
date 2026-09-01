@@ -143,7 +143,71 @@
 }
 .emp-modal-close:hover { background: #f8fafc; color: #0f172a; }
 
-.emp-modal-body { padding: 20px 24px; }
+.emp-modal-body { padding: 20px 24px; max-height: 60vh; overflow-y: auto; }
+
+.emp-modal-tabs {
+  display: flex; gap: 4px;
+  padding: 12px 24px 0;
+  border-bottom: 1px solid #f1f5f9;
+}
+.emp-modal-tabs button {
+  border: none; background: transparent; cursor: pointer;
+  padding: 8px 14px; font-size: 13px; font-weight: 700; color: #64748b;
+  border-radius: 8px 8px 0 0;
+  border-bottom: 2px solid transparent;
+  transition: color .15s ease, border-color .15s ease;
+}
+.emp-modal-tabs button:hover { color: #0f172a; }
+.emp-modal-tabs button.active { color: #2563eb; border-bottom-color: #2563eb; }
+
+/* ---------- Employee attendance panel (inside preview modal) ---------- */
+.emp-attn-toolbar { display: flex; justify-content: flex-end; margin-bottom: 14px; }
+.emp-attn-month {
+  display: flex; align-items: center; gap: 8px;
+  padding: 7px 12px; border-radius: 10px;
+  border: 1px solid #eef2f7; background: #f8fafc; color: #64748b;
+}
+.emp-attn-month input { border: none; background: transparent; font-size: 13px; font-weight: 600; color: #0f172a; }
+.emp-attn-month svg { color: #94a3b8; flex-shrink: 0; }
+
+.emp-attn-error {
+  background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca;
+  border-radius: 10px; padding: 10px 12px; font-size: 12.5px; margin-bottom: 14px;
+}
+
+.emp-attn-summary {
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px;
+  margin-bottom: 16px;
+}
+.emp-attn-stat {
+  padding: 12px; border-radius: 12px; background: #f8fafc; border: 1px solid #eef2f7;
+  display: flex; flex-direction: column; align-items: flex-start; gap: 4px;
+}
+.emp-attn-stat svg { color: #94a3b8; }
+.emp-attn-stat strong { font-size: 16px; font-weight: 800; color: #0f172a; }
+.emp-attn-stat span { font-size: 10.5px; font-weight: 600; color: #94a3b8; }
+
+.emp-attn-table-wrap { overflow-x: auto; border: 1px solid #eef2f7; border-radius: 12px; }
+.emp-attn-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+.emp-attn-table th {
+  text-align: left; padding: 10px 12px; background: #f8fafc; color: #64748b;
+  font-weight: 700; font-size: 11px; text-transform: uppercase; letter-spacing: .03em;
+}
+.emp-attn-table td { padding: 10px 12px; border-top: 1px solid #f1f5f9; color: #0f172a; }
+.emp-attn-no-rows { text-align: center; color: #94a3b8; padding: 20px !important; }
+.emp-attn-skeleton { height: 12px; border-radius: 6px; background: linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 50%, #f1f5f9 75%); background-size: 200% 100%; animation: shimmer 1.4s infinite; }
+
+.emp-attn-empty {
+  display: flex; flex-direction: column; align-items: center; text-align: center;
+  gap: 8px; padding: 30px 10px; color: #64748b;
+}
+.emp-attn-empty svg { color: #f59e0b; }
+.emp-attn-empty p { margin: 0; font-size: 13px; }
+.emp-attn-empty p strong { color: #0f172a; }
+
+@media (max-width: 640px) {
+  .emp-attn-summary { grid-template-columns: repeat(2, 1fr); }
+}
 
 .emp-modal-person {
   display: flex; align-items: center; gap: 12px;

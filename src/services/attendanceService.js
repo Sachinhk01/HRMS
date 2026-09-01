@@ -62,6 +62,26 @@ export async function endBreak() {
   return data.data;
 }
 
+// ---- Viewing another employee's attendance (Manager/HR) ----
+// Confirmed live on the backend (AdminController.java, main branch):
+//   GET /api/v1/admin/attendance/employee/{employeeId}?page&size&sortBy&sortDirection&fromDate&toDate&status
+// Class-level @PreAuthorize on AdminController allows SUPER_ADMIN, MANAGER,
+// and HR_ADMIN. Note: there is currently no team/reporting-manager check in
+// AttendanceServiceImpl.getAttendanceByEmployeeId — any manager can pull any
+// employee's attendance by ID, not just their direct reports. Worth raising
+// with the Java team, but not a frontend blocker.
+// There's no separate monthly-summary-by-employee endpoint, so the panel
+// fetches the month's history (one page, generous size) and computes the
+// summary stats client-side.
+
+export async function getEmployeeAttendanceHistory(employeeId, params = {}) {
+  const { data } = await api.get(`/admin/attendance/employee/${employeeId}`, {
+    params,
+  });
+
+  return data.data;
+}
+
 // Downloads the attendance report as a file (excel/pdf) using the existing
 // /reports/attendance endpoint (format=excel|pdf). Returns the raw blob +
 // a filename pulled from the Content-Disposition header when available.

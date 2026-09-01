@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import PageHeader from '../components/PageHeader';
 import Pagination from '../components/Pagination';
+import EmployeeAttendancePanel from '../components/EmployeeAttendancePanel';
 import usePagination from '../hooks/usePagination';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
@@ -95,6 +96,7 @@ export default function Employees() {
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [view, setView] = useState('grid');
   const [drawerEmp, setDrawerEmp] = useState(null);
+  const [drawerTab, setDrawerTab] = useState('profile');
   const { showToast } = useToast();
 
   // ---------- Add Employee modal state ----------
@@ -456,7 +458,7 @@ export default function Employees() {
                   <span><Phone size={13} /> {emp.phoneNumber || '—'}</span>
                 </div>
                 <div className="emp-card-actions">
-                  <button className="btn btn-small btn-soft" onClick={() => setDrawerEmp(emp)}><Eye size={14} /> View</button>
+                  <button className="btn btn-small btn-soft" onClick={() => { setDrawerEmp(emp); setDrawerTab('profile'); }}><Eye size={14} /> View</button>
                 </div>
               </motion.article>
             ))}
@@ -486,7 +488,7 @@ export default function Employees() {
                       <td>{emp.email || '—'}</td>
                       <td>{emp.phoneNumber || '—'}</td>
                       <td><span className={`status-pill ${emp.active ? 'approved' : 'cancelled'}`}>{emp.active ? 'Active' : 'Inactive'}</span></td>
-                      <td><button className="icon-btn" title="View profile" onClick={() => setDrawerEmp(emp)}><Eye size={15} /></button></td>
+                      <td><button className="icon-btn" title="View profile" onClick={() => { setDrawerEmp(emp); setDrawerTab('profile'); }}><Eye size={15} /></button></td>
                     </motion.tr>
                   ))}
                 </tbody>
@@ -519,23 +521,52 @@ export default function Employees() {
                 <button className="emp-modal-close" onClick={() => setDrawerEmp(null)}><X size={18} /></button>
               </div>
 
-              <div className="emp-modal-body">
-                <div className="emp-modal-person">
-                  <EmpAvatar emp={drawerEmp} size="lg" photoUrl={photoUrls[drawerEmp.id]} />
-                  <div>
-                    <strong>{capitalizeName(drawerEmp.firstName)} {capitalizeName(drawerEmp.lastName)}</strong>
-                    <small>{drawerEmp.designationName || '—'}</small>
-                  </div>
-                </div>
+              <div className="emp-modal-tabs" role="tablist">
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={drawerTab === 'profile'}
+                  className={drawerTab === 'profile' ? 'active' : ''}
+                  onClick={() => setDrawerTab('profile')}
+                >
+                  Profile
+                </button>
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={drawerTab === 'attendance'}
+                  className={drawerTab === 'attendance' ? 'active' : ''}
+                  onClick={() => setDrawerTab('attendance')}
+                >
+                  Attendance
+                </button>
+              </div>
 
-                <div className="emp-info-grid emp-info-grid-3">
-                  <div className="emp-info-item"><IdCard size={14} /><span>Employee Code</span><strong>{drawerEmp.employeeCode || '—'}</strong></div>
-                  <div className="emp-info-item"><Building2 size={14} /><span>Department</span><strong>{drawerEmp.departmentName || '—'}</strong></div>
-                  <div className="emp-info-item"><Briefcase size={14} /><span>Designation</span><strong>{drawerEmp.designationName || '—'}</strong></div>
-                  <div className="emp-info-item"><Mail size={14} /><span>Email</span><strong className="truncate">{drawerEmp.email || '—'}</strong></div>
-                  <div className="emp-info-item"><Phone size={14} /><span>Phone</span><strong>{drawerEmp.phoneNumber || '—'}</strong></div>
-                  <div className="emp-info-item"><CalendarDays size={14} /><span>Status</span><strong>{drawerEmp.active ? 'Active' : 'Inactive'}</strong></div>
-                </div>
+              <div className="emp-modal-body">
+                {drawerTab === 'profile' && (
+                  <>
+                    <div className="emp-modal-person">
+                      <EmpAvatar emp={drawerEmp} size="lg" photoUrl={photoUrls[drawerEmp.id]} />
+                      <div>
+                        <strong>{capitalizeName(drawerEmp.firstName)} {capitalizeName(drawerEmp.lastName)}</strong>
+                        <small>{drawerEmp.designationName || '—'}</small>
+                      </div>
+                    </div>
+
+                    <div className="emp-info-grid emp-info-grid-3">
+                      <div className="emp-info-item"><IdCard size={14} /><span>Employee Code</span><strong>{drawerEmp.employeeCode || '—'}</strong></div>
+                      <div className="emp-info-item"><Building2 size={14} /><span>Department</span><strong>{drawerEmp.departmentName || '—'}</strong></div>
+                      <div className="emp-info-item"><Briefcase size={14} /><span>Designation</span><strong>{drawerEmp.designationName || '—'}</strong></div>
+                      <div className="emp-info-item"><Mail size={14} /><span>Email</span><strong className="truncate">{drawerEmp.email || '—'}</strong></div>
+                      <div className="emp-info-item"><Phone size={14} /><span>Phone</span><strong>{drawerEmp.phoneNumber || '—'}</strong></div>
+                      <div className="emp-info-item"><CalendarDays size={14} /><span>Status</span><strong>{drawerEmp.active ? 'Active' : 'Inactive'}</strong></div>
+                    </div>
+                  </>
+                )}
+
+                {drawerTab === 'attendance' && (
+                  <EmployeeAttendancePanel employeeId={drawerEmp.id} />
+                )}
               </div>
 
               <div className="emp-modal-footer">
