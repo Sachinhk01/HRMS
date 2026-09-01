@@ -145,6 +145,11 @@ export default function CelebrationWall() {
   const [celebrationFiles, setCelebrationFiles] = useState([]);
   const [employees, setEmployees] = useState([]);
   const [tagSearch, setTagSearch] = useState('');
+  // Tracks image URLs that failed to load (broken link / attachment removed
+  // from storage / offline), keyed by the src itself so a fallback card can
+  // be shown instead of the browser's default broken-image icon + alt text.
+  const [brokenImages, setBrokenImages] = useState({});
+  const markImageBroken = (src) => setBrokenImages((current) => (current[src] ? current : { ...current, [src]: true }));
   const canCreateCelebration = ['HR_ADMIN', 'SUPER_ADMIN'].includes(user?.role || user?.roles?.[0]);
   const canEditCelebration = false;
   const canDeleteCelebration = canCreateCelebration;
@@ -264,12 +269,6 @@ export default function CelebrationWall() {
     };
   }, [notifications, hiddenPostIds]);
 
-  // Use the most recent uploaded celebration photo in the hero when available.
-  const heroPhoto = useMemo(() => {
-    const withPhoto = celebrationFeed.find((post) => post.images?.length);
-    return withPhoto ? withPhoto.images[0] : null;
-  }, [celebrationFeed]);
-
   const visibleFeed = useMemo(() => {
     if (active === 'ALL') return celebrationFeed;
     // active is the raw backend NotificationType string (e.g. WORK_ANNIVERSARY)
@@ -383,18 +382,6 @@ export default function CelebrationWall() {
           <h1>Celebration Wall</h1>
           <p>Celebrate Birthdays, Work Anniversaries, Festivals, Achievements And Team Milestones Together.</p>
         </div>
-        {heroPhoto && (
-          <div className="celebration-hero-photo">
-            <img
-              src={heroPhoto}
-              alt="Recent team celebration"
-              loading="lazy"
-              onError={(event) => {
-                event.currentTarget.closest('.celebration-hero-photo').style.display = 'none';
-              }}
-            />
-          </div>
-        )}
       </motion.section>
 
       <div className="celebration-layout">
@@ -470,7 +457,24 @@ export default function CelebrationWall() {
                     {post.images.length > 0 && (
                       <div className={`post-image-grid count-${Math.min(post.images.length, 4)}`}>
                         {post.images.slice(0, 4).map((src, idx) => (
-                          <img key={idx} src={src} alt={`${post.title} attachment ${idx + 1}`} loading="lazy" />
+                          brokenImages[src] ? (
+                            <div
+                              key={idx}
+                              className="post-image-fallback"
+                              style={{ background: meta.soft, borderColor: meta.bg, color: meta.color }}
+                            >
+                              <ImagePlus size={22} />
+                              <span>Photo unavailable</span>
+                            </div>
+                          ) : (
+                            <img
+                              key={idx}
+                              src={src}
+                              alt={`${post.title} attachment ${idx + 1}`}
+                              loading="lazy"
+                              onError={() => markImageBroken(src)}
+                            />
+                          )
                         ))}
                       </div>
                     )}
@@ -588,7 +592,16 @@ export default function CelebrationWall() {
             </div>
             {upcomingEvents.map((item) => (
               <div className="side-content" key={item.id}>
-                <strong>{item.title}</strong>
+                <div className="side-content-title">
+                  <strong>{item.title}</strong>
+                  {canDeleteCelebration && (
+                    <div className="side-post-actions">
+                      <button type="button" className="danger" onClick={() => deleteWallPost(item)} title="Delete">
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+                  )}
+                </div>
                 <span>{item.message || new Date(item.eventDate || item.createdAt).toLocaleDateString()}</span>
               </div>
             ))}

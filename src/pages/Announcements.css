@@ -81,7 +81,10 @@
   gap: 14px;
 }
 .ann-field { display: flex; flex-direction: column; gap: 6px; }
-.ann-field.full-span { grid-column: 1 / -1; }
+.full-span { grid-column: 1 / -1; }
+.ann-composer { border-top: 4px solid #2563eb; }
+.ann-composer .panel-title { margin-bottom: 4px; }
+.ann-upload-row { align-items: center; }
 .ann-field-group { display: contents; }
 .ann-label {
   display: inline-flex; align-items: center; gap: 6px;

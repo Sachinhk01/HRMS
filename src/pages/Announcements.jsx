@@ -1,12 +1,14 @@
 import { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import {
-  Megaphone,
+  Megaphone, Plus, X, Paperclip, Send,
 } from 'lucide-react';
 import PageHeader from '../components/PageHeader';
 import Pagination from '../components/Pagination';
 import usePagination, { sortRecent } from '../hooks/usePagination';
-import { getNotifications, parseNotificationContent, isMagazineNotification } from '../services/notificationService';
+import { useAuth } from '../context/AuthContext';
+import { useToast } from '../context/ToastContext';
+import { getNotifications, parseNotificationContent, isMagazineNotification, createAnnouncement } from '../services/notificationService';
 import './Announcements.css';
 
 const easeOut = [0.16, 1, 0.3, 1];
@@ -18,9 +20,23 @@ const stagger = { hidden: {}, show: { transition: { staggerChildren: 0.07, delay
 
 
 export default function Announcements() {
+  const { user } = useAuth();
+  const { showToast } = useToast();
+
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+
+  // Backend restricts POST /notifications/announcement to
+  // SUPER_ADMIN / HR_ADMIN / MANAGER, but on this page the composer is
+  // surfaced for HR only (mirrors the canCreateCelebration check on the
+  // Celebration Wall).
+  const canCreateAnnouncement = ['HR_ADMIN', 'SUPER_ADMIN'].includes(user?.role || user?.roles?.[0]);
+
+  const [composerOpen, setComposerOpen] = useState(false);
+  const [creating, setCreating] = useState(false);
+  const [announcementForm, setAnnouncementForm] = useState({ title: '', message: '' });
+  const [announcementFiles, setAnnouncementFiles] = useState([]);
 
   const loadData = async () => {
     setLoading(true);
@@ -59,13 +75,109 @@ export default function Announcements() {
 
   const { page, setPage, pageItems, pageSize } = usePagination(announcements, 6);
 
+  const handleCreateAnnouncement = async (event) => {
+    event.preventDefault();
+    setCreating(true);
+    try {
+      await createAnnouncement({
+        title: announcementForm.title,
+        message: announcementForm.message,
+        uploadType: 'POST',
+        attachments: announcementFiles,
+      });
+      setAnnouncementForm({ title: '', message: '' });
+      setAnnouncementFiles([]);
+      setComposerOpen(false);
+      showToast('Announcement Published Successfully.', 'success');
+      await loadData();
+    } catch (err) {
+      showToast(err.message || 'Failed To Publish Announcement.', 'error');
+    } finally {
+      setCreating(false);
+    }
+  };
+
   return (
     <div className="page-stack announcements-page page-reveal">
       <PageHeader
         eyebrow="Company Updates"
         title="Announcements"
         description="Official Company Announcements, Policy Updates, And Broadcast Messages From HR."
+        action={
+          canCreateAnnouncement ? (
+            <button type="button" className="btn btn-gradient" onClick={() => setComposerOpen(true)}>
+              <Plus size={18} /> Add Announcement
+            </button>
+          ) : null
+        }
       />
+
+      {/* ---------- HR-only composer ---------- */}
+      {canCreateAnnouncement && composerOpen && (
+        <section className="panel ann-composer">
+          <div className="panel-title">
+            <div>
+              <span className="eyebrow">HR Broadcast</span>
+              <h2>Add Announcement</h2>
+            </div>
+            <button type="button" className="icon-btn" onClick={() => setComposerOpen(false)} aria-label="Close">
+              <X size={18} />
+            </button>
+          </div>
+          <p className="panel-desc">This Will Be Published To All Employees Instantly.</p>
+
+          <form className="ann-form-grid" onSubmit={handleCreateAnnouncement}>
+            <div className="ann-field full-span">
+              <span className="ann-label">Title</span>
+              <input
+                value={announcementForm.title}
+                maxLength={100}
+                onChange={(e) => setAnnouncementForm((v) => ({ ...v, title: e.target.value }))}
+                placeholder="Announcement Title"
+                required
+              />
+            </div>
+
+            <div className="ann-field full-span">
+              <span className="ann-label">Message</span>
+              <textarea
+                rows={4}
+                value={announcementForm.message}
+                maxLength={1000}
+                onChange={(e) => setAnnouncementForm((v) => ({ ...v, message: e.target.value }))}
+                placeholder="Write The Announcement Details..."
+                required
+              />
+            </div>
+
+            <div className="ann-field full-span ann-upload-row">
+              <label className="ann-attach">
+                <Paperclip size={15} /> Attach Files
+                <input
+                  type="file"
+                  multiple
+                  hidden
+                  onChange={(e) => setAnnouncementFiles(Array.from(e.target.files || []))}
+                />
+              </label>
+              {announcementFiles.length > 0 && (
+                <span className="empty-inline">
+                  {announcementFiles.length} File{announcementFiles.length > 1 ? 's' : ''} Selected
+                </span>
+              )}
+            </div>
+
+            <div className="ann-form-actions full-span">
+              <button type="button" className="btn btn-soft" onClick={() => setComposerOpen(false)}>
+                Cancel
+              </button>
+              <button type="submit" className="btn btn-gradient" disabled={creating}>
+                <Send size={16} /> {creating ? 'Publishing…' : 'Publish Announcement'}
+              </button>
+            </div>
+          </form>
+        </section>
+      )}
 
       {/* ---------- Hero banner ---------- */}
       <motion.section

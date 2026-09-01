@@ -81,7 +81,18 @@
   gap: 14px;
 }
 .ev-field { display: flex; flex-direction: column; gap: 6px; }
-.ev-field.full-span { grid-column: 1 / -1; }
+.full-span { grid-column: 1 / -1; }
+.ev-composer { border-top: 4px solid #2563eb; }
+.ev-composer .panel-title { margin-bottom: 4px; }
+.ev-attach {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 9px 14px; border-radius: 12px;
+  border: 1px dashed #cbd5e1; background: #f8fafc;
+  font-size: 12px; font-weight: 600; color: #64748b;
+  cursor: pointer;
+  transition: background .18s ease, color .18s ease, border-color .18s ease;
+}
+.ev-attach:hover { background: #eaf2fe; color: #2563eb; border-color: #bfdbfe; }
 .ev-label {
   display: inline-flex; align-items: center; gap: 6px;
   font-size: 12px; font-weight: 700; color: #475569;
