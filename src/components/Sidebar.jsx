@@ -14,6 +14,7 @@ import {
   UserRound,
   Users,
   UserSearch,
+  WalletCards,
 } from 'lucide-react';
 import Logo from './Logo';
 import { useAuth } from '../context/AuthContext';
@@ -25,6 +26,7 @@ const icons = {
   '/celebrations': PartyPopper,
   '/attendance': Clock3,
   '/leave': CalendarDays,
+  '/payroll': WalletCards,
   '/performance': Target,
   '/reports': BarChart3,
   '/profile': UserRound,

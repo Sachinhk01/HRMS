@@ -161,7 +161,22 @@
 .emp-modal-tabs button.active { color: #2563eb; border-bottom-color: #2563eb; }
 
 /* ---------- Employee attendance panel (inside preview modal) ---------- */
-.emp-attn-toolbar { display: flex; justify-content: flex-end; margin-bottom: 14px; }
+.emp-attn-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-bottom: 14px; }
+.emp-attn-search, .emp-attn-status-filter, .emp-attn-month {
+  display: flex; align-items: center; gap: 6px; background: #f8fafc;
+  border: 1px solid #e2e8f0; border-radius: 10px; padding: 8px 12px;
+  color: #64748b; font-size: 13px;
+}
+.emp-attn-search { flex: 1 1 220px; }
+.emp-attn-search input, .emp-attn-status-filter select, .emp-attn-month input[type="month"] {
+  border: none; background: transparent; outline: none; font-size: 13px; color: #1e293b;
+}
+.emp-attn-search input { width: 100%; }
+.emp-attn-status-filter select { appearance: none; padding-right: 4px; }
+.emp-attn-actions { display: flex; gap: 8px; margin-left: auto; }
+.emp-attn-btn { display: flex; align-items: center; gap: 6px; border: 1px solid #e2e8f0; background: #fff; border-radius: 8px; padding: 7px 12px; font-size: 13px; font-weight: 500; color: #334155; cursor: pointer; }
+.emp-attn-btn:hover:not(:disabled) { background: #f1f5f9; border-color: #cbd5e1; }
+.emp-attn-btn:disabled { opacity: .5; cursor: not-allowed; }
 .emp-attn-month {
   display: flex; align-items: center; gap: 8px;
   padding: 7px 12px; border-radius: 10px;
@@ -169,6 +184,14 @@
 }
 .emp-attn-month input { border: none; background: transparent; font-size: 13px; font-weight: 600; color: #0f172a; }
 .emp-attn-month svg { color: #94a3b8; flex-shrink: 0; }
+.emp-attn-pill { display: inline-flex; align-items: center; padding: 3px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; }
+.pill-present { background: #dcfce7; color: #16a34a; }
+.pill-late { background: #fef3c7; color: #d97706; }
+.pill-absent, .pill-missed { background: #fee2e2; color: #dc2626; }
+.pill-halfday { background: #e0e7ff; color: #4338ca; }
+.pill-leave { background: #ede9fe; color: #7c3aed; }
+.pill-holiday { background: #ccfbf1; color: #0d9488; }
+.pill-weekend, .pill-default { background: #f1f5f9; color: #64748b; }
 
 .emp-attn-error {
   background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca;
@@ -207,6 +230,13 @@
 
 @media (max-width: 640px) {
   .emp-attn-summary { grid-template-columns: repeat(2, 1fr); }
+}
+
+@media print {
+  .emp-attn-toolbar, .emp-attn-summary, .emp-attn-btn { display: none !important; }
+  .emp-attn-table-wrap { overflow: visible !important; }
+  .emp-attn-table { width: 100%; border-collapse: collapse; }
+  .emp-attn-table th, .emp-attn-table td { border: 1px solid #ccc; padding: 6px 8px; }
 }
 
 .emp-modal-person {

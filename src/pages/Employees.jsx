@@ -565,7 +565,7 @@ export default function Employees() {
                 )}
 
                 {drawerTab === 'attendance' && (
-                  <EmployeeAttendancePanel employeeId={drawerEmp.id} />
+                  <EmployeeAttendancePanel employeeId={drawerEmp.id} employeeName={drawerEmp.name} />
                 )}
               </div>
 
