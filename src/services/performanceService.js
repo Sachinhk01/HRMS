@@ -1,69 +1,76 @@
-import {
-  generateId,
-  readStorage,
-  writeStorage,
-} from "./localStorageService";
+import { getMyProfile } from './employeeService';
+import { getEmployeePayrollHistory } from './payrollService';
 
-const PERFORMANCE_KEY = "performance_records";
+const keyFor = (employeeId) => `myhourly_payroll_notifications_${employeeId}`;
 
-export function getPerformanceRecords() {
-  return readStorage(PERFORMANCE_KEY, []);
+function read(employeeId) {
+  try { return JSON.parse(localStorage.getItem(keyFor(employeeId)) || '[]'); }
+  catch { return []; }
+}
+function write(employeeId, items) {
+  localStorage.setItem(keyFor(employeeId), JSON.stringify(items));
 }
 
-export function createPerformanceRecord(manager, recordData) {
-  if (
-    manager.role !== "MANAGER" &&
-    manager.role !== "HR_ADMIN" &&
-    manager.role !== "SUPER_ADMIN"
-  ) {
-    throw new Error("You do not have permission to add performance data.");
+export async function resolveEmployeeId(user) {
+  const profile = await getMyProfile().catch(() => null);
+  return user?.employeeId || user?.employee?.id || profile?.employeeId || profile?.employee?.id || profile?.id || null;
+}
+
+async function resolveEmployeeHistory(user) {
+  const profile = await getMyProfile().catch(() => null);
+  const ids = [user?.employeeId, user?.employee?.id, profile?.employeeId, profile?.employee?.id, profile?.id]
+    .filter((value, index, values) => value != null && value !== '' && values.indexOf(value) === index);
+  let fallback = { employeeId: ids[0] || null, history: [] };
+  for (const employeeId of ids) {
+    try {
+      const history = await getEmployeePayrollHistory(employeeId);
+      fallback = { employeeId, history: Array.isArray(history) ? history : [] };
+      if (fallback.history.length) return fallback;
+    } catch {
+      // Try The Next Profile Identifier Shape.
+    }
   }
-
-  const records = getPerformanceRecords();
-
-  const newRecord = {
-    id: generateId("performance"),
-    employeeId: recordData.employeeId,
-    employeeName: recordData.employeeName,
-    reviewPeriod: recordData.reviewPeriod,
-    goals: recordData.goals || [],
-    progressPercentage: Number(
-      recordData.progressPercentage || 0
-    ),
-    managerFeedback: recordData.managerFeedback || "",
-    rating: Number(recordData.rating || 0),
-    reviewedBy: manager.id,
-    reviewedByName: manager.name,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  };
-
-  writeStorage(PERFORMANCE_KEY, [newRecord, ...records]);
-
-  return newRecord;
+  return fallback;
 }
 
-export function getEmployeePerformance(employeeId) {
-  return getPerformanceRecords().filter(
-    (record) => record.employeeId === employeeId
-  );
+export async function syncPayrollNotifications(user) {
+  const role = user?.role || user?.roles?.[0];
+  if (role !== 'EMPLOYEE') return [];
+  const { employeeId, history } = await resolveEmployeeHistory(user);
+  if (!employeeId) return [];
+  const existing = read(employeeId);
+  const existingIds = new Set(existing.map((n) => String(n.payrollId)));
+  const additions = (history || [])
+    .filter((p) => p?.id != null && !existingIds.has(String(p.id)))
+    .map((p) => ({
+      id: `payroll-${p.id}`,
+      payrollId: p.id,
+      notificationType: 'PAYROLL_GENERATED',
+      title: 'Payroll Generated',
+      message: `${p.payrollNumber || 'Your payroll'} for ${p.payrollMonth || 'the current month'} is ready. You can download your payslip from Payroll.`,
+      createdAt: p.createdAt || p.updatedAt || new Date().toISOString(),
+      isRead: false,
+    }));
+
+  const merged = [...additions, ...existing].sort((a,b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+  write(employeeId, merged);
+  return merged;
 }
 
-export function updatePerformanceRecord(recordId, updates) {
-  const records = getPerformanceRecords();
+export async function getLocalPayrollNotifications(user) {
+  const employeeId = await resolveEmployeeId(user);
+  if (!employeeId) return [];
+  return read(employeeId);
+}
 
-  const updatedRecords = records.map((record) =>
-    record.id === recordId
-      ? {
-          ...record,
-          ...updates,
-          id: record.id,
-          updatedAt: new Date().toISOString(),
-        }
-      : record
-  );
+export async function markLocalPayrollNotificationRead(user, notificationId) {
+  const employeeId = await resolveEmployeeId(user);
+  if (!employeeId) return;
+  write(employeeId, read(employeeId).map((n) => n.id === notificationId ? { ...n, isRead: true } : n));
+}
 
-  writeStorage(PERFORMANCE_KEY, updatedRecords);
-
-  return updatedRecords.find((record) => record.id === recordId);
+export async function markAllLocalPayrollNotificationsRead(user) {
+  const employeeId = await resolveEmployeeId(user);
+  if (!employeeId) return;
+  write(employeeId, read(employeeId).map((n) => ({ ...n, isRead: true })));
 }
