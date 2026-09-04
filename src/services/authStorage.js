@@ -47,3 +47,29 @@ export function clearSession() {
     store.removeItem(USER_KEY);
   });
 }
+
+// ==========================
+// "Remember me" (email only)
+// ==========================
+// This is separate from saveSession/clearSession above, which only decide
+// where the *active* session token lives and always get wiped on logout.
+// "Remember me" instead needs to survive logout entirely, so the person's
+// email is pre-filled the next time they land on the login page. Stored per
+// portal (EMPLOYEE / MANAGER / HR_ADMIN) since the same browser may be used
+// to sign in to more than one portal with different accounts. Only the
+// email is remembered - never the password - since persisting a plaintext
+// password in browser storage is a security risk.
+const REMEMBER_EMAIL_PREFIX = 'hrms-remember-email-';
+
+export function getRememberedEmail(role = 'default') {
+  return localStorage.getItem(REMEMBER_EMAIL_PREFIX + role) || '';
+}
+
+export function setRememberedEmail(role = 'default', email = '') {
+  const key = REMEMBER_EMAIL_PREFIX + role;
+  if (email) {
+    localStorage.setItem(key, email);
+  } else {
+    localStorage.removeItem(key);
+  }
+}

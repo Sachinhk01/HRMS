@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   Heart, MessageCircle, PartyPopper, Share2, Bookmark,
-  Gift, Cake, Award, Sparkles, UserPlus, Megaphone, CalendarDays, Send, Plus, X, ImagePlus, Users, Pencil, Trash2,
+  Gift, Cake, Award, Sparkles, UserPlus, Megaphone, CalendarDays, Send, Plus, X, ImagePlus, Users, Pencil, Trash2, RefreshCw, Expand,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import PageHeader from '../components/PageHeader';
@@ -150,6 +150,14 @@ export default function CelebrationWall() {
   // be shown instead of the browser's default broken-image icon + alt text.
   const [brokenImages, setBrokenImages] = useState({});
   const markImageBroken = (src) => setBrokenImages((current) => (current[src] ? current : { ...current, [src]: true }));
+  const retryImage = (src) => setBrokenImages((current) => {
+    if (!current[src]) return current;
+    const next = { ...current };
+    delete next[src];
+    return next;
+  });
+  // Full-size photo preview overlay — set to a src to open, null to close.
+  const [lightboxSrc, setLightboxSrc] = useState(null);
   const canCreateCelebration = ['HR_ADMIN', 'SUPER_ADMIN'].includes(user?.role || user?.roles?.[0]);
   const canEditCelebration = false;
   const canDeleteCelebration = canCreateCelebration;
@@ -377,8 +385,20 @@ export default function CelebrationWall() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6, ease: easeOut }}
       >
+        <div className="hero-floaters" aria-hidden="true">
+          {['🎉', '🎂', '🏆', '✨', '🎈'].map((emoji, i) => (
+            <span key={i} className={`floater floater-${i + 1}`}>{emoji}</span>
+          ))}
+        </div>
         <div className="celebration-hero-text">
-          <span className="eyebrow">Celebration Wall</span>
+          <motion.span
+            className="eyebrow"
+            initial={{ opacity: 0, x: -10 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.5, delay: 0.15 }}
+          >
+            <Sparkles size={13} /> Celebration Wall
+          </motion.span>
           <h1>Celebration Wall</h1>
           <p>Celebrate Birthdays, Work Anniversaries, Festivals, Achievements And Team Milestones Together.</p>
         </div>
@@ -427,6 +447,7 @@ export default function CelebrationWall() {
                     key={post.id}
                     variants={fadeUp}
                     whileHover={{ y: -4 }}
+                    style={{ '--accent': meta.color, '--accent-soft': meta.soft }}
                   >
                     {/* Post head */}
                     <div className="post-head">
@@ -465,15 +486,26 @@ export default function CelebrationWall() {
                             >
                               <ImagePlus size={22} />
                               <span>Photo unavailable</span>
+                              <button type="button" className="retry-image-btn" onClick={() => retryImage(src)}>
+                                <RefreshCw size={12} /> Retry
+                              </button>
                             </div>
                           ) : (
-                            <img
+                            <button
+                              type="button"
                               key={idx}
-                              src={src}
-                              alt={`${post.title} attachment ${idx + 1}`}
-                              loading="lazy"
-                              onError={() => markImageBroken(src)}
-                            />
+                              className="post-image-btn"
+                              onClick={() => setLightboxSrc(src)}
+                              aria-label={`View ${post.title} photo ${idx + 1} full size`}
+                            >
+                              <img
+                                src={src}
+                                alt={`${post.title} attachment ${idx + 1}`}
+                                loading="lazy"
+                                onError={() => markImageBroken(src)}
+                              />
+                              <span className="post-image-hover"><Expand size={18} /></span>
+                            </button>
                           )
                         ))}
                       </div>
@@ -485,8 +517,10 @@ export default function CelebrationWall() {
                         className={isLiked ? 'active liked' : ''}
                         onClick={() => toggleLike(post.id)}
                         whileTap={{ scale: 0.9 }}
+                        animate={isLiked ? { scale: [1, 1.35, 1] } : { scale: 1 }}
+                        transition={{ duration: 0.35, ease: easeOut }}
                       >
-                        <Heart size={17} /> {isLiked ? 1 : 0} Like
+                        <Heart size={17} fill={isLiked ? 'currentColor' : 'none'} /> {isLiked ? 1 : 0} Like
                       </motion.button>
                       <button><MessageCircle size={17} /> {comments.length} Comments</button>
                       <button className="ghost"><Share2 size={16} /> Share</button>
@@ -629,6 +663,42 @@ export default function CelebrationWall() {
           </motion.section>
         </aside>
       </div>
+
+      {/* ---------- Photo lightbox ---------- */}
+      <AnimatePresence>
+        {lightboxSrc && (
+          <motion.div
+            className="lightbox-overlay"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            onClick={() => setLightboxSrc(null)}
+          >
+            <motion.button
+              type="button"
+              className="lightbox-close"
+              onClick={() => setLightboxSrc(null)}
+              aria-label="Close photo preview"
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              whileHover={{ scale: 1.1 }}
+            >
+              <X size={20} />
+            </motion.button>
+            <motion.img
+              src={lightboxSrc}
+              alt="Full size preview"
+              className="lightbox-image"
+              initial={{ opacity: 0, scale: 0.92 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.92 }}
+              transition={{ duration: 0.25, ease: easeOut }}
+              onClick={(e) => e.stopPropagation()}
+            />
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

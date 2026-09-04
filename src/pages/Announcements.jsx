@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import {
-  Megaphone, Plus, X, Paperclip, Send,
+  Megaphone, Plus, X, Send,
 } from 'lucide-react';
 import PageHeader from '../components/PageHeader';
 import Pagination from '../components/Pagination';
@@ -148,23 +148,6 @@ export default function Announcements() {
                 placeholder="Write The Announcement Details..."
                 required
               />
-            </div>
-
-            <div className="ann-field full-span ann-upload-row">
-              <label className="ann-attach">
-                <Paperclip size={15} /> Attach Files
-                <input
-                  type="file"
-                  multiple
-                  hidden
-                  onChange={(e) => setAnnouncementFiles(Array.from(e.target.files || []))}
-                />
-              </label>
-              {announcementFiles.length > 0 && (
-                <span className="empty-inline">
-                  {announcementFiles.length} File{announcementFiles.length > 1 ? 's' : ''} Selected
-                </span>
-              )}
             </div>
 
             <div className="ann-form-actions full-span">

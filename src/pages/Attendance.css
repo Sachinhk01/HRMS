@@ -295,8 +295,27 @@
   cursor: pointer;
 }
 
-.table-wrap { overflow-x: auto; border-radius: 14px; border: 1px solid #eef2f7; }
-.history-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.table-wrap {
+  overflow: auto;
+  max-height: 340px;
+  border-radius: 14px;
+  border: 1px solid #eef2f7;
+  /* Padding so the scrollbar tracks sit just inside the rounded border
+     instead of running flush against it and getting clipped at the
+     corners — that clipping is what made the scrollbars look "hidden". */
+  padding: 0 2px 2px 0;
+  /* Always-visible scrollbar (Firefox) — no relying on the OS's
+     auto-hide thin scrollbar. */
+  scrollbar-width: thin;
+  scrollbar-color: #94a3b8 #f1f5f9;
+}
+/* Always-visible scrollbar, both axes (Chrome/Edge/Safari). */
+.table-wrap::-webkit-scrollbar { width: 10px; height: 10px; }
+.table-wrap::-webkit-scrollbar-track { background: #f1f5f9; border-radius: 12px; }
+.table-wrap::-webkit-scrollbar-thumb { background: #94a3b8; border-radius: 8px; border: 2px solid #f1f5f9; }
+.table-wrap::-webkit-scrollbar-thumb:hover { background: #64748b; }
+.table-wrap::-webkit-scrollbar-corner { background: #f1f5f9; }
+.history-table { width: 100%; min-width: 560px; border-collapse: collapse; font-size: 13px; }
 .history-table thead th {
   position: sticky; top: 0;
   background: #f8fafc;
@@ -530,6 +549,7 @@
   .attendance-seg-btn { padding: 9px 14px; font-size: 13px; }
   .history-toolbar { flex-direction: column; align-items: stretch; }
   .history-search { min-width: 0; }
+  .table-wrap { max-height: 260px; }
   .calendar-toolbar { flex-direction: column; align-items: stretch; }
   .calendar-toolbar-left, .calendar-toolbar-right { justify-content: center; }
   .attendance-calendar { gap: 6px; }

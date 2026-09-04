@@ -78,6 +78,25 @@ a { text-decoration: none; color: inherit; }
   color: var(--blue);
 }
 
+/* Page title row: title/description on the left, the page's primary
+   action ("Add Announcement", "Add Event", "Add Celebration", …) pinned
+   to the top-right next to the title instead of stacking underneath it. */
+.page-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 18px;
+}
+.page-header > div:first-child { flex: 1 1 320px; min-width: 0; }
+.page-header > div:last-child { flex-shrink: 0; }
+@media (max-width: 640px) {
+  .page-header { flex-direction: column; align-items: stretch; }
+  .page-header > div:last-child { display: flex; }
+  .page-header > div:last-child .btn { width: 100%; }
+}
+
 .btn {
   border: 0;
   border-radius: var(--radius-sm);

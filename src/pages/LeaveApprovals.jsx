@@ -105,9 +105,37 @@ export default function LeaveApprovals() {
     try {
       await managerLeaveAction(id, action, reason || '');
       await load();
-      showToast(action === 'APPROVE' ? 'Leave Request Approved.' : 'Leave Request Rejected.', 'success');
+      // Approve stays green ('success'); Reject uses the red 'error' style
+      // even though the action itself succeeded, since red better signals
+      // a rejection outcome than green does.
+      if (action === 'APPROVE') {
+        showToast('Leave Request Approved.', 'success');
+      } else {
+        showToast('Leave Request Rejected.', 'error');
+      }
     } catch (error) {
-      showToast(error.message || 'Failed to record decision.', 'error');
+      const rawMessage = error.message || 'Failed to record decision.';
+      // The backend's attendance-conflict / start-date checks run before it
+      // looks at whether this is an approve or a reject, so their error
+      // text always says "...Leave cannot be approved" even when the
+      // manager clicked Reject. Reword it here so it matches what was
+      // actually attempted. Note: this only fixes the wording - the
+      // backend still blocks the whole action in this case, so the
+      // request stays Pending either way until that backend check is
+      // fixed to only apply to Approve.
+      const message =
+        action === 'REJECT'
+          ? rawMessage.replace(/\s*Leave cannot be approved(?: after its start date)?\.?/i, ' This request could not be processed.')
+          : rawMessage;
+      showToast(message, 'error');
+
+      // Whatever the row currently shows locally is now out of sync with
+      // the backend (e.g. it was already approved/rejected in another tab,
+      // or a previous click actually went through). Re-fetch so this row
+      // picks up its real status and its Approve/Reject buttons get
+      // disabled - otherwise they stay clickable and every retry just
+      // repeats the same "already processed" error forever.
+      load();
     } finally {
       setActing(false);
     }

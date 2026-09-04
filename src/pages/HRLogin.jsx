@@ -17,6 +17,7 @@ import {
 
 import { StaffAccess } from '../components/StaffAccess.jsx';
 import { useAuth } from '../context/AuthContext';
+import { getRememberedEmail, setRememberedEmail } from '../services/authStorage';
 import './EmployeeLogin.css';
 import './HRLogin.css';
 
@@ -39,10 +40,10 @@ export function HRLogin() {
   const { login } = useAuth();
   const navigate = useNavigate();
 
-  const [email, setEmail] = useState('');
+  const [email, setEmail] = useState(() => getRememberedEmail('HR_ADMIN'));
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [rememberMe, setRememberMe] = useState(false);
+  const [rememberMe, setRememberMe] = useState(() => Boolean(getRememberedEmail('HR_ADMIN')));
   const [staffOpen, setStaffOpen] = useState(false);
   const [serverError, setServerError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -53,6 +54,7 @@ export function HRLogin() {
     setIsSubmitting(true);
     try {
       await login({ email, password, expectedRole: 'HR_ADMIN', rememberMe });
+      setRememberedEmail('HR_ADMIN', rememberMe ? email : '');
       navigate('/dashboard');
     } catch (error) {
       setServerError(error.message || 'Unable to sign in. Please try again.');
