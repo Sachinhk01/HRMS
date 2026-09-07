@@ -153,8 +153,14 @@ export default function Holidays() {
 
       {canManage && (
         <section className="panel holiday-form-panel">
-          <div className="panel-title"><div><span className="eyebrow">{editingId ? 'Update entry' : 'New entry'}</span><h2>{editingId ? 'Edit Holiday' : 'Add Holiday'}</h2></div>{editingId && <button className="text-button" type="button" onClick={resetForm}>Cancel Edit</button>}</div>
-          <form className="form-grid" onSubmit={submit}>
+          <div className="panel-title">
+            <div><span className="eyebrow">{editingId ? 'Update entry' : 'New entry'}</span><h2>{editingId ? 'Edit Holiday' : 'Add Holiday'}</h2></div>
+            <div className="holiday-form-header-actions">
+              {editingId && <button className="text-button" type="button" onClick={resetForm}>Cancel Edit</button>}
+              <button className="btn btn-primary" type="submit" form="holiday-form"><Plus size={18} /> {editingId ? 'Save Changes' : 'Add Holiday'}</button>
+            </div>
+          </div>
+          <form id="holiday-form" className="form-grid" onSubmit={submit}>
             <label>Holiday Name<input value={form.holidayName} onChange={(event) => setForm({ ...form, holidayName: event.target.value })} placeholder="e.g. Republic Day" required /></label>
             <label>Date<input type="date" value={form.holidayDate} onChange={(event) => setForm({ ...form, holidayDate: event.target.value })} required /></label>
             <label>Type
@@ -166,7 +172,6 @@ export default function Holidays() {
               </select>
             </label>
             <label>Description<input value={form.description} onChange={(event) => setForm({ ...form, description: event.target.value })} placeholder="Optional Note" /></label>
-            <div className="full-span holiday-form-actions"><button className="btn btn-primary" type="submit"><Plus size={18} /> {editingId ? 'Save Changes' : 'Add Holiday'}</button></div>
           </form>
         </section>
       )}

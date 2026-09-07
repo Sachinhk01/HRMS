@@ -33,9 +33,34 @@
   background: radial-gradient(circle, rgba(37, 99, 235, .14), transparent 70%);
   pointer-events: none;
 }
+/* Floating emoji decorations drifting across the hero banner */
+.hero-floaters { position: absolute; inset: 0; overflow: hidden; pointer-events: none; z-index: 0; }
+.floater {
+  position: absolute;
+  bottom: -40px;
+  font-size: 26px;
+  opacity: 0;
+  animation: floatUp 9s ease-in infinite;
+  filter: drop-shadow(0 4px 10px rgba(0,0,0,.25));
+}
+.floater-1 { left: 8%;  animation-delay: 0s;   font-size: 30px; }
+.floater-2 { left: 26%; animation-delay: 1.6s; font-size: 22px; }
+.floater-3 { left: 52%; animation-delay: 3.2s; font-size: 28px; }
+.floater-4 { left: 72%; animation-delay: .8s;  font-size: 20px; }
+.floater-5 { left: 89%; animation-delay: 2.4s; font-size: 24px; }
+@keyframes floatUp {
+  0%   { transform: translateY(0) rotate(0deg); opacity: 0; }
+  10%  { opacity: .85; }
+  85%  { opacity: .5; }
+  100% { transform: translateY(-420px) rotate(18deg); opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .floater { animation: none; opacity: 0; }
+}
 .celebration-hero-text { position: relative; z-index: 1; max-width: 58%; }
 .celebration-hero-text .eyebrow {
-  display: block; font-size: 12px; font-weight: 700; color: #2563eb;
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 12px; font-weight: 700; color: #93c5fd;
   text-transform: uppercase; letter-spacing: .05em; margin-bottom: 6px;
 }
 .celebration-hero-text h1 {
@@ -245,10 +270,21 @@
 /* ---------- Feed ---------- */
 .feed-list { display: flex; flex-direction: column; gap: 16px; }
 
-.post-card { display: flex; flex-direction: column; gap: 14px; }
+.post-card { display: flex; flex-direction: column; gap: 14px; position: relative; border-left: 4px solid var(--accent, #2563eb); }
 .post-card.pinned-post {
   border-color: rgba(37, 99, 235, .3);
   box-shadow: 0 0 0 1px rgba(37, 99, 235, .12), 0 14px 30px rgba(37, 99, 235, .08);
+}
+
+.post-category-badge {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 4px 10px; border-radius: 999px;
+  font-size: 11px; font-weight: 700;
+  animation: badgePop .4s cubic-bezier(.34,1.56,.64,1) backwards;
+}
+@keyframes badgePop {
+  from { transform: scale(.7); opacity: 0; }
+  to   { transform: scale(1); opacity: 1; }
 }
 
 .post-head { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
@@ -262,11 +298,6 @@
 .post-head-info strong { font-size: 14px; font-weight: 800; color: #0f172a; }
 .post-head-info span { font-size: 11px; color: #94a3b8; }
 
-.post-category-badge {
-  display: inline-flex; align-items: center; gap: 5px;
-  padding: 4px 10px; border-radius: 999px;
-  font-size: 11px; font-weight: 700;
-}
 .pinned-label {
   display: inline-flex; align-items: center; gap: 4px;
   font-size: 11px; font-weight: 700; color: #2563eb;
@@ -307,23 +338,87 @@
 .post-image-grid.count-1 { grid-template-columns: 1fr; }
 .post-image-grid.count-3 { grid-template-columns: repeat(3, 1fr); }
 .post-image-grid.count-4 { grid-template-columns: repeat(2, 1fr); }
-.post-image-grid img {
-  width: 100%; height: 180px; object-fit: cover; object-position: center 20%;
-  border-radius: 14px;
-  transition: transform .3s ease;
+
+/* Each photo is a real <button> now so it's clickable/keyboard-accessible
+   and can host a hover "expand" affordance without extra wrapper divs. */
+.post-image-btn {
+  position: relative;
+  width: 100%; aspect-ratio: 4 / 3;
+  padding: 0; border: none; border-radius: 14px;
+  overflow: hidden; cursor: zoom-in;
+  background: #eef2f7 linear-gradient(110deg, #eef2f7 8%, #f6f8fb 18%, #eef2f7 33%) no-repeat;
+  background-size: 200% 100%;
+  animation: imgShimmer 1.4s ease-in-out infinite;
 }
-.post-image-grid img:hover { transform: scale(1.03); }
-.post-image-grid.count-1 img { height: 360px; }
+.post-image-grid.count-1 .post-image-btn { aspect-ratio: 16 / 9; }
+@keyframes imgShimmer {
+  0%   { background-position: 140% 0; }
+  100% { background-position: -60% 0; }
+}
+.post-image-btn img {
+  position: absolute; inset: 0;
+  width: 100%; height: 100%;
+  object-fit: cover; object-position: center;
+  display: block;
+  transition: transform .35s ease, opacity .3s ease;
+  animation: imgFadeIn .35s ease both;
+}
+@keyframes imgFadeIn { from { opacity: 0; } to { opacity: 1; } }
+.post-image-btn:hover img { transform: scale(1.05); }
+.post-image-hover {
+  position: absolute; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(15, 23, 42, 0);
+  color: #fff; opacity: 0;
+  transition: background .25s ease, opacity .25s ease;
+}
+.post-image-btn:hover .post-image-hover { background: rgba(15, 23, 42, .28); opacity: 1; }
+.post-image-hover svg { filter: drop-shadow(0 2px 6px rgba(0,0,0,.4)); }
 
 /* Shown instead of a broken <img> when an attachment fails to load */
 .post-image-fallback {
-  width: 100%; height: 180px;
+  width: 100%; aspect-ratio: 4 / 3;
   border-radius: 14px;
   border: 1px dashed;
-  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 7px;
   font-size: 12.5px; font-weight: 600;
 }
-.post-image-grid.count-1 .post-image-fallback { height: 360px; }
+.post-image-fallback svg { animation: fallbackPulse 2.2s ease-in-out infinite; }
+@keyframes fallbackPulse {
+  0%, 100% { opacity: .55; transform: scale(1); }
+  50%      { opacity: 1;   transform: scale(1.1); }
+}
+.post-image-grid.count-1 .post-image-fallback { aspect-ratio: 16 / 9; }
+.retry-image-btn {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 5px 11px; border-radius: 999px;
+  border: 1px solid currentColor; background: rgba(255,255,255,.55);
+  font-size: 11px; font-weight: 700; color: inherit;
+  cursor: pointer; transition: background .18s ease, transform .15s ease;
+}
+.retry-image-btn:hover { background: rgba(255,255,255,.9); transform: translateY(-1px); }
+
+/* ---------- Photo lightbox ---------- */
+.lightbox-overlay {
+  position: fixed; inset: 0; z-index: 1000;
+  background: rgba(8, 12, 24, .82);
+  backdrop-filter: blur(4px);
+  display: flex; align-items: center; justify-content: center;
+  padding: 32px;
+}
+.lightbox-image {
+  max-width: min(92vw, 1100px); max-height: 88vh;
+  border-radius: 16px;
+  box-shadow: 0 20px 60px rgba(0,0,0,.5);
+  object-fit: contain;
+}
+.lightbox-close {
+  position: absolute; top: 22px; right: 26px;
+  width: 40px; height: 40px; border-radius: 50%;
+  border: 1px solid rgba(255,255,255,.3); background: rgba(255,255,255,.12);
+  color: #fff; display: grid; place-items: center; cursor: pointer;
+}
+.lightbox-close:hover { background: rgba(255,255,255,.22); }
 
 /* Post actions */
 .post-actions { display: flex; gap: 8px; flex-wrap: wrap; padding-top: 4px; border-top: 1px solid #f1f5f9; }

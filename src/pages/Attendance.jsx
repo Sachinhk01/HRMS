@@ -845,12 +845,12 @@ if (failures.length) {
                           animate={{ opacity: 1, y: 0 }}
                           transition={{ duration: 0.3, delay: i * 0.04, ease: easeOut }}
                         >
-                          <td>{record.attendanceDate}</td>
-                          <td>{displayTime(record.checkInTime)}</td>
-                          <td>{displayTime(record.checkOutTime)}</td>
-                          <td>{displayDuration(record.todayWorkingHours)}</td>
-                          <td>{displayDuration(record.todayBreakHours)}</td>
-                          <td>
+                          <td data-label="Date">{record.attendanceDate}</td>
+                          <td data-label="Check In">{displayTime(record.checkInTime)}</td>
+                          <td data-label="Check Out">{displayTime(record.checkOutTime)}</td>
+                          <td data-label="Worked">{displayDuration(record.todayWorkingHours)}</td>
+                          <td data-label="Break">{displayDuration(record.todayBreakHours)}</td>
+                          <td data-label="Status">
                             <span className={`status-pill status-${statusClass(record.attendanceStatus)}`}>
                               <SIcon size={12} /> {STATUS_LABELS[normalizeAttendanceStatus(record.attendanceStatus)] || record.attendanceStatus}
                             </span>

@@ -101,7 +101,6 @@ export default function Profile() {
 
     try {
       await hrmsService.changePassword({ oldPassword, newPassword, confirmPassword });
-      setMessage('Password changed successfully.');
       showToast('Password changed successfully.', 'success');
       formEl.reset();
     } catch (err) {
@@ -252,7 +251,6 @@ export default function Profile() {
               <label>New Password<input name="newPassword" type="password" required minLength={8} maxLength={20} /></label>
               <label>Confirm New Password<input name="confirmPassword" type="password" required minLength={8} maxLength={20} /></label>
               {passwordError && <div className="form-alert full-span">{passwordError}</div>}
-              {message && !passwordError && <div className="success-alert full-span">{message}</div>}
               <button className="btn btn-primary full-span"><KeyRound size={18} />Update Password</button>
             </form>
           )}

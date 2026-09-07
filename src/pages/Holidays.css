@@ -27,6 +27,7 @@
   display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px;
 }
 .holiday-form-actions { display: flex; justify-content: flex-end; }
+.holiday-form-header-actions { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
 
 .holiday-list-toolbar {
   display: flex; align-items: center; gap: 12px; margin-bottom: 14px; flex-wrap: wrap;
@@ -97,4 +98,6 @@ tbody tr:hover { background: #f8fafd; }
   .holiday-form-panel .form-grid { grid-template-columns: 1fr; }
   .holiday-list-toolbar { flex-wrap: wrap; }
   .holiday-search { max-width: none; }
+  .panel-title:has(.holiday-form-header-actions) { flex-wrap: wrap; row-gap: 10px; }
+  .holiday-form-header-actions { width: 100%; justify-content: flex-end; }
 }
