@@ -964,7 +964,6 @@ if (failures.length) {
                   <div className="sad-row"><span><Coffee size={14} /> Break Time</span><strong>{selectedEntry.breakHours ? displayDuration(selectedEntry.breakHours) : '—'}</strong></div>
                   <div className="sad-row"><span><TrendingUp size={14} /> Overtime</span><strong>{selectedDate === todayKey && todayOvertimeMinutes != null ? formatMinutesLabel(todayOvertimeMinutes) : '—'}</strong></div>
                   <div className="sad-row"><span><MapPin size={14} /> Location</span><strong>{selectedDate === todayKey && isResolvedLocation(locationText) ? locationText : '—'}</strong></div>
-                  <div className="sad-row"><span><Sparkles size={14} /> Remarks</span><strong>—</strong></div>
                 </div>
               ) : (
                 <div className="empty-state">

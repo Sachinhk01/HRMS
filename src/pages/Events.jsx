@@ -188,7 +188,7 @@ export default function Events() {
                 Cancel
               </button>
               <button type="submit" className="btn btn-gradient" disabled={creating}>
-                <Send size={16} /> {creating ? 'Adding…' : 'Add Event'}
+                <Send size={16} /> {creating ? 'Publishing…' : 'Publish Event'}
               </button>
             </div>
           </form>

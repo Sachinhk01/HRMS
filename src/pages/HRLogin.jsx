@@ -157,12 +157,12 @@ export function HRLogin() {
 
             <form className="hrms-login__form" onSubmit={handleSubmit}>
               <label className="hrms-field">
-                <span className="hrms-field__label">Email</span>
+                <span className="hrms-field__label">Email or Username</span>
                 <span className="hrms-field__wrap">
                   <Mail />
                   <input
                     type="text"
-                    placeholder="name@company.com"
+                    placeholder="Enter your email or username"
                     autoComplete="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}

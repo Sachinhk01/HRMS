@@ -372,7 +372,7 @@ export default function CelebrationWall() {
                 {!employees.length && <span className="empty-inline">No Employees Available to Tag.</span>}
               </div>
             </div>
-            <div className="celebration-form-actions full-span"><label className="celebration-file"><ImagePlus size={17} /> Add Photos<input type="file" accept="image/*" multiple hidden onChange={(e) => setCelebrationFiles(Array.from(e.target.files || []))} /></label>{celebrationFiles.length > 0 && <span>{celebrationFiles.length} photo{celebrationFiles.length > 1 ? 's' : ''} selected</span>}<button className="btn celebration-publish-btn" disabled={creating}><Send size={17} />{creating ? 'Adding…' : 'Add Celebration'}</button></div>
+            <div className="celebration-form-actions full-span"><label className="celebration-file"><ImagePlus size={17} /> Add Photos<input type="file" accept="image/*" multiple hidden onChange={(e) => setCelebrationFiles(Array.from(e.target.files || []))} /></label>{celebrationFiles.length > 0 && <span>{celebrationFiles.length} photo{celebrationFiles.length > 1 ? 's' : ''} selected</span>}<button className="btn celebration-publish-btn" disabled={creating}><Send size={17} />{creating ? 'Publishing…' : 'Publish Celebration'}</button></div>
           </form>
         </section>
       )}

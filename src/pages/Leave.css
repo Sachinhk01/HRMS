@@ -225,7 +225,7 @@
   background: #fff;
   box-shadow: 0 0 0 3px rgba(37, 99, 235, .12);
 }
-.lf-field textarea { resize: vertical; min-height: 90px; }
+.lf-field textarea { resize: none; min-height: 90px; }
 .lf-select-wrap { position: relative; }
 .lf-select-wrap select { width: 100%; appearance: none; padding-right: 36px; }
 .lf-chevron { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); color: #94a3b8; pointer-events: none; }
