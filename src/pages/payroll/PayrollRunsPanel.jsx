@@ -66,7 +66,6 @@ export default function PayrollRunsPanel() {
   const [genMonth, setGenMonth] = useState(() => new Date().toISOString().slice(0, 7));
   const [genSaveAsDraft, setGenSaveAsDraft] = useState(false);
   const [genRemarks, setGenRemarks] = useState("");
-  const [genEmployeeQuery, setGenEmployeeQuery] = useState("");
   const [selectedIds, setSelectedIds] = useState([]);
   const [generating, setGenerating] = useState(false);
   const [genSummary, setGenSummary] = useState(null);
@@ -125,18 +124,15 @@ export default function PayrollRunsPanel() {
     };
   }, [payrolls]);
 
-  const matchedEmployees = useMemo(() => employees
-    .filter((item) =>
-      `${item.employeeCode} ${item.employeeName}`
-        .toLowerCase()
-        .includes(genEmployeeQuery.toLowerCase())
-    )
-    .slice(0, 40), [employees, genEmployeeQuery]);
+  function handleEmployeeSelection(event) {
+    const { value } = event.target;
+    if (value === "ALL") {
+      setSelectedIds([]);
+      return;
+    }
 
-  function toggleEmployee(id) {
-    setSelectedIds((current) =>
-      current.includes(id) ? current.filter((value) => value !== id) : [...current, id]
-    );
+    const employee = employees.find((item) => String(item.id) === value);
+    setSelectedIds(employee ? [employee.id] : []);
   }
 
   async function submitGenerate(event) {
@@ -337,40 +333,15 @@ export default function PayrollRunsPanel() {
               Save as draft
             </label>
             <div className="full-span">
-              <label>Employees (leave empty to generate for all active employees)</label>
-              <input
-                value={genEmployeeQuery}
-                onChange={(event) => setGenEmployeeQuery(event.target.value)}
-                placeholder="Search employees to include…"
-              />
-              <div
-                style={{
-                  maxHeight: 160, overflowY: "auto", border: "1px solid var(--line)",
-                  borderRadius: 10, marginTop: 8, padding: "6px 10px",
-                  display: "flex", flexDirection: "column", gap: 2,
-                }}
-              >
-                {matchedEmployees.length === 0 && (
-                  <span style={{ fontSize: 12, color: "var(--muted)", padding: "6px 2px" }}>
-                    No employees match.
-                  </span>
-                )}
-                {matchedEmployees.map((item) => (
-                  <label className="checkbox-line" key={item.id} style={{ fontSize: 12 }}>
-                    <input
-                      type="checkbox"
-                      checked={selectedIds.includes(item.id)}
-                      onChange={() => toggleEmployee(item.id)}
-                    />
-                    <span>{item.employeeCode}</span> · {item.employeeName}
-                  </label>
+              <label>Employees</label>
+              <select value={selectedIds.length === 0 ? "ALL" : String(selectedIds[0])} onChange={handleEmployeeSelection}>
+                <option value="ALL">Select all active employees</option>
+                {employees.map((item) => (
+                  <option key={item.id} value={item.id}>
+                    {item.employeeCode} · {item.employeeName}
+                  </option>
                 ))}
-              </div>
-              {selectedIds.length > 0 && (
-                <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 6 }}>
-                  {selectedIds.length} employee(s) selected
-                </div>
-              )}
+              </select>
             </div>
             <div className="full-span payroll-form-actions">
               <button className="btn btn-primary" type="submit" disabled={generating}>
