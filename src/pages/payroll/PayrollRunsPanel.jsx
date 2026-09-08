@@ -285,7 +285,6 @@ export default function PayrollRunsPanel() {
           <div className="summary-icon"><FileText size={20} /></div>
           <span>Records · {payrollMonthLabel(`${month}-01`)}</span>
           <strong>{summary.total}</strong>
-          <small>{summary.drafts} draft · {summary.approved} approved · {summary.paid} paid</small>
         </section>
         <section className="panel payroll-summary-card tone-green">
           <div className="summary-icon"><IndianRupee size={20} /></div>
@@ -558,25 +557,25 @@ export default function PayrollRunsPanel() {
             </div>
             <div className="payroll-modal-body">
               <div className="payroll-detail-grid">
-                <label>Total working days<input type="number" min="1" value={editForm.totalWorkingDays} onChange={(event) => setEditForm({ ...editForm, totalWorkingDays: event.target.value })} /></label>
-                <label>Worked days<input type="number" min="0" value={editForm.workedDays} onChange={(event) => setEditForm({ ...editForm, workedDays: event.target.value })} /></label>
-                <label>LOP days<input type="number" min="0" value={editForm.lopDays} onChange={(event) => setEditForm({ ...editForm, lopDays: event.target.value })} /></label>
+                <label>Total working days<input type="number" min="1" max="999999" value={editForm.totalWorkingDays} onChange={(event) => setEditForm({ ...editForm, totalWorkingDays: event.target.value })} /></label>
+                <label>Worked days<input type="number" min="0" max="999999" value={editForm.workedDays} onChange={(event) => setEditForm({ ...editForm, workedDays: event.target.value })} /></label>
+                <label>LOP days<input type="number" min="0" max="999999" value={editForm.lopDays} onChange={(event) => setEditForm({ ...editForm, lopDays: event.target.value })} /></label>
               </div>
               <div className="payroll-detail-grid">
-                <label>Basic salary<input type="number" min="0" step="0.01" value={editForm.basicSalary} onChange={(event) => setEditForm({ ...editForm, basicSalary: event.target.value })} /></label>
-                <label>HRA<input type="number" min="0" step="0.01" value={editForm.hra} onChange={(event) => setEditForm({ ...editForm, hra: event.target.value })} /></label>
-                <label>Special allowance<input type="number" min="0" step="0.01" value={editForm.specialAllowance} onChange={(event) => setEditForm({ ...editForm, specialAllowance: event.target.value })} /></label>
-                <label>Medical allowance<input type="number" min="0" step="0.01" value={editForm.medicalAllowance} onChange={(event) => setEditForm({ ...editForm, medicalAllowance: event.target.value })} /></label>
-                <label>Travel allowance<input type="number" min="0" step="0.01" value={editForm.travelAllowance} onChange={(event) => setEditForm({ ...editForm, travelAllowance: event.target.value })} /></label>
-                <label>Bonus<input type="number" min="0" step="0.01" value={editForm.bonus} onChange={(event) => setEditForm({ ...editForm, bonus: event.target.value })} /></label>
-                <label>Other allowance<input type="number" min="0" step="0.01" value={editForm.otherAllowance} onChange={(event) => setEditForm({ ...editForm, otherAllowance: event.target.value })} /></label>
+                <label>Basic salary<input type="number" min="0" max="999999" step="0.01" value={editForm.basicSalary} onChange={(event) => setEditForm({ ...editForm, basicSalary: event.target.value })} /></label>
+                <label>HRA<input type="number" min="0" max="999999" step="0.01" value={editForm.hra} onChange={(event) => setEditForm({ ...editForm, hra: event.target.value })} /></label>
+                <label>Special allowance<input type="number" min="0" max="999999" step="0.01" value={editForm.specialAllowance} onChange={(event) => setEditForm({ ...editForm, specialAllowance: event.target.value })} /></label>
+                <label>Medical allowance<input type="number" min="0" max="999999" step="0.01" value={editForm.medicalAllowance} onChange={(event) => setEditForm({ ...editForm, medicalAllowance: event.target.value })} /></label>
+                <label>Travel allowance<input type="number" min="0" max="999999" step="0.01" value={editForm.travelAllowance} onChange={(event) => setEditForm({ ...editForm, travelAllowance: event.target.value })} /></label>
+                <label>Bonus<input type="number" min="0" max="999999" step="0.01" value={editForm.bonus} onChange={(event) => setEditForm({ ...editForm, bonus: event.target.value })} /></label>
+                <label>Other allowance<input type="number" min="0" max="999999" step="0.01" value={editForm.otherAllowance} onChange={(event) => setEditForm({ ...editForm, otherAllowance: event.target.value })} /></label>
               </div>
               <div className="payroll-detail-grid">
-                <label>PF<input type="number" min="0" step="0.01" value={editForm.pf} onChange={(event) => setEditForm({ ...editForm, pf: event.target.value })} /></label>
-                <label>ESI<input type="number" min="0" step="0.01" value={editForm.esi} onChange={(event) => setEditForm({ ...editForm, esi: event.target.value })} /></label>
-                <label>Professional tax<input type="number" min="0" step="0.01" value={editForm.professionalTax} onChange={(event) => setEditForm({ ...editForm, professionalTax: event.target.value })} /></label>
-                <label>Income tax<input type="number" min="0" step="0.01" value={editForm.incomeTax} onChange={(event) => setEditForm({ ...editForm, incomeTax: event.target.value })} /></label>
-                <label>Other deduction<input type="number" min="0" step="0.01" value={editForm.otherDeduction} onChange={(event) => setEditForm({ ...editForm, otherDeduction: event.target.value })} /></label>
+                <label>PF<input type="number" min="0" max="999999" step="0.01" value={editForm.pf} onChange={(event) => setEditForm({ ...editForm, pf: event.target.value })} /></label>
+                <label>ESI<input type="number" min="0" max="999999" step="0.01" value={editForm.esi} onChange={(event) => setEditForm({ ...editForm, esi: event.target.value })} /></label>
+                <label>Professional tax<input type="number" min="0" max="999999" step="0.01" value={editForm.professionalTax} onChange={(event) => setEditForm({ ...editForm, professionalTax: event.target.value })} /></label>
+                <label>Income tax<input type="number" min="0" max="999999" step="0.01" value={editForm.incomeTax} onChange={(event) => setEditForm({ ...editForm, incomeTax: event.target.value })} /></label>
+                <label>Other deduction<input type="number" min="0" max="999999" step="0.01" value={editForm.otherDeduction} onChange={(event) => setEditForm({ ...editForm, otherDeduction: event.target.value })} /></label>
               </div>
               <label>Remarks<input value={editForm.remarks} onChange={(event) => setEditForm({ ...editForm, remarks: event.target.value })} /></label>
               <div className="payroll-form-actions">

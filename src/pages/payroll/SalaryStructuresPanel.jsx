@@ -126,8 +126,7 @@ export default function SalaryStructuresPanel() {
             <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search employee or code" />
           </div>
           <label className="checkbox-line">
-            <input type="checkbox" checked={activeOnly} onChange={(event) => setActiveOnly(event.target.checked)} />
-            Active only
+           
           </label>
           <button type="button" className="btn btn-primary" onClick={beginCreate}>
             <Plus size={18} /> New Structure
@@ -158,7 +157,7 @@ export default function SalaryStructuresPanel() {
                 <option value="">Select template…</option>
                 {templates.map((item) => (
                   <option key={item.id} value={item.id}>
-                    {item.employeeType.replace("_", " ")} · {formatINR(item.grossSalary)}
+                    {item.employeeType.replace("_", " ")}
                   </option>
                 ))}
               </select>
@@ -208,9 +207,6 @@ export default function SalaryStructuresPanel() {
                   </td>
                   <td>
                     <strong>{payrollMonthLabel(item.effectiveFrom)}</strong>
-                    <small className="table-subtext">
-                      {item.effectiveTo ? `until ${payrollMonthLabel(item.effectiveTo)}` : "open-ended"}
-                    </small>
                   </td>
                   <td><strong>{formatINR(item.grossSalary)}</strong></td>
                   <td><strong>{formatINR(item.netSalary)}</strong></td>
