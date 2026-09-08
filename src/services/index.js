@@ -9,3 +9,5 @@ export * from "./performanceService";
 export * from "./notificationService";
 export * from "./localStorageService";
 export * from "./candidateService";
+export * from "./regularizationService";
+

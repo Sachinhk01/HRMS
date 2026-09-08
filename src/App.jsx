@@ -19,6 +19,8 @@ import NotFound from './pages/NotFound';
 import Holidays from './pages/Holidays';
 import Employees from './pages/Employees';
 import Candidates from './pages/Candidates';
+import Regularization from './pages/Regularization';
+import RegularizationApprovals from './pages/RegularizationApprovals';
 import LeaveApprovals from './pages/LeaveApprovals';
 import Announcements from './pages/Announcements';
 import Events from './pages/Events';
@@ -75,6 +77,8 @@ export default function App() {
         <Route path="/employees" element={<RoleRoute><Employees /></RoleRoute>} />
         <Route path="/candidates" element={<RoleRoute><Candidates /></RoleRoute>} />
         <Route path="/leave-approvals" element={<RoleRoute><LeaveApprovals /></RoleRoute>} />
+        <Route path="/regularization" element={<RoleRoute><Regularization /></RoleRoute>} />
+        <Route path="/regularization-approvals" element={<RoleRoute><RegularizationApprovals /></RoleRoute>} />
         <Route path="/announcements" element={<RoleRoute><Announcements /></RoleRoute>} />
         <Route path="/events" element={<RoleRoute><Events /></RoleRoute>} />
         <Route path="/reports" element={<RoleRoute><Reports /></RoleRoute>} />
