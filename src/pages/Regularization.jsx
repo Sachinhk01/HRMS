@@ -159,10 +159,18 @@ export default function Regularization() {
         sortDirection: 'asc',
       });
       const content = Array.isArray(result?.content) ? result.content : Array.isArray(result) ? result : [];
-      const eligible = content.filter((rec) => REGULARIZABLE_STATUSES.includes(rec.attendanceStatus));
+      const normalized = content.map((rec) => ({
+        ...rec,
+        attendanceId: rec.attendanceId ?? rec.AttendanceId ?? rec.id ?? rec.Id ?? null,
+      }));
+      const regularizable = normalized.filter((rec) => REGULARIZABLE_STATUSES.includes(rec.attendanceStatus));
+      const eligible = regularizable.filter((rec) => rec.attendanceId != null);
       setAttendanceOptions(eligible);
       setSelected({});
       setAttendanceLoaded(true);
+      if (regularizable.length > eligible.length) {
+        showToast(`${regularizable.length - eligible.length} attendance record(s) skipped because no attendance ID was provided.`, 'info');
+      }
       if (eligible.length === 0) {
         showToast('No regularizable attendance records found in that range.', 'info');
       }
@@ -204,8 +212,13 @@ export default function Regularization() {
     }
 
     const details = attendanceOptions
-      .filter((rec) => selected[rec.attendanceId])
+      .filter((rec) => selected[rec.attendanceId] && rec.attendanceId != null)
       .map((rec) => ({ attendanceId: rec.attendanceId, requestedStatus: 'PRESENT' }));
+
+    if (details.length === 0) {
+      showToast('Selected attendance records are missing a valid attendance ID.', 'error');
+      return;
+    }
 
     setSubmitting(true);
     try {
