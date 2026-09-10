@@ -31,6 +31,7 @@ export const ROLE_MENUS = {
     ['/payroll', 'Payroll'],
     ['/form16', 'Form 16'],
     ['/reports', 'Reports'],
+    ['/settings', 'Settings'],
     ['/profile', 'Profile'],
   ],
 
@@ -45,6 +46,7 @@ export const ROLE_MENUS = {
     ['/performance', 'Performance'],
     ['/employees', 'Employees'],
     ['/form16', 'Form 16'],
+    ['/settings', 'Settings'],
     ['/profile', 'Profile'],
   ],
 
@@ -63,6 +65,7 @@ export const ROLE_MENUS = {
     ['/performance', 'Performance'],
     ['/candidates', 'Candidates'],
     ['/form16', 'Form 16'],
+    ['/settings', 'Settings'],
     ['/profile', 'Profile'],
   ],
 
@@ -159,6 +162,11 @@ export const ROUTE_ROLES = {
   ],
   '/payroll': ['EMPLOYEE', 'HR_ADMIN'],
   '/form16': ['HR_ADMIN', 'MANAGER', 'SUPER_ADMIN'],
+  '/settings': [
+    'HR_ADMIN',
+    'MANAGER',
+    'SUPER_ADMIN',
+  ],
   '/notifications': [
   'EMPLOYEE',
   'HR_ADMIN',

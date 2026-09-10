@@ -5,9 +5,12 @@ import { hrmsService } from '../services/hrmsService';
 import { useToast } from '../context/ToastContext';
 import './Profile.css';
 
-// Each tab maps 1:1 to a SettingController group (GET/PUT /settings/{group}).
-// Field lists mirror the backend request DTOs exactly, so nothing here should
-// send a key the backend doesn't expect or omit one it requires.
+// Each tab maps 1:1 to a live SettingController group (GET/PUT /settings/{group}).
+// Field lists mirror the *active* backend request DTO fields exactly (see
+// Settings_Module_Frontend_API_Implementation_Guide_Final.pdf §3). The backend
+// also has notification and work-log settings modules, but their controller
+// endpoints are commented out — so there are no tabs for them here. Re-add a
+// tab only after those endpoints are actually uncommented in SettingController.
 const TABS = [
   {
     key: 'attendance',
@@ -15,22 +18,15 @@ const TABS = [
     get: hrmsService.getAttendanceSettings,
     save: hrmsService.updateAttendanceSettings,
     fields: [
-      { name: 'officeStartTime', label: 'Office Start Time', type: 'time' },
-      { name: 'officeEndTime', label: 'Office End Time', type: 'time' },
-      { name: 'gracePeriodMinutes', label: 'Grace Period (minutes)', type: 'number' },
-      { name: 'minimumWorkingMinutes', label: 'Minimum Working Minutes', type: 'number' },
-      { name: 'halfDayWorkingMinutes', label: 'Half-Day Working Minutes', type: 'number' },
-      { name: 'checkoutCutoffMinutes', label: 'Checkout Cutoff (minutes)', type: 'number' },
-      { name: 'maximumBreakMinutes', label: 'Maximum Break Minutes', type: 'number' },
-      { name: 'maximumBreaksPerDay', label: 'Maximum Breaks per Day', type: 'number' },
+      { name: 'officeStartTime', label: 'Office Start Time', type: 'time', required: true },
+      { name: 'officeEndTime', label: 'Office End Time', type: 'time', required: true },
+      { name: 'gracePeriodMinutes', label: 'Grace Period (minutes)', type: 'number', min: 0, required: true },
+      { name: 'minimumWorkingMinutes', label: 'Minimum Working Minutes', type: 'number', min: 0, required: true },
+      { name: 'halfDayWorkingMinutes', label: 'Half-Day Working Minutes', type: 'number', min: 0, required: true },
+      { name: 'checkoutCutoffMinutes', label: 'Checkout Cutoff (minutes)', type: 'number', min: 0, required: true },
       { name: 'overtimeEnabled', label: 'Overtime Enabled', type: 'boolean' },
-      { name: 'attendanceRegularizationEnabled', label: 'Attendance Regularization Enabled', type: 'boolean' },
-      { name: 'multipleBreaksAllowed', label: 'Multiple Breaks Allowed', type: 'boolean' },
       { name: 'weekendAttendanceAllowed', label: 'Weekend Attendance Allowed', type: 'boolean' },
       { name: 'holidayAttendanceAllowed', label: 'Holiday Attendance Allowed', type: 'boolean' },
-      { name: 'lateMarkEnabled', label: 'Late Mark Enabled', type: 'boolean' },
-      { name: 'earlyExitEnabled', label: 'Early Exit Enabled', type: 'boolean' },
-      { name: 'autoCheckoutEnabled', label: 'Auto Checkout Enabled', type: 'boolean' },
     ],
   },
   {
@@ -39,38 +35,9 @@ const TABS = [
     get: hrmsService.getLeaveSettings,
     save: hrmsService.updateLeaveSettings,
     fields: [
-      { name: 'monthlyGuideline', label: 'Monthly Guideline (days)', type: 'number' },
-      { name: 'annualPaidLeave', label: 'Annual Paid Leave (days)', type: 'number' },
-      { name: 'minimumAdvanceNoticeDays', label: 'Minimum Advance Notice (days)', type: 'number' },
-      { name: 'maximumAdvanceNoticeDays', label: 'Maximum Advance Notice (days)', type: 'number' },
-      { name: 'maximumConsecutiveLeaveDays', label: 'Maximum Consecutive Leave Days', type: 'number' },
-      { name: 'halfDayLeaveAllowed', label: 'Half-Day Leave Allowed', type: 'boolean' },
       { name: 'carryForwardAllowed', label: 'Carry Forward Allowed', type: 'boolean' },
-      { name: 'managerApprovalRequired', label: 'Manager Approval Required', type: 'boolean' },
-      { name: 'hrApprovalRequired', label: 'HR Approval Required', type: 'boolean' },
-      { name: 'allowLeaveOnHoliday', label: 'Allow Leave on Holiday', type: 'boolean' },
-      { name: 'allowLeaveOnWeekend', label: 'Allow Leave on Weekend', type: 'boolean' },
-      { name: 'autoApproveLeave', label: 'Auto-Approve Leave', type: 'boolean' },
-      { name: 'allowNegativeLeaveBalance', label: 'Allow Negative Leave Balance', type: 'boolean' },
-      { name: 'allowBackdatedLeaveApplication', label: 'Allow Backdated Leave Application', type: 'boolean' },
-    ],
-  },
-  {
-    key: 'notification',
-    label: 'Notifications',
-    get: hrmsService.getNotificationSettings,
-    save: hrmsService.updateNotificationSettings,
-    fields: [
-      { name: 'emailNotificationsEnabled', label: 'Email Notifications', type: 'boolean' },
-      { name: 'inAppNotificationsEnabled', label: 'In-App Notifications', type: 'boolean' },
-      { name: 'attendanceNotificationsEnabled', label: 'Attendance Notifications', type: 'boolean' },
-      { name: 'leaveNotificationsEnabled', label: 'Leave Notifications', type: 'boolean' },
-      { name: 'workLogNotificationsEnabled', label: 'Work Log Notifications', type: 'boolean' },
-      { name: 'holidayNotificationsEnabled', label: 'Holiday Notifications', type: 'boolean' },
-      { name: 'birthdayNotificationsEnabled', label: 'Birthday Notifications', type: 'boolean' },
-      { name: 'announcementNotificationsEnabled', label: 'Announcement Notifications', type: 'boolean' },
-      { name: 'notifyManagers', label: 'Notify Managers', type: 'boolean' },
-      { name: 'notifyEmployees', label: 'Notify Employees', type: 'boolean' },
+      { name: 'monthlyGuideline', label: 'Monthly Guideline (days)', type: 'number', min: 0, required: true },
+      { name: 'annualPaidLeave', label: 'Annual Paid Leave (days)', type: 'number', min: 0, required: true },
     ],
   },
   {
@@ -79,47 +46,26 @@ const TABS = [
     get: hrmsService.getCompanySettings,
     save: hrmsService.updateCompanySettings,
     fields: [
-      { name: 'companyName', label: 'Company Name', type: 'text', required: true },
-      { name: 'companyCode', label: 'Company Code', type: 'text', required: true },
-      { name: 'email', label: 'Company Email', type: 'email', required: true },
-      { name: 'phoneNumber', label: 'Phone Number', type: 'text' },
-      { name: 'website', label: 'Website', type: 'text' },
-      { name: 'addressLine1', label: 'Address Line 1', type: 'text' },
-      { name: 'addressLine2', label: 'Address Line 2', type: 'text' },
-      { name: 'city', label: 'City', type: 'text' },
-      { name: 'state', label: 'State', type: 'text' },
-      { name: 'country', label: 'Country', type: 'text' },
-      { name: 'postalCode', label: 'Postal Code', type: 'text' },
+      { name: 'companyName', label: 'Company Name', type: 'text', required: true, maxLength: 150 },
+      { name: 'companyCode', label: 'Company Code', type: 'text', required: true, maxLength: 30 },
+      { name: 'email', label: 'Company Email', type: 'email', required: true, maxLength: 150 },
+      { name: 'phoneNumber', label: 'Phone Number', type: 'text', pattern: '^[0-9]{10,15}$', title: '10 to 15 digits, numbers only' },
+      { name: 'website', label: 'Website', type: 'text', maxLength: 150 },
+      { name: 'addressLine1', label: 'Address Line 1', type: 'text', maxLength: 255 },
+      { name: 'addressLine2', label: 'Address Line 2', type: 'text', maxLength: 255 },
+      { name: 'city', label: 'City', type: 'text', maxLength: 100 },
+      { name: 'state', label: 'State', type: 'text', maxLength: 100 },
+      { name: 'country', label: 'Country', type: 'text', maxLength: 100 },
+      { name: 'postalCode', label: 'Postal Code', type: 'text', maxLength: 20 },
       { name: 'timeZone', label: 'Time Zone', type: 'text', required: true },
-      { name: 'currency', label: 'Currency', type: 'text', required: true },
+      { name: 'currency', label: 'Currency', type: 'text', required: true, maxLength: 10 },
       { name: 'workingDaysPerWeek', label: 'Working Days per Week', type: 'number', min: 1, max: 7 },
-    ],
-  },
-  {
-    key: 'work-log',
-    label: 'Work Log',
-    get: hrmsService.getWorkLogSettings,
-    save: hrmsService.updateWorkLogSettings,
-    fields: [
-      { name: 'reportSubmissionDeadline', label: 'Report Submission Deadline', type: 'time' },
-      { name: 'minimumWorkLogEntries', label: 'Minimum Work Log Entries', type: 'number', min: 1 },
-      { name: 'reminderIntervalMinutes', label: 'Reminder Interval (minutes)', type: 'number', min: 1 },
-      { name: 'minimumWorkLogDescriptionLength', label: 'Minimum Description Length', type: 'number', min: 10 },
-      { name: 'workLogSubmissionRequired', label: 'Work Log Submission Required', type: 'boolean' },
-      { name: 'reportRequiredBeforeCheckout', label: 'Report Required Before Checkout', type: 'boolean' },
-      { name: 'workLogReminderEnabled', label: 'Work Log Reminder Enabled', type: 'boolean' },
-      { name: 'managerEmailNotification', label: 'Manager Email Notification', type: 'boolean' },
-      { name: 'employeePdfDownloadAllowed', label: 'Employee PDF Download Allowed', type: 'boolean' },
-      { name: 'managerApprovalRequired', label: 'Manager Approval Required', type: 'boolean' },
-      { name: 'allowWorkLogEditAfterSubmission', label: 'Allow Edit After Submission', type: 'boolean' },
-      { name: 'autoGenerateDailySummary', label: 'Auto-Generate Daily Summary', type: 'boolean' },
-      { name: 'allowMultipleReportSubmissionsPerDay', label: 'Allow Multiple Submissions per Day', type: 'boolean' },
     ],
   },
 ];
 
-// reportSubmissionDeadline is the only field the backend requires as HH:mm:ss;
-// everything else round-trips fine as HH:mm.
+// Backend LocalTime fields need HH:mm:ss; the <input type="time"> control only
+// gives/accepts HH:mm, so convert on the way in and out.
 function toTimeInputValue(value) {
   return value ? value.slice(0, 5) : '';
 }
@@ -134,6 +80,8 @@ export default function Settings() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [notFound, setNotFound] = useState(false);
+  const [forbidden, setForbidden] = useState(false);
   const { showToast } = useToast();
 
   const tab = TABS.find((t) => t.key === activeTab);
@@ -141,9 +89,19 @@ export default function Settings() {
   useEffect(() => {
     setLoading(true);
     setError('');
+    setNotFound(false);
+    setForbidden(false);
     tab.get()
       .then(setData)
-      .catch((err) => setError(err?.response?.data?.message || err.message || 'Failed to load settings.'))
+      .catch((err) => {
+        if (err?.status === 403) {
+          setForbidden(true);
+        } else if (err?.status === 404) {
+          setNotFound(true);
+        } else {
+          setError(err.message || 'Failed to load settings.');
+        }
+      })
       .finally(() => setLoading(false));
   }, [activeTab]);
 
@@ -162,7 +120,7 @@ export default function Settings() {
       setData(saved);
       showToast(`${tab.label} settings saved.`, 'success');
     } catch (err) {
-      const msg = err?.response?.data?.message || err.message || 'Failed to save settings.';
+      const msg = err.message || 'Failed to save settings.';
       setError(msg);
       showToast(msg, 'error');
     } finally {
@@ -175,7 +133,7 @@ export default function Settings() {
       <PageHeader
         eyebrow="Administration"
         title="Settings"
-        description="Manage attendance, leave, notification, company and work log configuration."
+        description="Manage attendance, leave and company configuration."
       />
 
       <section className="panel">
@@ -197,7 +155,19 @@ export default function Settings() {
         <div className="profile-tab-content">
           {loading && <p className="empty-inline">Loading {tab.label.toLowerCase()} settings…</p>}
 
-          {!loading && data && (
+          {!loading && forbidden && (
+            <p className="empty-inline">
+              You don't have access to {tab.label.toLowerCase()} settings.
+            </p>
+          )}
+
+          {!loading && notFound && (
+            <p className="empty-inline">
+              {tab.label} settings haven't been initialized yet for this company.
+            </p>
+          )}
+
+          {!loading && !forbidden && !notFound && data && (
             <form className="form-grid" onSubmit={save}>
               {tab.fields.map((field) => (
                 <label key={field.name}>
@@ -216,6 +186,7 @@ export default function Settings() {
                       <input
                         type="time"
                         value={toTimeInputValue(data[field.name])}
+                        required={field.required}
                         onChange={(e) => updateField(field.name, e.target.value)}
                       />
                     </>
@@ -227,6 +198,9 @@ export default function Settings() {
                         value={data[field.name] ?? ''}
                         min={field.min}
                         max={field.max}
+                        maxLength={field.maxLength}
+                        pattern={field.pattern}
+                        title={field.title}
                         required={field.required}
                         onChange={(e) =>
                           updateField(field.name, field.type === 'number' ? Number(e.target.value) : e.target.value)
@@ -246,7 +220,9 @@ export default function Settings() {
             </form>
           )}
 
-          {!loading && !data && !error && <p className="empty-inline">No settings found.</p>}
+          {!loading && !forbidden && !notFound && !data && !error && (
+            <p className="empty-inline">No settings found.</p>
+          )}
         </div>
       </section>
     </div>

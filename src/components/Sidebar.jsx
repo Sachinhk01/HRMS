@@ -18,6 +18,7 @@ import {
   UserSearch,
   WalletCards,
   ReceiptText,
+  Settings as SettingsIcon,
 } from 'lucide-react';
 import Logo from './Logo';
 import { useAuth } from '../context/AuthContext';
@@ -31,6 +32,7 @@ const icons = {
   '/leave': CalendarDays,
   '/payroll': WalletCards,
   '/form16': ReceiptText,
+  '/settings': SettingsIcon,
   '/performance': Target,
   '/reports': BarChart3,
   '/profile': UserRound,

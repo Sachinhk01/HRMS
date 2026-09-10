@@ -27,6 +27,7 @@ import Events from './pages/Events';
 import AccessDenied from './pages/AccessDenied';
 import Notifications from './pages/Notifications';
 import Form16 from './pages/Form16';
+import Settings from './pages/Settings';
 
 function ProtectedRoute() {
   const { user } = useAuth();
@@ -86,6 +87,7 @@ export default function App() {
         <Route path="/performance" element={<RoleRoute><Performance /></RoleRoute>} />
         <Route path="/notifications" element={<RoleRoute><Notifications /></RoleRoute>} />
         <Route path="/form16" element={<RoleRoute><Form16 /></RoleRoute>} />
+        <Route path="/settings" element={<RoleRoute><Settings /></RoleRoute>} />
         <Route path="/access-denied" element={<AccessDenied />} />
       </Route>
 
