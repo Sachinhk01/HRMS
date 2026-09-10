@@ -83,6 +83,18 @@ export async function getMyLeaveTransactions() {
   return data.data;
 }
 
+// ---- Leave Report (HR_ADMIN / MANAGER only) ----
+// GET /reports/leave?format=json — same caveat as getAttendanceReport:
+// the response is NOT wrapped in { data: ... }, it IS the
+// LeaveReportPageResponse directly: { content, summary, page, size, ... }.
+// summary covers the full filtered set regardless of page size.
+export async function getLeaveReport(params = {}) {
+  const { data } = await api.get("/reports/leave", {
+    params: { format: "json", ...params },
+  });
+  return data;
+}
+
 // Downloads the leave report as a file (excel/pdf) using the existing
 // /reports/leave endpoint (format=excel|pdf). Returns the raw blob + a
 // filename pulled from the Content-Disposition header when available.

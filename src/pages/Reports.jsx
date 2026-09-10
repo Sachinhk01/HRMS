@@ -16,8 +16,8 @@ import autoTable from 'jspdf-autotable';
 import PageHeader from '../components/PageHeader';
 import ExportMenu from '../components/ExportMenu';
 import { getEmployees } from '../services/employeeService';
-import { getAttendanceHistory } from '../services/attendanceService';
-import { getAllLeaveRequests } from '../services/leaveService';
+import { getAttendanceReport } from '../services/attendanceService';
+import { getLeaveReport } from '../services/leaveService';
 import { capitalizeName } from '../utils/formatName';
 import './Reports.css';
 
@@ -77,11 +77,11 @@ export default function Reports() {
   const [search, setSearch] = useState('');
   const [department, setDepartment] = useState('');
 
-  const [leaves, setLeaves] = useState([]);
+  const [leaveSummary, setLeaveSummary] = useState(null);
   const [loadingLeaves, setLoadingLeaves] = useState(true);
   const [leavesError, setLeavesError] = useState('');
 
-  const [attendanceCount, setAttendanceCount] = useState(0);
+  const [attendanceSummary, setAttendanceSummary] = useState(null);
   const [loadingAttendance, setLoadingAttendance] = useState(true);
   const [attendanceError, setAttendanceError] = useState('');
 
@@ -107,12 +107,14 @@ export default function Reports() {
       setLoadingLeaves(true);
       setLeavesError('');
       try {
-        const result = await getAllLeaveRequests();
-        if (!cancelled) setLeaves(Array.isArray(result) ? result : []);
+        // size: 1 — we only need `summary`, which is computed over the full
+        // filtered set regardless of page size, not the row content.
+        const result = await getLeaveReport({ size: 1 });
+        if (!cancelled) setLeaveSummary(result?.summary || null);
       } catch {
         if (!cancelled) {
-          setLeaves([]);
-          setLeavesError('Failed to load leave requests.');
+          setLeaveSummary(null);
+          setLeavesError('Failed to load leave report. HR/Manager access is required.');
         }
       } finally {
         if (!cancelled) setLoadingLeaves(false);
@@ -124,27 +126,21 @@ export default function Reports() {
 
   useEffect(() => {
     let cancelled = false;
-
     async function loadAttendance() {
       setLoadingAttendance(true);
       setAttendanceError('');
       try {
-        const historyData = await getAttendanceHistory();
-        if (cancelled) return;
-
-        const records = Array.isArray(historyData)
-          ? historyData
-          : historyData?.records || historyData?.content || [];
-        setAttendanceCount(records.length);
+        const result = await getAttendanceReport({ size: 1 });
+        if (!cancelled) setAttendanceSummary(result?.summary || null);
       } catch {
         if (!cancelled) {
-          setAttendanceError('Failed to load attendance.');
+          setAttendanceSummary(null);
+          setAttendanceError('Failed to load attendance report. HR/Manager access is required.');
         }
       } finally {
         if (!cancelled) setLoadingAttendance(false);
       }
     }
-
     loadAttendance();
     return () => { cancelled = true; };
   }, []);
@@ -171,10 +167,6 @@ export default function Reports() {
 
   const activeCount = useMemo(() => employees.filter((x) => x.active).length, [employees]);
   const activePct = employees.length ? Math.round((activeCount / employees.length) * 100) : 0;
-  const pendingLeaveCount = useMemo(
-    () => leaves.filter((l) => l.status === 'PENDING').length,
-    [leaves]
-  );
 
   const departmentCounts = useMemo(() => {
     const counts = {};
@@ -186,14 +178,14 @@ export default function Reports() {
   }, [employees]);
   const maxDeptCount = Math.max(1, ...departmentCounts.map(([, count]) => count));
 
-  const leaveStatusCounts = useMemo(() => {
-    const counts = { APPROVED: 0, PENDING: 0, REJECTED: 0, CANCELLED: 0 };
-    leaves.forEach((l) => {
-      if (counts[l.status] !== undefined) counts[l.status] += 1;
-    });
-    return counts;
-  }, [leaves]);
-  const totalLeaves = leaves.length;
+  const leaveStatusCounts = useMemo(() => ({
+    APPROVED: leaveSummary?.approvedLeaves || 0,
+    PENDING: leaveSummary?.pendingLeaves || 0,
+    REJECTED: leaveSummary?.rejectedLeaves || 0,
+    CANCELLED: leaveSummary?.cancelledLeaves || 0,
+  }), [leaveSummary]);
+  const totalLeaves = leaveSummary?.totalLeaves || 0;
+  const pendingLeaveCount = leaveSummary?.pendingLeaves || 0;
   const donutGradient = useMemo(() => {
     if (!totalLeaves) return '#eef2f7';
     let acc = 0;
@@ -211,7 +203,13 @@ export default function Reports() {
   const kpis = [
     { icon: Users, tone: 'blue', label: 'Employees', value: employeesLoading ? '…' : employees.length, desc: 'Total Accounts' },
     { icon: UserCheck, tone: 'green', label: 'Active Employees', value: employeesLoading ? '…' : activeCount, desc: employeesLoading ? '' : `${activePct}% of Total` },
-    { icon: Clock3, tone: 'teal', label: 'Attendance', value: loadingAttendance ? '…' : attendanceCount, desc: 'Total Records' },
+    {
+      icon: Clock3,
+      tone: 'teal',
+      label: 'Attendance',
+      value: loadingAttendance ? '…' : `${attendanceSummary?.attendancePercentage ?? 0}%`,
+      desc: loadingAttendance ? '' : `${attendanceSummary?.totalRecords ?? 0} Records`,
+    },
     { icon: CalendarDays, tone: 'pink', label: 'Leave Requests', value: loadingLeaves ? '…' : totalLeaves, desc: 'All Time' },
     { icon: Hourglass, tone: 'orange', label: 'Pending Approvals', value: loadingLeaves ? '…' : pendingLeaveCount, desc: 'Awaiting Review' },
   ];

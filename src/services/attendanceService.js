@@ -82,6 +82,25 @@ export async function getEmployeeAttendanceHistory(employeeId, params = {}) {
   return data.data;
 }
 
+// ---- Attendance Report (HR_ADMIN / MANAGER only) ----
+// GET /reports/attendance?format=json — NOTE: unlike almost every other
+// endpoint in this app, the response is NOT wrapped in { success, message,
+// data }. The JSON body IS the AttendanceReportPageResponse directly:
+//   { content: [...], summary: {...}, page, size, totalElements, ... }
+// summary is computed over the full filtered result set, not just the
+// current page, so callers that only need the summary can pass size: 1.
+//
+// Backend note: the controller currently guards this with
+// hasAnyRole('HR','MANAGER') while every other controller uses 'HR_ADMIN'.
+// hradmin/superadmin accounts will get a 403 until that's fixed on the
+// Java side.
+export async function getAttendanceReport(params = {}) {
+  const { data } = await api.get("/reports/attendance", {
+    params: { format: "json", ...params },
+  });
+  return data;
+}
+
 // Downloads the attendance report as a file (excel/pdf) using the existing
 // /reports/attendance endpoint (format=excel|pdf). Returns the raw blob +
 // a filename pulled from the Content-Disposition header when available.
