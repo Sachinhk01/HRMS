@@ -407,7 +407,7 @@ export default function Regularization() {
                 <th>Date Range</th>
                 <th>Reason</th>
                 <th>Status</th>
-                <th># Details</th>
+                <th>Details</th>
                 <th>Created At</th>
                 <th />
               </tr>

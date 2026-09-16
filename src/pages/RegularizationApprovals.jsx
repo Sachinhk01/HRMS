@@ -285,7 +285,7 @@ export default function RegularizationApprovals() {
                 <th>Date Range</th>
                 <th>Reason</th>
                 <th>Status</th>
-                <th># Pending</th>
+                <th>Pending</th>
                 <th>Submitted</th>
                 <th />
               </tr>

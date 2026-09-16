@@ -9,6 +9,7 @@ import {
   updatePaymentDetails,
 } from "../../services/payrollService";
 import { EmptyState } from "./payrollUi";
+import { useConfirm } from "../../context/ConfirmContext";
 
 const EMPTY_FORM = {
   panNumber: "",
@@ -29,6 +30,7 @@ const MODE_LABELS = {
 };
 
 export default function PaymentDetailsPanel() {
+  const { confirm } = useConfirm();
   const [employees, setEmployees] = useState([]);
   const [query, setQuery] = useState("");
   const [selectedId, setSelectedId] = useState("");
@@ -132,7 +134,13 @@ export default function PaymentDetailsPanel() {
   }
 
   async function remove() {
-    if (!window.confirm("Delete payment details for this employee?")) return;
+    const ok = await confirm({
+      title: "Delete payment details",
+      message: "Delete payment details for this employee? This can't be undone.",
+      confirmText: "Delete",
+      danger: true,
+    });
+    if (!ok) return;
     setError("");
     setMessage("");
     try {

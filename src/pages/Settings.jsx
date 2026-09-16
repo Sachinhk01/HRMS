@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Save } from 'lucide-react';
+import { Pencil, Save, X } from 'lucide-react';
 import PageHeader from '../components/PageHeader';
 import { hrmsService } from '../services/hrmsService';
 import { useToast } from '../context/ToastContext';
@@ -77,8 +77,10 @@ function fromTimeInputValue(value) {
 export default function Settings() {
   const [activeTab, setActiveTab] = useState(TABS[0].key);
   const [data, setData] = useState(null);
+  const [originalData, setOriginalData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [editMode, setEditMode] = useState(false);
   const [error, setError] = useState('');
   const [notFound, setNotFound] = useState(false);
   const [forbidden, setForbidden] = useState(false);
@@ -91,8 +93,12 @@ export default function Settings() {
     setError('');
     setNotFound(false);
     setForbidden(false);
+    setEditMode(false);
     tab.get()
-      .then(setData)
+      .then((res) => {
+        setData(res);
+        setOriginalData(res);
+      })
       .catch((err) => {
         if (err?.status === 403) {
           setForbidden(true);
@@ -107,6 +113,14 @@ export default function Settings() {
 
   const updateField = (name, value) => setData((prev) => ({ ...prev, [name]: value }));
 
+  const startEdit = () => setEditMode(true);
+
+  const cancelEdit = () => {
+    setData(originalData);
+    setEditMode(false);
+    setError('');
+  };
+
   const save = async (event) => {
     event.preventDefault();
     setSaving(true);
@@ -118,6 +132,8 @@ export default function Settings() {
       }
       const saved = await tab.save(payload);
       setData(saved);
+      setOriginalData(saved);
+      setEditMode(false);
       showToast(`${tab.label} settings saved.`, 'success');
     } catch (err) {
       const msg = err.message || 'Failed to save settings.';
@@ -168,56 +184,87 @@ export default function Settings() {
           )}
 
           {!loading && !forbidden && !notFound && data && (
-            <form className="form-grid" onSubmit={save}>
-              {tab.fields.map((field) => (
-                <label key={field.name}>
-                  {field.type === 'boolean' ? (
-                    <>
-                      <input
-                        type="checkbox"
-                        checked={!!data[field.name]}
-                        onChange={(e) => updateField(field.name, e.target.checked)}
-                      />
-                      {' '}{field.label}
-                    </>
-                  ) : field.type === 'time' ? (
-                    <>
-                      {field.label}
-                      <input
-                        type="time"
-                        value={toTimeInputValue(data[field.name])}
-                        required={field.required}
-                        onChange={(e) => updateField(field.name, e.target.value)}
-                      />
-                    </>
-                  ) : (
-                    <>
-                      {field.label}
-                      <input
-                        type={field.type}
-                        value={data[field.name] ?? ''}
-                        min={field.min}
-                        max={field.max}
-                        maxLength={field.maxLength}
-                        pattern={field.pattern}
-                        title={field.title}
-                        required={field.required}
-                        onChange={(e) =>
-                          updateField(field.name, field.type === 'number' ? Number(e.target.value) : e.target.value)
-                        }
-                      />
-                    </>
-                  )}
-                </label>
-              ))}
+            <>
+              {!editMode && (
+                <div className="settings-view-actions">
+                  <button
+                    type="button"
+                    className="btn btn-primary"
+                    onClick={startEdit}
+                  >
+                    <Pencil size={16} />
+                    Edit
+                  </button>
+                </div>
+              )}
 
-              {error && <div className="form-alert full-span">{error}</div>}
+              <form className="form-grid" onSubmit={save}>
+                {tab.fields.map((field) => (
+                  <label key={field.name}>
+                    {field.type === 'boolean' ? (
+                      <>
+                        <input
+                          type="checkbox"
+                          checked={!!data[field.name]}
+                          disabled={!editMode}
+                          onChange={(e) => updateField(field.name, e.target.checked)}
+                        />
+                        {' '}{field.label}
+                      </>
+                    ) : field.type === 'time' ? (
+                      <>
+                        {field.label}
+                        <input
+                          type="time"
+                          value={toTimeInputValue(data[field.name])}
+                          required={field.required}
+                          disabled={!editMode}
+                          onChange={(e) => updateField(field.name, e.target.value)}
+                        />
+                      </>
+                    ) : (
+                      <>
+                        {field.label}
+                        <input
+                          type={field.type}
+                          value={data[field.name] ?? ''}
+                          min={field.min}
+                          max={field.max}
+                          maxLength={field.maxLength}
+                          pattern={field.pattern}
+                          title={field.title}
+                          required={field.required}
+                          disabled={!editMode}
+                          onChange={(e) =>
+                            updateField(field.name, field.type === 'number' ? Number(e.target.value) : e.target.value)
+                          }
+                        />
+                      </>
+                    )}
+                  </label>
+                ))}
 
-              <button className="btn btn-primary full-span" disabled={saving}>
-                <Save size={18} />
-                {saving ? 'Saving…' : 'Save changes'}
-              </button>
-            </form>
+                {error && <div className="form-alert full-span">{error}</div>}
+
+                {editMode && (
+                  <div className="full-span settings-edit-actions">
+                    <button
+                      type="button"
+                      className="btn btn-secondary"
+                      onClick={cancelEdit}
+                      disabled={saving}
+                    >
+                      <X size={16} />
+                      Cancel
+                    </button>
+                    <button className="btn btn-primary" disabled={saving}>
+                      <Save size={18} />
+                      {saving ? 'Saving…' : 'Save changes'}
+                    </button>
+                  </div>
+                )}
+              </form>
+            </>
           )}
 
           {!loading && !forbidden && !notFound && !data && !error && (

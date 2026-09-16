@@ -9,6 +9,7 @@ import {
   updateSalaryTemplateStatus,
 } from "../../services/payrollService";
 import { EmptyState, LineItem } from "./payrollUi";
+import { useConfirm } from "../../context/ConfirmContext";
 
 const EMPTY_FORM = {
   employeeType: "FULL_TIME",
@@ -29,6 +30,7 @@ const EMPTY_FORM = {
 const num = (value) => (value === "" || value === null || value === undefined ? undefined : Number(value));
 
 export default function SalaryTemplatesPanel() {
+  const { confirm } = useConfirm();
   const [templates, setTemplates] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -126,7 +128,14 @@ export default function SalaryTemplatesPanel() {
   }
 
   async function toggleActive(item) {
-    if (!window.confirm(`${item.employeeType} template → ${item.active ? "deactivate" : "activate"}?`)) return;
+    const action = item.active ? "deactivate" : "activate";
+    const ok = await confirm({
+      title: `${action[0].toUpperCase()}${action.slice(1)} template`,
+      message: `${item.employeeType} template → ${action}?`,
+      confirmText: action[0].toUpperCase() + action.slice(1),
+      danger: item.active,
+    });
+    if (!ok) return;
     setError("");
     setMessage("");
     try {

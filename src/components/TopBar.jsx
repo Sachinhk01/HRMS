@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Bell, ChevronDown, LayoutGrid, LogOut, Search, UserRound, X } from 'lucide-react';
+import { Bell, ChevronDown, LayoutGrid, LogOut, Search, Settings, UserRound, X } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useNotifications } from '../context/NotificationContext';
@@ -12,6 +12,11 @@ import './TopBar.css';
 // ROUTE_ROLES['/employees'] in config.js — kept here so the search box
 // only ever calls GET /employees for roles actually allowed to.
 const EMPLOYEE_SEARCH_ROLES = ['HR_ADMIN', 'MANAGER', 'SUPER_ADMIN'];
+
+// Roles that can see the Settings icon, mirrored from
+// ROUTE_ROLES['/settings'] in config.js, now that Settings has moved
+// out of the sidebar and into the top notification bar.
+const SETTINGS_ROLES = ['HR_ADMIN', 'MANAGER', 'SUPER_ADMIN'];
 
 // utils/formatName.js was never actually added to the repo on either
 // branch, so build the name capitalization inline instead of importing it.
@@ -36,6 +41,7 @@ export default function TopBar() {
   // ---------- Global "Search anything..." box ----------
   const userRole = user?.roles?.[0] || user?.role;
   const canSearchEmployees = EMPLOYEE_SEARCH_ROLES.includes(userRole);
+  const canSeeSettings = SETTINGS_ROLES.includes(userRole);
 
   const [query, setQuery] = useState('');
   const [searchOpen, setSearchOpen] = useState(false);
@@ -288,6 +294,16 @@ export default function TopBar() {
       </div>
 
       <div className="topbar-actions">
+        {canSeeSettings && (
+          <Link
+            className="icon-btn"
+            to="/settings"
+            aria-label="Settings"
+          >
+            <Settings size={19} />
+          </Link>
+        )}
+
         <Link
           className={`icon-btn${unreadCount > 0 ? ' notification-dot' : ''}`}
           to="/notifications"

@@ -10,7 +10,8 @@ import Pagination from '../components/Pagination';
 import usePagination, { sortRecent } from '../hooks/usePagination';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
-import { createCelebration, getNotifications, updateAnnouncement } from '../services/notificationService';
+import { useConfirm } from '../context/ConfirmContext';
+import { createCelebration, deleteAnnouncement, getNotifications, updateAnnouncement } from '../services/notificationService';
 import { getEmployeeDropdown } from '../services/employeeService';
 import './CelebrationWall.css';
 
@@ -25,8 +26,12 @@ const CELEBRATION_BANNER_PHOTO = 'https://images.unsplash.com/photo-176417576015
 // Announcements page, just not here).
 const CELEBRATION_TYPES = ['BIRTHDAY', 'WORK_ANNIVERSARY', 'GENERAL'];
 
-// Frontend-only "delete": hidden ids are remembered only in this browser.
-const HIDDEN_POSTS_KEY = 'celebrationWall.hiddenPostIds';
+// FRONTEND-ONLY FALLBACK: the real delete is a server call (deleteAnnouncement)
+// that removes the post for every user. If the backend doesn't yet have that
+// endpoint deployed (404 / NoResourceFoundException), we fall back to hiding
+// the post in this browser only, so the UI doesn't show a broken error. This
+// is explicitly NOT the same as a real delete — see deleteWallPost below.
+const HIDDEN_POSTS_KEY = 'celebrationWall.locallyHiddenPostIds';
 
 // Keys match backend NotificationType enum exactly
 const CATEGORY_META = {
@@ -90,7 +95,12 @@ function parseCelebrationMeta(rawMessage = '') {
 }
 
 function normalizeNotificationToPost(item) {
-  // All fields come directly from backend NotificationResponse JSON
+  // All fields come directly from backend NotificationResponse JSON.
+  // announcementId is only meaningful (and only set) when this notification
+  // is really backed by an Announcement row — auto-generated posts (e.g.
+  // scheduler birthday/anniversary alerts) have referenceType EMPLOYEE, not
+  // ANNOUNCEMENT, and can't be permanently deleted through that endpoint.
+  const isAnnouncementBacked = item.referenceType === 'ANNOUNCEMENT';
   return {
     id: item.id,
     type: item.notificationType || 'GENERAL',
@@ -102,7 +112,8 @@ function normalizeNotificationToPost(item) {
     isRead: Boolean(item.isRead),
     priority: item.priority || 'LOW',
     taggedPeople: item.taggedPeople || [],
-    announcementId: item.referenceId,
+    referenceType: item.referenceType || null,
+    announcementId: isAnnouncementBacked ? item.referenceId : null,
   };
 }
 
@@ -135,6 +146,7 @@ export default function CelebrationWall() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const { showToast } = useToast();
+  const { confirm, promptDialog } = useConfirm();
   const [active, setActive] = useState('ALL');
   const [likedPosts, setLikedPosts] = useState({});
   const [commentsState, setCommentsState] = useState({});
@@ -161,6 +173,11 @@ export default function CelebrationWall() {
   const canCreateCelebration = ['HR_ADMIN', 'SUPER_ADMIN'].includes(user?.role || user?.roles?.[0]);
   const canEditCelebration = false;
   const canDeleteCelebration = canCreateCelebration;
+  // Only posts backed by a real Announcement row can be permanently
+  // deleted for everyone — auto-generated posts (e.g. scheduler birthday/
+  // anniversary alerts) have no backing record to delete, so no delete
+  // affordance is shown for those at all.
+  const canDeletePost = (item) => canDeleteCelebration && item.referenceType === 'ANNOUNCEMENT' && !!item.announcementId;
 
   const loadData = async () => {
     setLoading(true);
@@ -235,6 +252,7 @@ export default function CelebrationWall() {
             isRead: Boolean(item.isRead),
             priority: item.priority || 'LOW',
             taggedPeople: celebrationMeta.taggedPeople,
+            referenceType: 'ANNOUNCEMENT',
             announcementId: item.referenceId,
           };
           const dateVal = new Date(post.eventDate || post.createdAt);
@@ -251,6 +269,7 @@ export default function CelebrationWall() {
           title: item.title,
           message: item.message,
           createdAt: item.createdAt,
+          referenceType: 'ANNOUNCEMENT',
           announcementId: item.referenceId,
         });
         return;
@@ -324,23 +343,58 @@ export default function CelebrationWall() {
   };
 
   const editWallPost = async (item) => {
-    const title = window.prompt('Edit title', item.title || '');
-    if (title === null) return;
-    const message = window.prompt('Edit message', item.message || '');
-    if (message === null || !title.trim() || !message.trim()) return;
-    try { await updateAnnouncement(item.announcementId, { title: title.trim(), message: message.trim() }); showToast('Post updated successfully.', 'success'); await loadData(); }
-    catch (err) { showToast(err?.response?.data?.message || err.message || 'Failed to Update Post.', 'error'); }
+    const result = await promptDialog({
+      title: 'Edit post',
+      confirmText: 'Save',
+      fields: [
+        { name: 'title', label: 'Title', defaultValue: item.title || '', required: true },
+        { name: 'message', label: 'Message', defaultValue: item.message || '', required: true, multiline: true },
+      ],
+    });
+    if (!result) return;
+    try {
+      await updateAnnouncement(item.announcementId, { title: result.title.trim(), message: result.message.trim() });
+      showToast('Post updated successfully.', 'success');
+      await loadData();
+    } catch (err) {
+      showToast(err?.response?.data?.message || err.message || 'Failed to Update Post.', 'error');
+    }
   };
 
-  const deleteWallPost = (item) => {
-    if (!window.confirm(`Hide "${item.title}" from your view? This won't delete it for other people.`)) return;
-    setHiddenPostIds((current) => {
-      const next = new Set(current);
-      next.add(String(item.id));
-      try { localStorage.setItem(HIDDEN_POSTS_KEY, JSON.stringify([...next])); } catch { /* storage unavailable, ignore */ }
-      return next;
+  const deleteWallPost = async (item) => {
+    const ok = await confirm({
+      title: 'Delete post',
+      message: `Delete "${item.title}"? This is meant to remove it for everyone.`,
+      confirmText: 'Delete',
+      danger: true,
     });
-    showToast('Post hidden from your view.', 'success');
+    if (!ok) return;
+    try {
+      await deleteAnnouncement(item.announcementId);
+      showToast('Post deleted for everyone.', 'success');
+      setNotifications((current) => current.filter(
+        (n) => !(n.referenceType === 'ANNOUNCEMENT' && String(n.referenceId) === String(item.announcementId))
+      ));
+      await loadData();
+    } catch (err) {
+      // The backend doesn't have the delete endpoint deployed yet
+      // (404 / NoResourceFoundException). Rather than show that raw
+      // error, fall back to hiding the post in this browser only —
+      // and say so honestly, since it is NOT deleted for other people.
+      const status = err?.response?.status;
+      const isMissingEndpoint = status === 404 || /NoResourceFoundException/i.test(err?.message || err?.response?.data?.message || '');
+      if (isMissingEndpoint) {
+        setHiddenPostIds((current) => {
+          const next = new Set(current);
+          next.add(String(item.id));
+          try { localStorage.setItem(HIDDEN_POSTS_KEY, JSON.stringify([...next])); } catch { /* storage unavailable, ignore */ }
+          return next;
+        });
+        showToast('Hidden from your view.', 'error');
+        return;
+      }
+      showToast(err?.response?.data?.message || err.message || 'Failed to delete post.', 'error');
+    }
   };
 
   return (
@@ -459,10 +513,10 @@ export default function CelebrationWall() {
                       <span className="post-category-badge" style={{ background: meta.bg, color: meta.color }}>
                         <TIcon size={13} /> {meta.label}
                       </span>
-                      {((canEditCelebration && post.announcementId) || canDeleteCelebration) && (
+                      {((canEditCelebration && post.announcementId) || canDeletePost(post)) && (
                         <div className="celebration-card-admin">
                           {canEditCelebration && post.announcementId && <button type="button" onClick={() => editWallPost(post)}><Pencil size={15} /> Edit</button>}
-                          {canDeleteCelebration && <button type="button" className="danger" onClick={() => deleteWallPost(post)}><Trash2 size={15} /> Delete</button>}
+                          {canDeletePost(post) && <button type="button" className="danger" onClick={() => deleteWallPost(post)}><Trash2 size={15} /> Delete</button>}
                         </div>
                       )}
                     </div>
@@ -597,10 +651,10 @@ export default function CelebrationWall() {
               <div className="side-content" key={item.id}>
                 <div className="side-content-title">
                   <strong>{item.title}</strong>
-                  {((canEditCelebration && item.announcementId) || canDeleteCelebration) && (
+                  {((canEditCelebration && item.announcementId) || canDeletePost(item)) && (
                     <div className="side-post-actions">
                       {canEditCelebration && item.announcementId && <button type="button" onClick={() => editWallPost(item)} title="Edit"><Pencil size={14} /></button>}
-                      {canDeleteCelebration && <button type="button" className="danger" onClick={() => deleteWallPost(item)} title="Delete"><Trash2 size={14} /></button>}
+                      {canDeletePost(item) && <button type="button" className="danger" onClick={() => deleteWallPost(item)} title="Delete"><Trash2 size={14} /></button>}
                     </div>
                   )}
                 </div>
@@ -628,7 +682,7 @@ export default function CelebrationWall() {
               <div className="side-content" key={item.id}>
                 <div className="side-content-title">
                   <strong>{item.title}</strong>
-                  {canDeleteCelebration && (
+                  {canDeletePost(item) && (
                     <div className="side-post-actions">
                       <button type="button" className="danger" onClick={() => deleteWallPost(item)} title="Delete">
                         <Trash2 size={14} />

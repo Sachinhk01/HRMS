@@ -5,6 +5,7 @@ import Pagination from '../components/Pagination';
 import usePagination from '../hooks/usePagination';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
+import { useConfirm } from '../context/ConfirmContext';
 import {
   createHoliday,
   deleteHoliday,
@@ -54,6 +55,7 @@ export default function Holidays() {
   const [editingId, setEditingId] = useState(null);
   const [error, setError] = useState('');
   const { showToast } = useToast();
+  const { confirm } = useConfirm();
 
   async function refresh() {
     setLoading(true);
@@ -122,7 +124,13 @@ export default function Holidays() {
   }
 
   async function remove(item) {
-    if (!window.confirm(`Delete ${item.holidayName}?`)) return;
+    const ok = await confirm({
+      title: 'Delete holiday',
+      message: `Delete "${item.holidayName}"? This can't be undone.`,
+      confirmText: 'Delete',
+      danger: true,
+    });
+    if (!ok) return;
     try {
       await deleteHoliday(item.id);
       await refresh();

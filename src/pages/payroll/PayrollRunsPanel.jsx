@@ -30,6 +30,7 @@ import {
   updatePayrollStatus,
 } from "../../services/payrollService";
 import { AttendanceSection, DeductionsSection, EarningsSection, EmptyState, PayrollBadge } from "./payrollUi";
+import { useConfirm } from "../../context/ConfirmContext";
 
 const EMPTY_EDIT_FORM = {
   totalWorkingDays: "",
@@ -53,6 +54,7 @@ const EMPTY_EDIT_FORM = {
 const num = (value) => (value === "" || value === null || value === undefined ? undefined : Number(value));
 
 export default function PayrollRunsPanel() {
+  const { confirm, promptDialog } = useConfirm();
   const [payrolls, setPayrolls] = useState([]);
   const [employees, setEmployees] = useState([]);
   const [month, setMonth] = useState(() => new Date().toISOString().slice(0, 7));
@@ -237,13 +239,26 @@ export default function PayrollRunsPanel() {
     setMessage("");
     let paymentReference;
     if (status === "PAID") {
-      paymentReference = window.prompt(
-        `Payment reference for ${item.payrollNumber} (optional):`,
-        item.paymentReference || ""
-      );
-      if (paymentReference === null) return;
+      const result = await promptDialog({
+        title: "Payment reference",
+        fields: [
+          {
+            name: "paymentReference",
+            label: `Payment reference for ${item.payrollNumber} (optional)`,
+            defaultValue: item.paymentReference || "",
+          },
+        ],
+        confirmText: "Continue",
+      });
+      if (result === null) return;
+      paymentReference = result.paymentReference;
     }
-    if (!window.confirm(`${item.payrollNumber} → ${status}?`)) return;
+    const ok = await confirm({
+      title: "Update payroll status",
+      message: `${item.payrollNumber} → ${status}?`,
+      confirmText: "Confirm",
+    });
+    if (!ok) return;
     try {
       const updated = await updatePayrollStatus(item.id, { status, paymentReference });
       setMessage(`${updated.payrollNumber} marked as ${status}.`);
@@ -255,7 +270,12 @@ export default function PayrollRunsPanel() {
   }
 
   async function handleRegenerate(item) {
-    if (!window.confirm(`Create a new version superseding ${item.payrollNumber}?`)) return;
+    const ok = await confirm({
+      title: "Regenerate payroll",
+      message: `Create a new version superseding ${item.payrollNumber}?`,
+      confirmText: "Regenerate",
+    });
+    if (!ok) return;
     setError("");
     setMessage("");
     try {
