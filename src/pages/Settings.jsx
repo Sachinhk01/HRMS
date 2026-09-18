@@ -1,20 +1,46 @@
 import { useEffect, useState } from 'react';
-import { Pencil, Save, X } from 'lucide-react';
+import {
+  Pencil,
+  Save,
+  X,
+  Clock,
+  CalendarDays,
+  Building2,
+  ChevronRight,
+  ShieldOff,
+  Inbox,
+  AlertTriangle,
+  Loader2,
+  Check,
+  Timer,
+  Gauge,
+  ListChecks,
+  Repeat2,
+  MapPin,
+  Globe2,
+} from 'lucide-react';
 import PageHeader from '../components/PageHeader';
 import { hrmsService } from '../services/hrmsService';
 import { useToast } from '../context/ToastContext';
-import './Profile.css';
+import './Settings.css';
 
-// Each tab maps 1:1 to a live SettingController group (GET/PUT /settings/{group}).
+// Each group maps 1:1 to a live SettingController group (GET/PUT /settings/{group}).
 // Field lists mirror the *active* backend request DTO fields exactly (see
 // Settings_Module_Frontend_API_Implementation_Guide_Final.pdf §3). The backend
 // also has notification and work-log settings modules, but their controller
-// endpoints are commented out — so there are no tabs for them here. Re-add a
-// tab only after those endpoints are actually uncommented in SettingController.
-const TABS = [
+// endpoints are commented out — so there are no groups for them here. Re-add a
+// group only after those endpoints are actually uncommented in SettingController.
+//
+// `sections` purely controls layout/grouping within a group's detail panel —
+// every field still lives in `fields` and is looked up by name, so the DTO
+// shape driving get/save is untouched.
+const GROUPS = [
   {
     key: 'attendance',
     label: 'Attendance',
+    description: 'Office hours, grace periods & attendance rules',
+    icon: Clock,
+    accent: 'blue',
     get: hrmsService.getAttendanceSettings,
     save: hrmsService.updateAttendanceSettings,
     fields: [
@@ -24,25 +50,40 @@ const TABS = [
       { name: 'minimumWorkingMinutes', label: 'Minimum Working Minutes', type: 'number', min: 0, required: true },
       { name: 'halfDayWorkingMinutes', label: 'Half-Day Working Minutes', type: 'number', min: 0, required: true },
       { name: 'checkoutCutoffMinutes', label: 'Checkout Cutoff (minutes)', type: 'number', min: 0, required: true },
-      { name: 'overtimeEnabled', label: 'Overtime Enabled', type: 'boolean' },
-      { name: 'weekendAttendanceAllowed', label: 'Weekend Attendance Allowed', type: 'boolean' },
-      { name: 'holidayAttendanceAllowed', label: 'Holiday Attendance Allowed', type: 'boolean' },
+      { name: 'overtimeEnabled', label: 'Overtime Enabled', type: 'boolean', hint: 'Let employees log hours worked beyond office end time.' },
+      { name: 'weekendAttendanceAllowed', label: 'Weekend Attendance Allowed', type: 'boolean', hint: 'Allow check-ins to be recorded on Saturdays & Sundays.' },
+      { name: 'holidayAttendanceAllowed', label: 'Holiday Attendance Allowed', type: 'boolean', hint: 'Allow check-ins to be recorded on company holidays.' },
+    ],
+    sections: [
+      { title: 'Working Hours', icon: Timer, fields: ['officeStartTime', 'officeEndTime', 'gracePeriodMinutes'] },
+      { title: 'Working Time Thresholds', icon: Gauge, fields: ['minimumWorkingMinutes', 'halfDayWorkingMinutes', 'checkoutCutoffMinutes'] },
+      { title: 'Attendance Rules', icon: ListChecks, fields: ['overtimeEnabled', 'weekendAttendanceAllowed', 'holidayAttendanceAllowed'] },
     ],
   },
   {
     key: 'leave',
     label: 'Leave',
+    description: 'Annual quota, guidelines & carry-forward policy',
+    icon: CalendarDays,
+    accent: 'violet',
     get: hrmsService.getLeaveSettings,
     save: hrmsService.updateLeaveSettings,
     fields: [
-      { name: 'carryForwardAllowed', label: 'Carry Forward Allowed', type: 'boolean' },
       { name: 'monthlyGuideline', label: 'Monthly Guideline (days)', type: 'number', min: 0, required: true },
       { name: 'annualPaidLeave', label: 'Annual Paid Leave (days)', type: 'number', min: 0, required: true },
+      { name: 'carryForwardAllowed', label: 'Carry Forward Allowed', type: 'boolean', hint: 'Let unused leave roll over into the next year.' },
+    ],
+    sections: [
+      { title: 'Leave Allowances', icon: Gauge, fields: ['monthlyGuideline', 'annualPaidLeave'] },
+      { title: 'Leave Rules', icon: Repeat2, fields: ['carryForwardAllowed'] },
     ],
   },
   {
     key: 'company',
     label: 'Company',
+    description: 'Profile, address & regional configuration',
+    icon: Building2,
+    accent: 'teal',
     get: hrmsService.getCompanySettings,
     save: hrmsService.updateCompanySettings,
     fields: [
@@ -61,6 +102,11 @@ const TABS = [
       { name: 'currency', label: 'Currency', type: 'text', required: true, maxLength: 10 },
       { name: 'workingDaysPerWeek', label: 'Working Days per Week', type: 'number', min: 1, max: 7 },
     ],
+    sections: [
+      { title: 'Company Identity', icon: Building2, fields: ['companyName', 'companyCode', 'email', 'phoneNumber', 'website'] },
+      { title: 'Address', icon: MapPin, fields: ['addressLine1', 'addressLine2', 'city', 'state', 'country', 'postalCode'] },
+      { title: 'Regional Settings', icon: Globe2, fields: ['timeZone', 'currency', 'workingDaysPerWeek'] },
+    ],
   },
 ];
 
@@ -74,8 +120,67 @@ function fromTimeInputValue(value) {
   return value.length === 5 ? `${value}:00` : value;
 }
 
+function ToggleField({ field, checked, disabled, onChange }) {
+  return (
+    <div className={`toggle-row${disabled ? ' is-disabled' : ''}`}>
+      <div className="toggle-row-text">
+        <strong>{field.label}</strong>
+        {field.hint && <span>{field.hint}</span>}
+      </div>
+      <button
+        type="button"
+        role="switch"
+        aria-checked={checked}
+        aria-label={field.label}
+        disabled={disabled}
+        className={`switch${checked ? ' is-on' : ''}`}
+        onClick={() => onChange(!checked)}
+      >
+        <span className="switch-thumb">
+          {checked && <Check size={12} strokeWidth={3} />}
+        </span>
+      </button>
+    </div>
+  );
+}
+
+function InputField({ field, value, disabled, onChange }) {
+  return (
+    <div className="settings-field">
+      <label htmlFor={`f-${field.name}`}>
+        {field.label}
+        {field.required && <span className="req-dot" aria-hidden="true" />}
+      </label>
+      {field.type === 'time' ? (
+        <input
+          id={`f-${field.name}`}
+          type="time"
+          value={toTimeInputValue(value)}
+          required={field.required}
+          disabled={disabled}
+          onChange={(e) => onChange(e.target.value)}
+        />
+      ) : (
+        <input
+          id={`f-${field.name}`}
+          type={field.type}
+          value={value ?? ''}
+          min={field.min}
+          max={field.max}
+          maxLength={field.maxLength}
+          pattern={field.pattern}
+          title={field.title}
+          required={field.required}
+          disabled={disabled}
+          onChange={(e) => onChange(field.type === 'number' ? Number(e.target.value) : e.target.value)}
+        />
+      )}
+    </div>
+  );
+}
+
 export default function Settings() {
-  const [activeTab, setActiveTab] = useState(TABS[0].key);
+  const [activeKey, setActiveKey] = useState(GROUPS[0].key);
   const [data, setData] = useState(null);
   const [originalData, setOriginalData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -86,7 +191,8 @@ export default function Settings() {
   const [forbidden, setForbidden] = useState(false);
   const { showToast } = useToast();
 
-  const tab = TABS.find((t) => t.key === activeTab);
+  const group = GROUPS.find((g) => g.key === activeKey);
+  const Icon = group.icon;
 
   useEffect(() => {
     setLoading(true);
@@ -94,7 +200,7 @@ export default function Settings() {
     setNotFound(false);
     setForbidden(false);
     setEditMode(false);
-    tab.get()
+    group.get()
       .then((res) => {
         setData(res);
         setOriginalData(res);
@@ -109,7 +215,7 @@ export default function Settings() {
         }
       })
       .finally(() => setLoading(false));
-  }, [activeTab]);
+  }, [activeKey]);
 
   const updateField = (name, value) => setData((prev) => ({ ...prev, [name]: value }));
 
@@ -127,14 +233,14 @@ export default function Settings() {
     setError('');
     try {
       const payload = { ...data };
-      for (const field of tab.fields) {
+      for (const field of group.fields) {
         if (field.type === 'time') payload[field.name] = fromTimeInputValue(payload[field.name]);
       }
-      const saved = await tab.save(payload);
+      const saved = await group.save(payload);
       setData(saved);
       setOriginalData(saved);
       setEditMode(false);
-      showToast(`${tab.label} settings saved.`, 'success');
+      showToast(`${group.label} settings saved.`, 'success');
     } catch (err) {
       const msg = err.message || 'Failed to save settings.';
       setError(msg);
@@ -144,6 +250,8 @@ export default function Settings() {
     }
   };
 
+  const fieldByName = (name) => group.fields.find((f) => f.name === name);
+
   return (
     <div className="page-stack">
       <PageHeader
@@ -152,126 +260,167 @@ export default function Settings() {
         description="Manage attendance, leave and company configuration."
       />
 
-      <section className="panel">
-        <div className="profile-tabs" role="tablist">
-          {TABS.map((t) => (
-            <button
-              key={t.key}
-              type="button"
-              className={activeTab === t.key ? 'active' : ''}
-              onClick={() => setActiveTab(t.key)}
-              role="tab"
-              aria-selected={activeTab === t.key}
-            >
-              {t.label}
-            </button>
-          ))}
-        </div>
+      <div className="settings-shell">
+        <nav className="settings-nav" role="tablist" aria-label="Settings groups">
+          <div className="settings-nav-label">Configuration</div>
+          {GROUPS.map((g) => {
+            const GIcon = g.icon;
+            const isActive = activeKey === g.key;
+            return (
+              <button
+                key={g.key}
+                type="button"
+                role="tab"
+                aria-selected={isActive}
+                className={`settings-nav-item accent-${g.accent}${isActive ? ' is-active' : ''}`}
+                onClick={() => setActiveKey(g.key)}
+              >
+                <span className="settings-nav-icon">
+                  <GIcon size={18} />
+                </span>
+                <span className="settings-nav-text">
+                  <strong>{g.label}</strong>
+                  <small>{g.description}</small>
+                </span>
+                <ChevronRight size={16} className="settings-nav-chevron" />
+              </button>
+            );
+          })}
+        </nav>
 
-        <div className="profile-tab-content">
-          {loading && <p className="empty-inline">Loading {tab.label.toLowerCase()} settings…</p>}
+        <section className={`settings-detail panel accent-${group.accent}`}>
+          <div className="settings-detail-banner" aria-hidden="true" />
+          <header className="settings-detail-header">
+            <div className="settings-detail-heading">
+              <span className="settings-detail-icon">
+                <Icon size={20} />
+              </span>
+              <div>
+                <h2>{group.label}</h2>
+                <p>{group.description}</p>
+              </div>
+            </div>
 
-          {!loading && forbidden && (
-            <p className="empty-inline">
-              You don't have access to {tab.label.toLowerCase()} settings.
-            </p>
-          )}
-
-          {!loading && notFound && (
-            <p className="empty-inline">
-              {tab.label} settings haven't been initialized yet for this company.
-            </p>
-          )}
-
-          {!loading && !forbidden && !notFound && data && (
-            <>
-              {!editMode && (
-                <div className="settings-view-actions">
-                  <button
-                    type="button"
-                    className="btn btn-primary"
-                    onClick={startEdit}
-                  >
+            {!loading && !forbidden && !notFound && data && (
+              <div className="settings-detail-actions">
+                {!editMode ? (
+                  <button type="button" className="btn btn-primary" onClick={startEdit}>
                     <Pencil size={16} />
                     Edit
                   </button>
-                </div>
-              )}
-
-              <form className="form-grid" onSubmit={save}>
-                {tab.fields.map((field) => (
-                  <label key={field.name}>
-                    {field.type === 'boolean' ? (
-                      <>
-                        <input
-                          type="checkbox"
-                          checked={!!data[field.name]}
-                          disabled={!editMode}
-                          onChange={(e) => updateField(field.name, e.target.checked)}
-                        />
-                        {' '}{field.label}
-                      </>
-                    ) : field.type === 'time' ? (
-                      <>
-                        {field.label}
-                        <input
-                          type="time"
-                          value={toTimeInputValue(data[field.name])}
-                          required={field.required}
-                          disabled={!editMode}
-                          onChange={(e) => updateField(field.name, e.target.value)}
-                        />
-                      </>
-                    ) : (
-                      <>
-                        {field.label}
-                        <input
-                          type={field.type}
-                          value={data[field.name] ?? ''}
-                          min={field.min}
-                          max={field.max}
-                          maxLength={field.maxLength}
-                          pattern={field.pattern}
-                          title={field.title}
-                          required={field.required}
-                          disabled={!editMode}
-                          onChange={(e) =>
-                            updateField(field.name, field.type === 'number' ? Number(e.target.value) : e.target.value)
-                          }
-                        />
-                      </>
-                    )}
-                  </label>
-                ))}
-
-                {error && <div className="form-alert full-span">{error}</div>}
-
-                {editMode && (
-                  <div className="full-span settings-edit-actions">
-                    <button
-                      type="button"
-                      className="btn btn-secondary"
-                      onClick={cancelEdit}
-                      disabled={saving}
-                    >
+                ) : (
+                  <>
+                    <button type="button" className="btn btn-secondary" onClick={cancelEdit} disabled={saving}>
                       <X size={16} />
                       Cancel
                     </button>
-                    <button className="btn btn-primary" disabled={saving}>
-                      <Save size={18} />
+                    <button type="submit" form="settings-form" className="btn btn-primary" disabled={saving}>
+                      {saving ? <Loader2 size={16} className="spin" /> : <Save size={16} />}
                       {saving ? 'Saving…' : 'Save changes'}
                     </button>
+                  </>
+                )}
+              </div>
+            )}
+          </header>
+
+          <div className="settings-detail-body">
+            {loading && (
+              <div className="settings-skeleton" aria-live="polite" aria-label={`Loading ${group.label.toLowerCase()} settings`}>
+                <div className="skel-line skel-title" />
+                <div className="skel-grid">
+                  <div className="skel-line" />
+                  <div className="skel-line" />
+                  <div className="skel-line" />
+                  <div className="skel-line" />
+                </div>
+                <div className="skel-line skel-title" />
+                <div className="skel-row" />
+                <div className="skel-row" />
+              </div>
+            )}
+
+            {!loading && forbidden && (
+              <div className="settings-state">
+                <ShieldOff size={20} />
+                <p>You don't have access to {group.label.toLowerCase()} settings.</p>
+              </div>
+            )}
+
+            {!loading && notFound && (
+              <div className="settings-state">
+                <Inbox size={20} />
+                <p>{group.label} settings haven't been initialized yet for this company.</p>
+              </div>
+            )}
+
+            {!loading && !forbidden && !notFound && data && (
+              <form id="settings-form" onSubmit={save}>
+                {group.sections.map((section, sIdx) => {
+                  const SectionIcon = section.icon;
+                  const toggleFields = section.fields.map(fieldByName).filter((f) => f.type === 'boolean');
+                  const inputFields = section.fields.map(fieldByName).filter((f) => f.type !== 'boolean');
+
+                  return (
+                    <div
+                      className="settings-section"
+                      key={section.title}
+                      style={{ animationDelay: `${sIdx * 0.06}s` }}
+                    >
+                      <div className="settings-section-title">
+                        <SectionIcon size={15} />
+                        <span>{section.title}</span>
+                      </div>
+
+                      {inputFields.length > 0 && (
+                        <div className="settings-field-grid">
+                          {inputFields.map((field) => (
+                            <InputField
+                              key={field.name}
+                              field={field}
+                              value={data[field.name]}
+                              disabled={!editMode}
+                              onChange={(val) => updateField(field.name, val)}
+                            />
+                          ))}
+                        </div>
+                      )}
+
+                      {toggleFields.length > 0 && (
+                        <div className="toggle-list">
+                          {toggleFields.map((field) => (
+                            <ToggleField
+                              key={field.name}
+                              field={field}
+                              checked={!!data[field.name]}
+                              disabled={!editMode}
+                              onChange={(val) => updateField(field.name, val)}
+                            />
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+
+                {error && (
+                  <div className="settings-alert">
+                    <AlertTriangle size={16} />
+                    {error}
                   </div>
                 )}
               </form>
-            </>
-          )}
+            )}
 
-          {!loading && !forbidden && !notFound && !data && !error && (
-            <p className="empty-inline">No settings found.</p>
-          )}
-        </div>
-      </section>
+            {!loading && !forbidden && !notFound && !data && !error && (
+              <div className="settings-state">
+                <Inbox size={20} />
+                <p>No settings found.</p>
+              </div>
+            )}
+          </div>
+        </section>
+      </div>
     </div>
   );
 }

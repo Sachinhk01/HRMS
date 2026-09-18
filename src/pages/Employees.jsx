@@ -580,7 +580,7 @@ export default function Employees() {
       {/* ---------- Add Employee modal ---------- */}
       <AnimatePresence>
         {showAdd && (
-          <motion.div className="emp-modal-overlay" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={closeAddModal}>
+          <motion.div className="emp-modal-overlay" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
             <motion.div
               className="emp-modal-card emp-add-card"
               initial={{ opacity: 0, scale: 0.94, y: 16 }}
