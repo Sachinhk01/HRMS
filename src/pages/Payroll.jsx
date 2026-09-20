@@ -12,10 +12,10 @@ import "./payroll/Payroll.css";
 const ADMIN_ROLES = ["HR_ADMIN"];
 
 const TABS = [
-  { key: "runs", label: "Payroll Runs", icon: Banknote, roles: ["HR_ADMIN"] },
+  { key: "payment", label: "Payment Details", icon: Landmark, roles: ["HR_ADMIN"] },
   { key: "templates", label: "Salary Templates", icon: FileText, roles: ["HR_ADMIN"] },
   { key: "structures", label: "Salary Structures", icon: Layers, roles: ["HR_ADMIN"] },
-  { key: "payment", label: "Payment Details", icon: Landmark, roles: ["HR_ADMIN"] },
+  { key: "runs", label: "Salary Slip", icon: Banknote, roles: ["HR_ADMIN"] },
 ];
 
 export default function Payroll() {

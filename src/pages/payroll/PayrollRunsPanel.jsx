@@ -56,6 +56,7 @@ const num = (value) => (value === "" || value === null || value === undefined ? 
 export default function PayrollRunsPanel() {
   const { confirm, promptDialog } = useConfirm();
   const [payrolls, setPayrolls] = useState([]);
+  const [monthlyPayrolls, setMonthlyPayrolls] = useState([]);
   const [employees, setEmployees] = useState([]);
   const [month, setMonth] = useState(() => new Date().toISOString().slice(0, 7));
   const [statusFilter, setStatusFilter] = useState("ALL");
@@ -87,6 +88,7 @@ export default function PayrollRunsPanel() {
         getPayrollsByMonth(payrollMonth),
         statusFilter === "ALL" ? Promise.resolve(null) : getPayrollsByStatus(statusFilter),
       ]);
+      setMonthlyPayrolls(monthly);
       setPayrolls(monthly);
       if (statusFilter !== "ALL") {
         const inMonth = new Set(monthly.map((item) => item.id));
@@ -116,7 +118,9 @@ export default function PayrollRunsPanel() {
     .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)), [payrolls, query]);
 
   const summary = useMemo(() => {
-    const net = payrolls.reduce((sum, item) => sum + Number(item.netPayable || 0), 0);
+    const net = monthlyPayrolls
+      .filter((item) => item.status === "PAID")
+      .reduce((sum, item) => sum + Number(item.netPayable || 0), 0);
     const count = (status) => payrolls.filter((item) => item.status === status).length;
     return {
       total: payrolls.length,
@@ -125,7 +129,7 @@ export default function PayrollRunsPanel() {
       approved: count("APPROVED"),
       paid: count("PAID"),
     };
-  }, [payrolls]);
+  }, [payrolls, monthlyPayrolls]);
 
   const matchedEmployees = useMemo(() => employees
     .filter((item) =>
@@ -316,7 +320,7 @@ export default function PayrollRunsPanel() {
           <div className="summary-icon"><IndianRupee size={20} /></div>
           <span>Total Net Payable</span>
           <strong>{formatINR(summary.net)}</strong>
-          <small>Across all records for this month</small>
+          <small>Paid records only, for this month</small>
         </section>
         <section className="panel payroll-summary-card tone-orange">
           <div className="summary-icon"><WalletCards size={20} /></div>

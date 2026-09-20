@@ -178,11 +178,14 @@ export default function SalaryTemplatesPanel() {
             <button type="button" className="payroll-modal-close" onClick={resetForm} aria-label="Close"><X size={18} /></button>
           </div>
           <form className="payroll-form-grid" onSubmit={submit}>
-            {!editing && (
+                        {!editing && (
               <label>Employee type
-                <select value={form.employeeType} onChange={(event) => setForm({ ...form, employeeType: event.target.value })}>
-                  {EMPLOYMENT_TYPES.map((type) => <option key={type} value={type}>{type.replace("_", " ")}</option>)}
-                </select>
+                <input
+                  value={form.employeeType}
+                  onChange={(event) => setForm({ ...form, employeeType: event.target.value })}
+                  placeholder="e.g. FULL_TIME"
+                  required
+                />
               </label>
             )}
             <label>Basic salary<input type="number" min="0" max="999999" step="0.01" value={form.basicSalary} onChange={(event) => setForm({ ...form, basicSalary: event.target.value })} required /></label>
