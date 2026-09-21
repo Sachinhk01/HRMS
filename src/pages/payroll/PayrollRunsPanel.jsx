@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import {
   Banknote,
   CheckCircle2,
@@ -31,6 +32,7 @@ import {
 } from "../../services/payrollService";
 import { AttendanceSection, DeductionsSection, EarningsSection, EmptyState, PayrollBadge } from "./payrollUi";
 import { useConfirm } from "../../context/ConfirmContext";
+import { useToast } from "../../context/ToastContext";
 
 const EMPTY_EDIT_FORM = {
   totalWorkingDays: "",
@@ -55,6 +57,7 @@ const num = (value) => (value === "" || value === null || value === undefined ? 
 
 export default function PayrollRunsPanel() {
   const { confirm, promptDialog } = useConfirm();
+  const { showToast } = useToast();
   const [payrolls, setPayrolls] = useState([]);
   const [monthlyPayrolls, setMonthlyPayrolls] = useState([]);
   const [employees, setEmployees] = useState([]);
@@ -63,7 +66,6 @@ export default function PayrollRunsPanel() {
   const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [message, setMessage] = useState("");
 
   const [showGenerate, setShowGenerate] = useState(false);
   const [genMonth, setGenMonth] = useState(() => new Date().toISOString().slice(0, 7));
@@ -71,6 +73,8 @@ export default function PayrollRunsPanel() {
   const [genRemarks, setGenRemarks] = useState("");
   const [genEmployeeQuery, setGenEmployeeQuery] = useState("");
   const [selectedIds, setSelectedIds] = useState([]);
+  const [generatedEmployeeIds, setGeneratedEmployeeIds] = useState(() => new Set());
+  const [loadingEligibleEmployees, setLoadingEligibleEmployees] = useState(true);
   const [generating, setGenerating] = useState(false);
   const [genSummary, setGenSummary] = useState(null);
 
@@ -113,6 +117,32 @@ export default function PayrollRunsPanel() {
       .catch(() => setEmployees([]));
   }, []);
 
+  // The generation picker must offer only employees without an active payroll
+  // in its selected month. Superseded and cancelled records can be generated again.
+  useEffect(() => {
+    let current = true;
+    setLoadingEligibleEmployees(true);
+    getPayrollsByMonth(`${genMonth}-01`)
+      .then((records) => {
+        if (!current) return;
+        setGeneratedEmployeeIds(new Set(
+          records
+            .filter((record) => !["SUPERSEDED", "CANCELLED"].includes(record.status))
+            .map((record) => record.employeeId ?? record.employee?.id)
+            .filter((id) => id !== null && id !== undefined)
+            .map(String)
+        ));
+        setLoadingEligibleEmployees(false);
+      })
+      .catch(() => {
+        if (current) {
+          setGeneratedEmployeeIds(new Set());
+          setLoadingEligibleEmployees(false);
+        }
+      });
+    return () => { current = false; };
+  }, [genMonth]);
+
   const filtered = useMemo(() => payrolls
     .filter((item) =>
       `${item.payrollNumber} ${item.employeeName} ${item.employeeCode}`
@@ -135,13 +165,22 @@ export default function PayrollRunsPanel() {
     };
   }, [payrolls, monthlyPayrolls]);
 
-  const matchedEmployees = useMemo(() => employees
+  const availableEmployees = useMemo(() => loadingEligibleEmployees
+    ? []
+    : employees.filter((item) => !generatedEmployeeIds.has(String(item.id))),
+  [employees, generatedEmployeeIds, loadingEligibleEmployees]);
+
+  const matchedEmployees = useMemo(() => availableEmployees
     .filter((item) =>
       `${item.employeeCode} ${item.employeeName}`
         .toLowerCase()
         .includes(genEmployeeQuery.toLowerCase())
     )
-    .slice(0, 40), [employees, genEmployeeQuery]);
+    .slice(0, 40), [availableEmployees, genEmployeeQuery]);
+
+  useEffect(() => {
+    setSelectedIds((current) => current.filter((id) => !generatedEmployeeIds.has(String(id))));
+  }, [generatedEmployeeIds]);
 
   function toggleEmployee(id) {
     setSelectedIds((current) =>
@@ -151,14 +190,13 @@ export default function PayrollRunsPanel() {
 
   function selectAllEmployees(event) {
     if (event.target.value === "ALL") {
-      setSelectedIds(employees.map((item) => item.id));
+      setSelectedIds(availableEmployees.map((item) => item.id));
     }
   }
 
   async function submitGenerate(event) {
     event.preventDefault();
     setError("");
-    setMessage("");
     setGenerating(true);
     setGenSummary(null);
     try {
@@ -169,7 +207,7 @@ export default function PayrollRunsPanel() {
         saveAsDraft: genSaveAsDraft,
       });
       setGenSummary(result);
-      setMessage(`Payroll generated: ${result.generated} created, ${result.failed} failed.`);
+      showToast(`Payroll generated: ${result.generated} created, ${result.failed} failed.`, "success");
       setSelectedIds([]);
       setGenRemarks("");
       setMonth(genMonth);
@@ -210,7 +248,6 @@ export default function PayrollRunsPanel() {
   async function submitEdit(event) {
     event.preventDefault();
     setError("");
-    setMessage("");
     setSaving(true);
     try {
       const payload = {
@@ -232,7 +269,7 @@ export default function PayrollRunsPanel() {
         remarks: editForm.remarks || undefined,
       };
       const updated = await updateDraftPayroll(editing.id, payload);
-      setMessage(`Draft ${updated.payrollNumber} updated successfully.`);
+      showToast(`Draft ${updated.payrollNumber} updated successfully.`, "success");
       setEditing(null);
       await refresh();
     } catch (err) {
@@ -244,7 +281,6 @@ export default function PayrollRunsPanel() {
 
   async function runStatusAction(item, status) {
     setError("");
-    setMessage("");
     let paymentReference;
     if (status === "PAID") {
       const result = await promptDialog({
@@ -269,7 +305,7 @@ export default function PayrollRunsPanel() {
     if (!ok) return;
     try {
       const updated = await updatePayrollStatus(item.id, { status, paymentReference });
-      setMessage(`${updated.payrollNumber} marked as ${status}.`);
+      showToast(`${updated.payrollNumber} marked as ${status}.`, "success");
       if (detail?.id === item.id) setDetail(updated);
       await refresh();
     } catch (err) {
@@ -334,11 +370,10 @@ export default function PayrollRunsPanel() {
     if (!ok) return;
 
     setError("");
-    setMessage("");
     setRegenBusy(true);
     try {
       const updated = await regeneratePayroll(item.id, payload);
-      setMessage(`New version ${updated.payrollNumber} (v${updated.version}) created.`);
+      showToast(`New version ${updated.payrollNumber} (v${updated.version}) created.`, "success");
       setDetail(updated);
       setRegenerating(null);
       await refresh();
@@ -366,7 +401,6 @@ export default function PayrollRunsPanel() {
   return (
     <div className="payroll-stack">
       {error && <div className="form-alert">{error}</div>}
-      {message && <div className="success-alert">{message}</div>}
 
       {/* Summary */}
       <div className="payroll-summary-grid">
@@ -445,7 +479,11 @@ export default function PayrollRunsPanel() {
               >
                 {matchedEmployees.length === 0 && (
                   <span style={{ fontSize: 12, color: "var(--muted)", padding: "6px 2px" }}>
-                    No employees match.
+                    {loadingEligibleEmployees
+                      ? "Loading employees eligible for payroll…"
+                      : availableEmployees.length === 0
+                      ? "All employees already have a payroll for this month."
+                      : "No employees match."}
                   </span>
                 )}
                 {matchedEmployees.map((item) => (
@@ -593,7 +631,7 @@ export default function PayrollRunsPanel() {
       </section>
 
       {/* Detail modal */}
-      {detail && (
+      {detail && createPortal(
         <div className="payroll-overlay" onClick={() => setDetail(null)}>
           <div className="payroll-modal" onClick={(event) => event.stopPropagation()}>
             <div className="payroll-modal-head">
@@ -636,11 +674,12 @@ export default function PayrollRunsPanel() {
               )}
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Edit draft modal */}
-      {editing && (
+      {editing && createPortal(
         <div className="payroll-overlay" onClick={() => setEditing(null)}>
           <form className="payroll-modal" onClick={(event) => event.stopPropagation()} onSubmit={submitEdit}>
             <div className="payroll-modal-head">
@@ -681,11 +720,12 @@ export default function PayrollRunsPanel() {
               </div>
             </div>
           </form>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Regenerate modal */}
-      {regenerating && (
+      {regenerating && createPortal(
         <div className="payroll-overlay" onClick={() => !regenBusy && setRegenerating(null)}>
           <form className="payroll-modal" onClick={(event) => event.stopPropagation()} onSubmit={submitRegenerate}>
             <div className="payroll-modal-head">
@@ -729,7 +769,8 @@ export default function PayrollRunsPanel() {
               </div>
             </div>
           </form>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

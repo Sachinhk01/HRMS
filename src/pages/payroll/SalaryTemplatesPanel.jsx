@@ -29,6 +29,20 @@ const EMPTY_FORM = {
 
 const num = (value) => (value === "" || value === null || value === undefined ? undefined : Number(value));
 
+const EARNING_FIELDS = [
+  "basicSalary",
+  "hra",
+  "specialAllowance",
+  "medicalAllowance",
+  "travelAllowance",
+  "bonus",
+  "otherAllowance",
+];
+
+function calculateGross(template) {
+  return EARNING_FIELDS.reduce((total, field) => total + (Number(template[field]) || 0), 0);
+}
+
 export default function SalaryTemplatesPanel() {
   const { confirm } = useConfirm();
   const [templates, setTemplates] = useState([]);
@@ -240,9 +254,7 @@ export default function SalaryTemplatesPanel() {
                     <small className="table-subtext">Template #{item.id}</small>
                   </td>
                   <td>
-                    <div className="payroll-line-items">
-                      <LineItem label="Gross" value={item.grossSalary} total />
-                    </div>
+                    <strong>{formatINR(calculateGross(item))}</strong>
                   </td>
                   <td>
                     <div className="payroll-line-items">
