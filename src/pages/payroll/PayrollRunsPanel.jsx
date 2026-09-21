@@ -79,6 +79,10 @@ export default function PayrollRunsPanel() {
   const [editForm, setEditForm] = useState(EMPTY_EDIT_FORM);
   const [saving, setSaving] = useState(false);
 
+  const [regenerating, setRegenerating] = useState(null);
+  const [regenForm, setRegenForm] = useState(EMPTY_EDIT_FORM);
+  const [regenBusy, setRegenBusy] = useState(false);
+
   const refresh = useCallback(async (targetMonth = month) => {
     setLoading(true);
     setError("");
@@ -273,22 +277,75 @@ export default function PayrollRunsPanel() {
     }
   }
 
-  async function handleRegenerate(item) {
+  // Regeneration supersedes the current version and creates a new one.
+  // Allowed for DRAFT / GENERATED / APPROVED; PAID, SUPERSEDED and
+  // CANCELLED payrolls must not offer it (see canRegenerate below).
+  function beginRegenerate(item) {
+    setRegenerating(item);
+    setRegenForm({
+      totalWorkingDays: item.totalWorkingDays ?? "",
+      workedDays: item.workedDays ?? "",
+      lopDays: item.lopDays ?? "",
+      basicSalary: item.basicSalary ?? "",
+      hra: item.hra ?? "",
+      specialAllowance: item.specialAllowance ?? "",
+      medicalAllowance: item.medicalAllowance ?? "",
+      travelAllowance: item.travelAllowance ?? "",
+      bonus: item.bonus ?? "",
+      otherAllowance: item.otherAllowance ?? "",
+      pf: item.pf ?? "",
+      esi: item.esi ?? "",
+      professionalTax: item.professionalTax ?? "",
+      incomeTax: item.incomeTax ?? "",
+      otherDeduction: item.otherDeduction ?? "",
+      remarks: item.remarks ?? "",
+    });
+  }
+
+  async function submitRegenerate(event) {
+    event.preventDefault();
+    const item = regenerating;
+    if (!item) return;
+
+    // Diff against the original values so we only send fields the user
+    // actually changed — untouched fields are omitted, and the backend
+    // keeps the existing payroll's value for anything left out.
+    const payload = {};
+    for (const key of Object.keys(EMPTY_EDIT_FORM)) {
+      const raw = regenForm[key];
+      if (raw === "" || raw === null || raw === undefined) continue;
+      const original = item[key] ?? "";
+      if (key === "remarks") {
+        if (raw !== (original || "")) payload.remarks = raw;
+        continue;
+      }
+      const value = Number(raw);
+      if (Number.isNaN(value)) continue;
+      if (Number(original) !== value) payload[key] = value;
+    }
+
     const ok = await confirm({
       title: "Regenerate payroll",
-      message: `Create a new version superseding ${item.payrollNumber}?`,
+      message: Object.keys(payload).length
+        ? `Create a new version of ${item.payrollNumber} with ${Object.keys(payload).length} field(s) changed?`
+        : `Create a new version of ${item.payrollNumber} with no changes?`,
       confirmText: "Regenerate",
     });
     if (!ok) return;
+
     setError("");
     setMessage("");
+    setRegenBusy(true);
     try {
-      const updated = await regeneratePayroll(item.id);
+      const updated = await regeneratePayroll(item.id, payload);
       setMessage(`New version ${updated.payrollNumber} (v${updated.version}) created.`);
       setDetail(updated);
+      setRegenerating(null);
       await refresh();
     } catch (err) {
       setError(err.message || "Failed to regenerate payroll.");
+    } finally {
+      setRegenBusy(false);
     }
   }
 
@@ -303,6 +360,8 @@ export default function PayrollRunsPanel() {
   }
 
   const canDownload = (item) => ["APPROVED", "PAID"].includes(item.status);
+  // PAID/SUPERSEDED/CANCELLED payrolls must not be regenerated.
+  const canRegenerate = (item) => ["DRAFT", "GENERATED", "APPROVED"].includes(item.status);
 
   return (
     <div className="payroll-stack">
@@ -518,7 +577,9 @@ export default function PayrollRunsPanel() {
                       {["DRAFT", "GENERATED"].includes(item.status) && (
                         <button type="button" className="danger" title="Cancel" onClick={() => runStatusAction(item, "CANCELLED")}><XCircle size={16} /></button>
                       )}
-                      <button type="button" title="Regenerate (new version)" onClick={() => handleRegenerate(item)}><RotateCcw size={16} /></button>
+                      {canRegenerate(item) && (
+                        <button type="button" title="Regenerate (new version)" onClick={() => beginRegenerate(item)}><RotateCcw size={16} /></button>
+                      )}
                       {canDownload(item) && (
                         <button type="button" title="Download payslip" onClick={() => handleDownload(item)}><Download size={16} /></button>
                       )}
@@ -616,6 +677,54 @@ export default function PayrollRunsPanel() {
                 <button type="button" className="btn btn-secondary" onClick={() => setEditing(null)}>Cancel</button>
                 <button type="submit" className="btn btn-primary" disabled={saving}>
                   {saving ? "Saving…" : "Save Draft"}
+                </button>
+              </div>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {/* Regenerate modal */}
+      {regenerating && (
+        <div className="payroll-overlay" onClick={() => !regenBusy && setRegenerating(null)}>
+          <form className="payroll-modal" onClick={(event) => event.stopPropagation()} onSubmit={submitRegenerate}>
+            <div className="payroll-modal-head">
+              <div>
+                <h2>Regenerate · {regenerating.payrollNumber}</h2>
+                <p>
+                  Creates version {(regenerating.version || 1) + 1}, supersedes the current record.
+                  Change only what's needed — everything else carries over.
+                </p>
+              </div>
+              <button type="button" className="payroll-modal-close" onClick={() => setRegenerating(null)} aria-label="Close"><X size={18} /></button>
+            </div>
+            <div className="payroll-modal-body">
+              <div className="payroll-detail-grid">
+                <label>Total working days<input type="number" min="1" max="999999" value={regenForm.totalWorkingDays} onChange={(event) => setRegenForm({ ...regenForm, totalWorkingDays: event.target.value })} /></label>
+                <label>Worked days<input type="number" min="0" max="999999" value={regenForm.workedDays} onChange={(event) => setRegenForm({ ...regenForm, workedDays: event.target.value })} /></label>
+                <label>LOP days<input type="number" min="0" max="999999" value={regenForm.lopDays} onChange={(event) => setRegenForm({ ...regenForm, lopDays: event.target.value })} /></label>
+              </div>
+              <div className="payroll-detail-grid">
+                <label>Basic salary<input type="number" min="0" max="999999" step="0.01" value={regenForm.basicSalary} onChange={(event) => setRegenForm({ ...regenForm, basicSalary: event.target.value })} /></label>
+                <label>HRA<input type="number" min="0" max="999999" step="0.01" value={regenForm.hra} onChange={(event) => setRegenForm({ ...regenForm, hra: event.target.value })} /></label>
+                <label>Special allowance<input type="number" min="0" max="999999" step="0.01" value={regenForm.specialAllowance} onChange={(event) => setRegenForm({ ...regenForm, specialAllowance: event.target.value })} /></label>
+                <label>Medical allowance<input type="number" min="0" max="999999" step="0.01" value={regenForm.medicalAllowance} onChange={(event) => setRegenForm({ ...regenForm, medicalAllowance: event.target.value })} /></label>
+                <label>Travel allowance<input type="number" min="0" max="999999" step="0.01" value={regenForm.travelAllowance} onChange={(event) => setRegenForm({ ...regenForm, travelAllowance: event.target.value })} /></label>
+                <label>Bonus<input type="number" min="0" max="999999" step="0.01" value={regenForm.bonus} onChange={(event) => setRegenForm({ ...regenForm, bonus: event.target.value })} /></label>
+                <label>Other allowance<input type="number" min="0" max="999999" step="0.01" value={regenForm.otherAllowance} onChange={(event) => setRegenForm({ ...regenForm, otherAllowance: event.target.value })} /></label>
+              </div>
+              <div className="payroll-detail-grid">
+                <label>PF<input type="number" min="0" max="999999" step="0.01" value={regenForm.pf} onChange={(event) => setRegenForm({ ...regenForm, pf: event.target.value })} /></label>
+                <label>ESI<input type="number" min="0" max="999999" step="0.01" value={regenForm.esi} onChange={(event) => setRegenForm({ ...regenForm, esi: event.target.value })} /></label>
+                <label>Professional tax<input type="number" min="0" max="999999" step="0.01" value={regenForm.professionalTax} onChange={(event) => setRegenForm({ ...regenForm, professionalTax: event.target.value })} /></label>
+                <label>Income tax<input type="number" min="0" max="999999" step="0.01" value={regenForm.incomeTax} onChange={(event) => setRegenForm({ ...regenForm, incomeTax: event.target.value })} /></label>
+                <label>Other deduction<input type="number" min="0" max="999999" step="0.01" value={regenForm.otherDeduction} onChange={(event) => setRegenForm({ ...regenForm, otherDeduction: event.target.value })} /></label>
+              </div>
+              <label>Remarks<input value={regenForm.remarks} onChange={(event) => setRegenForm({ ...regenForm, remarks: event.target.value })} /></label>
+              <div className="payroll-form-actions">
+                <button type="button" className="btn btn-secondary" onClick={() => setRegenerating(null)} disabled={regenBusy}>Cancel</button>
+                <button type="submit" className="btn btn-primary" disabled={regenBusy}>
+                  {regenBusy ? "Regenerating…" : "Regenerate"}
                 </button>
               </div>
             </div>
