@@ -33,6 +33,26 @@ async function request(config) {
   }
 }
 
+// Some deployed MyHourly builds expose Form 16 child resources under /api/form16,
+// while others expose the same resources under /api/v1/form16. Try the documented
+// route first and only fall back on a 404 so authentication/validation errors remain visible.
+async function requestFirst(configs) {
+  let lastError;
+  for (const config of configs) {
+    try { return await request(config); }
+    catch (error) {
+      lastError = error;
+      if (error?.status !== 404) throw error;
+    }
+  }
+  throw lastError || new Error('Form 16 request failed.');
+}
+
+const dualForm16 = (method, suffix, data) => requestFirst([
+  { method, url: `/api/form16${suffix}`, ...(data !== undefined ? { data } : {}) },
+  { method, url: `/api/v1/form16${suffix}`, ...(data !== undefined ? { data } : {}) },
+]);
+
 export const form16Service = {
   // Main Form 16
   create: (employeeId, payload) => request({ method: 'post', url: `/api/v1/form16/${employeeId}`, data: payload }),
@@ -69,43 +89,43 @@ export const form16Service = {
   deleteVerification: (id) => request({ method: 'delete', url: `/api/v1/form16/${id}/verification` }),
 
   // Part B
-  getSalary: (id) => request({ method: 'get', url: `/api/form16/${id}/salary` }),
-  createSalary: (id, payload) => request({ method: 'post', url: `/api/form16/${id}/salary`, data: payload }),
-  updateSalary: (id, payload) => request({ method: 'put', url: `/api/form16/${id}/salary`, data: payload }),
-  deleteSalary: (id) => request({ method: 'delete', url: `/api/form16/${id}/salary` }),
+  getSalary: (id) => dualForm16('get', `/${id}/salary`),
+  createSalary: (id, payload) => dualForm16('post', `/${id}/salary`, payload),
+  updateSalary: (id, payload) => dualForm16('put', `/${id}/salary`, payload),
+  deleteSalary: (id) => dualForm16('delete', `/${id}/salary`),
 
-  getExemption: (id) => request({ method: 'get', url: `/api/form16/${id}/exemption` }),
-  createExemption: (id, payload) => request({ method: 'post', url: `/api/form16/${id}/exemption`, data: payload }),
-  updateExemption: (id, payload) => request({ method: 'put', url: `/api/form16/${id}/exemption`, data: payload }),
-  deleteExemption: (id) => request({ method: 'delete', url: `/api/form16/${id}/exemption` }),
+  getExemption: (id) => dualForm16('get', `/${id}/exemption`),
+  createExemption: (id, payload) => dualForm16('post', `/${id}/exemption`, payload),
+  updateExemption: (id, payload) => dualForm16('put', `/${id}/exemption`, payload),
+  deleteExemption: (id) => dualForm16('delete', `/${id}/exemption`),
 
-  getSection16: (id) => request({ method: 'get', url: `/api/form16/${id}/section16-deduction` }),
-  createSection16: (id, payload) => request({ method: 'post', url: `/api/form16/${id}/section16-deduction`, data: payload }),
-  updateSection16: (id, payload) => request({ method: 'put', url: `/api/form16/${id}/section16-deduction`, data: payload }),
-  deleteSection16: (id) => request({ method: 'delete', url: `/api/form16/${id}/section16-deduction` }),
-  autoSaveSection16: (id, payload) => request({ method: 'patch', url: `/api/form16/${id}/section16-deduction/auto-save`, data: payload }),
+  getSection16: (id) => dualForm16('get', `/${id}/section16-deduction`),
+  createSection16: (id, payload) => dualForm16('post', `/${id}/section16-deduction`, payload),
+  updateSection16: (id, payload) => dualForm16('put', `/${id}/section16-deduction`, payload),
+  deleteSection16: (id) => dualForm16('delete', `/${id}/section16-deduction`),
+  autoSaveSection16: (id, payload) => dualForm16('patch', `/${id}/section16-deduction/auto-save`, payload),
 
-  getChapterVIA: (id) => request({ method: 'get', url: `/api/form16/${id}/chapter-via` }),
-  createChapterVIA: (id, payload) => request({ method: 'post', url: `/api/form16/${id}/chapter-via`, data: payload }),
-  updateChapterVIA: (id, payload) => request({ method: 'put', url: `/api/form16/${id}/chapter-via`, data: payload }),
-  deleteChapterVIA: (id) => request({ method: 'delete', url: `/api/form16/${id}/chapter-via` }),
-  autoSaveChapterVIA: (id, payload) => request({ method: 'patch', url: `/api/form16/${id}/chapter-via`, data: payload }),
+  getChapterVIA: (id) => dualForm16('get', `/${id}/chapter-via`),
+  createChapterVIA: (id, payload) => dualForm16('post', `/${id}/chapter-via`, payload),
+  updateChapterVIA: (id, payload) => dualForm16('put', `/${id}/chapter-via`, payload),
+  deleteChapterVIA: (id) => dualForm16('delete', `/${id}/chapter-via`),
+  autoSaveChapterVIA: (id, payload) => dualForm16('patch', `/${id}/chapter-via`, payload),
 
-  getLastFields: (id) => request({ method: 'get', url: `/api/form16/${id}/last-fields` }),
-  createLastFields: (id, payload) => request({ method: 'post', url: `/api/form16/${id}/last-fields`, data: payload }),
-  updateLastFields: (id, payload) => request({ method: 'put', url: `/api/form16/${id}/last-fields`, data: payload }),
-  deleteLastFields: (id) => request({ method: 'delete', url: `/api/form16/${id}/last-fields` }),
-  autoSaveLastFields: (id, payload) => request({ method: 'patch', url: `/api/form16/${id}/last-fields`, data: payload }),
+  getLastFields: (id) => dualForm16('get', `/${id}/last-fields`),
+  createLastFields: (id, payload) => dualForm16('post', `/${id}/last-fields`, payload),
+  updateLastFields: (id, payload) => dualForm16('put', `/${id}/last-fields`, payload),
+  deleteLastFields: (id) => dualForm16('delete', `/${id}/last-fields`),
+  autoSaveLastFields: (id, payload) => dualForm16('patch', `/${id}/last-fields`, payload),
 
   // Employer master
-  getEmployerById: (id) => request({ method: 'get', url: `/api/form16/employer-master/${id}` }),
-  getActiveEmployer: () => request({ method: 'get', url: '/api/form16/employer-master/active' }),
-  getEmployers: () => request({ method: 'get', url: '/api/form16/employer-master' }),
-  createEmployer: (payload) => request({ method: 'post', url: '/api/form16/employer-master', data: payload }),
-  updateEmployer: (id, payload) => request({ method: 'put', url: `/api/form16/employer-master/${id}`, data: payload }),
-  deleteEmployer: (id) => request({ method: 'delete', url: `/api/form16/employer-master/${id}` }),
-  activateEmployer: (id) => request({ method: 'patch', url: `/api/form16/employer-master/${id}/activate` }),
-  deactivateEmployer: (id) => request({ method: 'patch', url: `/api/form16/employer-master/${id}/deactivate` }),
+  getEmployerById: (id) => dualForm16('get', `/employer-master/${id}`),
+  getActiveEmployer: () => dualForm16('get', '/employer-master/active'),
+  getEmployers: () => dualForm16('get', '/employer-master'),
+  createEmployer: (payload) => dualForm16('post', '/employer-master', payload),
+  updateEmployer: (id, payload) => dualForm16('put', `/employer-master/${id}`, payload),
+  deleteEmployer: (id) => dualForm16('delete', `/employer-master/${id}`),
+  activateEmployer: (id) => dualForm16('patch', `/employer-master/${id}/activate`),
+  deactivateEmployer: (id) => dualForm16('patch', `/employer-master/${id}/deactivate`),
 };
 
 // Employee selector used by Form 16.
