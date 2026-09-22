@@ -66,8 +66,16 @@ export async function updatePayrollStatus(id, { status, paymentReference }) {
   return data; // PayrollResponse
 }
 
-export async function regeneratePayroll(id) {
-  const { data } = await api.post(`/payroll/${id}/regenerate`);
+export async function regeneratePayroll(id, payload) {
+  // Body is optional — only send fields that changed. Omitted/undefined
+  // fields make the backend keep the existing payroll's value; sending
+  // `null` explicitly would NOT clear it either, so callers should just
+  // leave a field out of `payload` entirely to keep it unchanged.
+  const hasChanges = payload && Object.keys(payload).length > 0;
+  const { data } = await api.post(
+    `/payroll/${id}/regenerate`,
+    hasChanges ? payload : undefined
+  );
   return data; // PayrollResponse
 }
 

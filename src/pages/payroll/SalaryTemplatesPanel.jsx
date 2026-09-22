@@ -30,6 +30,20 @@ const EMPTY_FORM = {
 
 const num = (value) => (value === "" || value === null || value === undefined ? undefined : Number(value));
 
+const EARNING_FIELDS = [
+  "basicSalary",
+  "hra",
+  "specialAllowance",
+  "medicalAllowance",
+  "travelAllowance",
+  "bonus",
+  "otherAllowance",
+];
+
+function calculateGross(template) {
+  return EARNING_FIELDS.reduce((total, field) => total + (Number(template[field]) || 0), 0);
+}
+
 export default function SalaryTemplatesPanel() {
   const { confirm } = useConfirm();
   const { showToast } = useToast();
@@ -46,7 +60,7 @@ export default function SalaryTemplatesPanel() {
     try {
       setTemplates(await getSalaryTemplates({ activeOnly: false }));
     } catch (err) {
-      showToast(err.message || "Failed to load salary templates.", "error");
+      setError(err.message || "Failed to load salary templates.");
     } finally {
       setLoading(false);
     }
@@ -110,15 +124,15 @@ export default function SalaryTemplatesPanel() {
     try {
       if (editing) {
         await updateSalaryTemplate(editing.id, buildPayload());
-        showToast("Salary template updated successfully.", "success");
+        setMessage("Salary template updated successfully.");
       } else {
         await createSalaryTemplate({ employeeType: form.employeeType, ...buildPayload() });
-        showToast("Salary template created successfully.", "success");
+        setMessage("Salary template created successfully.");
       }
       resetForm();
       await refresh();
     } catch (err) {
-      showToast(err.message || "Failed to save salary template.", "error");
+      setError(err.message || "Failed to save salary template.");
     } finally {
       setSaving(false);
     }
@@ -135,10 +149,10 @@ export default function SalaryTemplatesPanel() {
     if (!ok) return;
     try {
       await updateSalaryTemplateStatus(item.id, !item.active);
-      showToast(`${item.employeeType} template ${item.active ? "deactivated" : "activated"}.`, "success");
+      setMessage(`${item.employeeType} template ${item.active ? "deactivated" : "activated"}.`);
       await refresh();
     } catch (err) {
-      showToast(err.message || "Failed to update template status.", "error");
+      setError(err.message || "Failed to update template status.");
     }
   }
 
@@ -170,11 +184,14 @@ export default function SalaryTemplatesPanel() {
             <button type="button" className="payroll-modal-close" onClick={resetForm} aria-label="Close"><X size={18} /></button>
           </div>
           <form className="payroll-form-grid" onSubmit={submit}>
-            {!editing && (
+                        {!editing && (
               <label>Employee type
-                <select value={form.employeeType} onChange={(event) => setForm({ ...form, employeeType: event.target.value })}>
-                  {EMPLOYMENT_TYPES.map((type) => <option key={type} value={type}>{type.replace("_", " ")}</option>)}
-                </select>
+                <input
+                  value={form.employeeType}
+                  onChange={(event) => setForm({ ...form, employeeType: event.target.value })}
+                  placeholder="e.g. FULL_TIME"
+                  required
+                />
               </label>
             )}
             <label>Basic salary<input type="number" min="0" max="999999" step="0.01" value={form.basicSalary} onChange={(event) => setForm({ ...form, basicSalary: event.target.value })} required /></label>
@@ -229,9 +246,7 @@ export default function SalaryTemplatesPanel() {
                     <small className="table-subtext">Template #{item.id}</small>
                   </td>
                   <td>
-                    <div className="payroll-line-items">
-                      <LineItem label="Gross" value={item.grossSalary} total />
-                    </div>
+                    <strong>{formatINR(calculateGross(item))}</strong>
                   </td>
                   <td>
                     <div className="payroll-line-items">

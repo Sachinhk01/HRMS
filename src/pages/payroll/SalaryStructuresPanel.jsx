@@ -39,7 +39,7 @@ export default function SalaryStructuresPanel() {
     try {
       setStructures(await getSalaryStructures({ activeOnly }));
     } catch (err) {
-      showToast(err.message || "Failed to load salary structures.", "error");
+      setError(err.message || "Failed to load salary structures.");
     } finally {
       setLoading(false);
     }
@@ -97,15 +97,15 @@ export default function SalaryStructuresPanel() {
       };
       if (isRevision) {
         const created = await createSalaryStructureRevision(payload);
-        showToast(`Revision created for ${created.employeeName} (effective ${payrollMonthLabel(created.effectiveFrom)}).`, "success");
+        setMessage(`Revision created for ${created.employeeName} (effective ${payrollMonthLabel(created.effectiveFrom)}).`);
       } else {
         const created = await createSalaryStructure(payload);
-        showToast(`Salary structure created for ${created.employeeName}.`, "success");
+        setMessage(`Salary structure created for ${created.employeeName}.`);
       }
       resetForm();
       await refresh();
     } catch (err) {
-      showToast(err.message || "Failed to save salary structure.", "error");
+      setError(err.message || "Failed to save salary structure.");
     } finally {
       setSaving(false);
     }

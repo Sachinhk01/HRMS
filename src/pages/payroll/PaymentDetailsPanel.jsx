@@ -30,6 +30,32 @@ const MODE_LABELS = {
   CASH: "Cash",
 };
 
+function validatePaymentDetails(form) {
+  const bankName = form.bankName.trim();
+  if (!/^[A-Za-z0-9 .,&()'/-]{2,100}$/.test(bankName)) {
+    return "Enter a valid bank name (2–100 characters).";
+  }
+  if (!/^\d{9,18}$/.test(form.accountNumber)) {
+    return "Account number must contain 9–18 digits.";
+  }
+  if (!/^[A-Z]{4}0[A-Z0-9]{6}$/.test(form.ifscCode)) {
+    return "Enter a valid 11-character IFSC code (for example, SBIN0001234).";
+  }
+  if (form.panNumber && !/^[A-Z]{5}\d{4}[A-Z]$/.test(form.panNumber)) {
+    return "PAN must use the format ABCDE1234F.";
+  }
+  if (form.uanNumber && !/^\d{12}$/.test(form.uanNumber)) {
+    return "UAN number must contain exactly 12 digits.";
+  }
+  if (form.pfNumber && !/^[A-Z0-9/ -]{7,22}$/i.test(form.pfNumber)) {
+    return "Enter a valid PF number.";
+  }
+  if (form.esiNumber && !/^\d{17}$/.test(form.esiNumber)) {
+    return "ESI number must contain exactly 17 digits.";
+  }
+  return "";
+}
+
 export default function PaymentDetailsPanel() {
   const { confirm } = useConfirm();
   const { showToast } = useToast();
@@ -65,6 +91,12 @@ export default function PaymentDetailsPanel() {
       if (err.status !== 404) {
         showToast(err.message || "Failed to load payment details.", "error");
       }
+      showToast(
+        err.status === 404
+          ? "No payment details on file yet — create them below."
+          : err.message || "Failed to load payment details.",
+        "error"
+      );
     } finally {
       setLoading(false);
     }
@@ -98,6 +130,8 @@ export default function PaymentDetailsPanel() {
 
   async function submit(event) {
     event.preventDefault();
+    setError("");
+    setMessage("");
     setSaving(true);
     const payload = {
       panNumber: form.panNumber || undefined,
@@ -113,15 +147,15 @@ export default function PaymentDetailsPanel() {
       if (details) {
         const updated = await updatePaymentDetails(selectedId, payload);
         setDetails(updated);
-        showToast(`Payment details updated for ${updated.employeeName}.`, "success");
+        setMessage(`Payment details updated for ${updated.employeeName}.`);
       } else {
         const created = await createPaymentDetails({ employeeId: Number(selectedId), ...payload });
         setDetails(created);
-        showToast(`Payment details created for ${created.employeeName}.`, "success");
+        setMessage(`Payment details created for ${created.employeeName}.`);
       }
       resetForm();
     } catch (err) {
-      showToast(err.message || "Failed to save payment details.", "error");
+      setError(err.message || "Failed to save payment details.");
     } finally {
       setSaving(false);
     }
@@ -138,9 +172,9 @@ export default function PaymentDetailsPanel() {
     try {
       await deletePaymentDetails(selectedId);
       setDetails(null);
-      showToast("Payment details deleted.", "success");
+      setMessage("Payment details deleted.");
     } catch (err) {
-      showToast(err.message || "Failed to delete payment details.", "error");
+      setError(err.message || "Failed to delete payment details.");
     }
   }
 
@@ -231,18 +265,18 @@ export default function PaymentDetailsPanel() {
             <button type="button" className="payroll-modal-close" onClick={resetForm} aria-label="Close"><X size={18} /></button>
           </div>
           <form className="payroll-form-grid" onSubmit={submit}>
-            <label>Bank name<input value={form.bankName} onChange={(event) => setForm({ ...form, bankName: event.target.value })} required /></label>
-            <label>Account number<input value={form.accountNumber} onChange={(event) => setForm({ ...form, accountNumber: event.target.value })} required /></label>
-            <label>IFSC code<input value={form.ifscCode} onChange={(event) => setForm({ ...form, ifscCode: event.target.value })} required /></label>
+            <label>Bank name<input value={form.bankName} onChange={(event) => setForm({ ...form, bankName: event.target.value })} maxLength="100" required /></label>
+            <label>Account number<input value={form.accountNumber} onChange={(event) => setForm({ ...form, accountNumber: event.target.value.replace(/\D/g, "") })} inputMode="numeric" minLength="9" maxLength="18" required /></label>
+            <label>IFSC code<input value={form.ifscCode} onChange={(event) => setForm({ ...form, ifscCode: event.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 11) })} placeholder="SBIN0001234" minLength="11" maxLength="11" required /></label>
             <label>Payment mode
               <select value={form.paymentMode} onChange={(event) => setForm({ ...form, paymentMode: event.target.value })} required>
                 {PAYMENT_MODES.map((mode) => <option key={mode} value={mode}>{MODE_LABELS[mode] || mode}</option>)}
               </select>
             </label>
-            <label>PAN number<input value={form.panNumber} onChange={(event) => setForm({ ...form, panNumber: event.target.value.toUpperCase() })} placeholder="ABCDE1234F" /></label>
-            <label>UAN number<input value={form.uanNumber} onChange={(event) => setForm({ ...form, uanNumber: event.target.value })} /></label>
-            <label>PF number<input value={form.pfNumber} onChange={(event) => setForm({ ...form, pfNumber: event.target.value })} /></label>
-            <label>ESI number<input value={form.esiNumber} onChange={(event) => setForm({ ...form, esiNumber: event.target.value })} /></label>
+            <label>PAN number<input value={form.panNumber} onChange={(event) => setForm({ ...form, panNumber: event.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 10) })} placeholder="ABCDE1234F" maxLength="10" /></label>
+            <label>UAN number<input value={form.uanNumber} onChange={(event) => setForm({ ...form, uanNumber: event.target.value.replace(/\D/g, "").slice(0, 12) })} inputMode="numeric" maxLength="12" /></label>
+            <label>PF number<input value={form.pfNumber} onChange={(event) => setForm({ ...form, pfNumber: event.target.value.toUpperCase().slice(0, 22) })} maxLength="22" /></label>
+            <label>ESI number<input value={form.esiNumber} onChange={(event) => setForm({ ...form, esiNumber: event.target.value.replace(/\D/g, "").slice(0, 17) })} inputMode="numeric" maxLength="17" /></label>
             <div className="full-span payroll-form-actions">
               <button type="button" className="btn btn-secondary" onClick={resetForm}>Cancel</button>
               <button type="submit" className="btn btn-primary" disabled={saving}>
