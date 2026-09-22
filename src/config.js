@@ -13,9 +13,9 @@ export const ROLE_MENUS = {
     ['/dashboard', 'Dashboard'],
     ['/attendance', 'Attendance'],
     ['/leave', 'Leave'],
+    ['/regularization', 'Regularization'],
     ['/celebrations', 'Celebration Wall'],
     ['/payroll', 'Payroll'],
-    ['/form16', 'Form 16'],
     ['/profile', 'Profile'],
   ],
 
@@ -23,6 +23,7 @@ export const ROLE_MENUS = {
     ['/dashboard', 'Dashboard'],
     ['/employees', 'Employees'],
     ['/attendance', 'Attendance'],
+    ['/regularization', 'Regularization'],
     ['/celebrations', 'Celebration Wall'],
     ['/announcements', 'Announcements'],
     ['/events', 'Events'],
@@ -36,6 +37,8 @@ export const ROLE_MENUS = {
     ['/dashboard', 'Dashboard'],
     ['/leave', 'My Leave'],
     ['/leave-approvals', 'Leave Approvals'],
+    ['/regularization', 'My Regularization'],
+    ['/regularization-approvals', 'Regularization Approvals'],
     ['/attendance', 'Attendance'],
     ['/celebrations', 'Celebration Wall'],
     ['/performance', 'Performance'],
@@ -48,6 +51,7 @@ export const ROLE_MENUS = {
     ['/dashboard', 'Dashboard'],
     ['/employees', 'Employees'],
     ['/attendance', 'Attendance'],
+    ['/regularization', 'Regularization'],
     ['/celebrations', 'Celebration Wall'],
     ['/announcements', 'Announcements'],
     ['/events', 'Events'],
@@ -56,6 +60,7 @@ export const ROLE_MENUS = {
     ['/leave-approvals', 'Leave Approvals'],
     ['/performance', 'Performance'],
     ['/candidates', 'Candidates'],
+    ['/form16', 'Form 16'],
     ['/profile', 'Profile'],
   ],
 
@@ -139,12 +144,22 @@ export const ROUTE_ROLES = {
     'MANAGER',
     'SUPER_ADMIN',
   ],
+  '/regularization': [
+    'EMPLOYEE',
+    'HR_ADMIN',
+    'MANAGER',
+    'SUPER_ADMIN',
+  ],
+  '/regularization-approvals': [
+    'MANAGER',
+  ],
   '/payroll': ['EMPLOYEE', 'HR_ADMIN'],
-  '/form16': ['EMPLOYEE', 'HR_ADMIN', 'MANAGER'],
-  // Settings is opened from the gear in the top bar for these roles.
-  // Keep this route in sync with the visibility rule in TopBar.jsx.
-  '/settings': ['HR_ADMIN', 'MANAGER', 'SUPER_ADMIN'],
-
+  '/form16': ['HR_ADMIN', 'MANAGER', 'SUPER_ADMIN'],
+  '/settings': [
+    'HR_ADMIN',
+    'MANAGER',
+    'SUPER_ADMIN',
+  ],
   '/notifications': [
   'EMPLOYEE',
   'HR_ADMIN',
