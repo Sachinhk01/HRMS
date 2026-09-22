@@ -9,7 +9,6 @@ import {
   ChevronRight,
   ShieldOff,
   Inbox,
-  AlertTriangle,
   Loader2,
   Check,
   Timer,
@@ -186,7 +185,6 @@ export default function Settings() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [editMode, setEditMode] = useState(false);
-  const [error, setError] = useState('');
   const [notFound, setNotFound] = useState(false);
   const [forbidden, setForbidden] = useState(false);
   const { showToast } = useToast();
@@ -196,7 +194,6 @@ export default function Settings() {
 
   useEffect(() => {
     setLoading(true);
-    setError('');
     setNotFound(false);
     setForbidden(false);
     setEditMode(false);
@@ -211,7 +208,8 @@ export default function Settings() {
         } else if (err?.status === 404) {
           setNotFound(true);
         } else {
-          setError(err.message || 'Failed to load settings.');
+          setData(null);
+          showToast(err.message || 'Failed to load settings.', 'error');
         }
       })
       .finally(() => setLoading(false));
@@ -224,13 +222,11 @@ export default function Settings() {
   const cancelEdit = () => {
     setData(originalData);
     setEditMode(false);
-    setError('');
   };
 
   const save = async (event) => {
     event.preventDefault();
     setSaving(true);
-    setError('');
     try {
       const payload = { ...data };
       for (const field of group.fields) {
@@ -243,7 +239,6 @@ export default function Settings() {
       showToast(`${group.label} settings saved.`, 'success');
     } catch (err) {
       const msg = err.message || 'Failed to save settings.';
-      setError(msg);
       showToast(msg, 'error');
     } finally {
       setSaving(false);
@@ -402,17 +397,10 @@ export default function Settings() {
                     </div>
                   );
                 })}
-
-                {error && (
-                  <div className="settings-alert">
-                    <AlertTriangle size={16} />
-                    {error}
-                  </div>
-                )}
               </form>
             )}
 
-            {!loading && !forbidden && !notFound && !data && !error && (
+            {!loading && !forbidden && !notFound && !data && (
               <div className="settings-state">
                 <Inbox size={20} />
                 <p>No settings found.</p>

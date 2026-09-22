@@ -96,7 +96,7 @@ export default function Events() {
         title="Upcoming Events"
         description="Stay Connected With Upcoming Company Activities, Celebrations, And Team Milestones."
         action={
-          canCreateEvent ? (
+          canCreateEvent && !composerOpen ? (
             <button type="button" className="btn btn-gradient" onClick={() => setComposerOpen(true)}>
               <Plus size={18} /> Add Event
             </button>

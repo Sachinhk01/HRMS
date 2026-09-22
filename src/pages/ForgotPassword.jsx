@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import { ArrowLeft, ArrowRight, Lock, Mail, ShieldCheck } from 'lucide-react';
 
 import { useAuth } from '../context/AuthContext';
+import { useToast } from '../context/ToastContext';
 import './EmployeeLogin.css';
 import './ForgotPassword.css';
 
@@ -14,21 +15,20 @@ const rise = {
 
 export function ForgotPassword() {
   const { forgotPassword } = useAuth();
+  const { showToast } = useToast();
 
   const [email, setEmail] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [serverError, setServerError] = useState('');
   const [sent, setSent] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setServerError('');
     setIsSubmitting(true);
     try {
       await forgotPassword({ email });
       setSent(true);
     } catch (error) {
-      setServerError(error.message || 'Something went wrong. Please try again.');
+      showToast(error.message || 'Something went wrong. Please try again.', 'error');
     } finally {
       setIsSubmitting(false);
     }
@@ -80,8 +80,6 @@ export function ForgotPassword() {
                     />
                   </span>
                 </label>
-
-                {serverError && <div className="form-alert">{serverError}</div>}
 
                 <button
                   type="submit"

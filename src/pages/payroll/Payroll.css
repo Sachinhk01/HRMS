@@ -43,6 +43,34 @@
   color: var(--muted);
 }
 
+/* ---------- Batch result report (payroll generation) ----------
+   Persistent structured output of a generation run — not a transient
+   notification, so it's deliberately styled apart from toasts. */
+.payroll-result-summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #e6f7ef;
+  border: 1px solid #c8eeda;
+  color: #1a7f4e;
+  border-radius: 12px;
+  padding: 11px 14px;
+  font-size: 13px;
+  font-weight: 600;
+}
+.payroll-result-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #ffecef;
+  border: 1px solid #ffd3da;
+  color: #b3263e;
+  border-radius: 12px;
+  padding: 11px 14px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
 /* ---------- Skeleton ---------- */
 .skeleton-line {
   border-radius: 12px;
@@ -199,6 +227,20 @@
 .payroll-actions button.danger { color: var(--red); }
 .payroll-actions button.danger:hover { background: #ffedf0; }
 
+.payroll-approve-reject { display: flex; gap: 6px; }
+.payroll-approve-reject button {
+  display: inline-flex; align-items: center; gap: 5px;
+  width: auto; height: 30px; padding: 0 12px; min-width: 92px; justify-content: center;
+  border-radius: 8px; font-size: 12.5px; font-weight: 700;
+  border: 1px solid transparent; cursor: pointer;
+  transition: background .18s ease, opacity .18s ease;
+}
+.payroll-approve-reject .btn-approve { background: #16a34a; color: #fff; }
+.payroll-approve-reject .btn-approve:hover:not(:disabled) { background: #15803d; }
+.payroll-approve-reject .btn-reject { background: var(--red, #dc2626); color: #fff; }
+.payroll-approve-reject .btn-reject:hover:not(:disabled) { background: #b91c1c; }
+.payroll-approve-reject button:disabled { opacity: .5; cursor: not-allowed; }
+
 /* ---------- Status badges ---------- */
 .payroll-badge {
   display: inline-flex; align-items: center; gap: 6px;
@@ -230,7 +272,8 @@
   background: #fff;
   border-radius: var(--radius-lg);
   width: 100%; max-width: 680px;
-  max-height: 88vh; overflow-y: auto;
+  max-height: 88vh;
+  display: flex; flex-direction: column;
   box-shadow: 0 24px 60px rgba(15, 23, 42, .2);
   animation: payrollPop .22s cubic-bezier(.2, .8, .2, 1) both;
 }
@@ -243,6 +286,9 @@
   display: flex; align-items: flex-start; justify-content: space-between; gap: 12px;
   padding: 20px 24px 14px;
   border-bottom: 1px solid var(--line);
+  position: sticky; top: 0; background: #fff; z-index: 2;
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  flex-shrink: 0;
 }
 .payroll-modal-head h2 { margin: 0; font-size: 17px; color: var(--navy); }
 .payroll-modal-head p { margin: 4px 0 0; font-size: 12px; color: var(--muted); }
@@ -252,7 +298,7 @@
   display: grid; place-items: center; flex-shrink: 0;
 }
 .payroll-modal-close:hover { background: #e6ebf4; color: var(--navy); }
-.payroll-modal-body { padding: 18px 24px 24px; display: flex; flex-direction: column; gap: 16px; }
+.payroll-modal-body { padding: 18px 24px 24px; display: flex; flex-direction: column; gap: 16px; overflow-y: auto; }
 
 /* ---------- Money breakdown ---------- */
 .payroll-detail-grid {
@@ -793,12 +839,13 @@
 .payroll-page .btn-primary:hover { transform: translateY(-1px); }
 
 .payroll-actions { gap: 5px; flex-wrap: wrap; }
-.payroll-actions button {
+.payroll-actions > button {
   width: 28px;
   height: 28px;
   border-radius: 8px;
 }
-.payroll-actions button svg { width: 14px; height: 14px; }
+.payroll-actions > button svg { width: 14px; height: 14px; }
+.payroll-approve-reject button { height: 28px; min-width: 0; padding: 0 9px; font-size: 11.5px; }
 
 .payroll-page .table-wrap {
   border-radius: 12px;

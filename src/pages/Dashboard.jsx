@@ -341,20 +341,17 @@ useEffect(() => {
   const [attendanceDashboard, setAttendanceDashboard] = useState(null);
   const [attendanceCount, setAttendanceCount] = useState(0);
   const [attendanceLoading, setAttendanceLoading] = useState(true);
-  const [attendanceError, setAttendanceError] = useState('');
 
   // ---- NEW: Leave state (replaces getLeaveSummary / getPendingApprovals) ----
   const [leaveSummary, setLeaveSummary] = useState({ left: 0, taken: 0 });
   const [pendingApprovalsCount, setPendingApprovalsCount] = useState(0);
   const [leaveLoading, setLeaveLoading] = useState(true);
-  const [leaveError, setLeaveError] = useState('');
 
   useEffect(() => {
     let cancelled = false;
 
     async function loadAttendance() {
       setAttendanceLoading(true);
-      setAttendanceError('');
       try {
         const [dashboardData, historyData] = await Promise.all([
           getAttendanceDashboard(),
@@ -371,7 +368,7 @@ useEffect(() => {
         setAttendanceCount(records.length);
       } catch (error) {
         if (!cancelled) {
-          setAttendanceError(error?.response?.data?.message || 'Failed to load attendance data.');
+          showToast(error?.response?.data?.message || 'Failed to load attendance data.', 'error');
         }
       } finally {
         if (!cancelled) setAttendanceLoading(false);
@@ -387,7 +384,6 @@ useEffect(() => {
 
     async function loadLeave() {
       setLeaveLoading(true);
-      setLeaveError('');
       try {
         // My own leave balance (used by EMPLOYEE and MANAGER cards)
         const balances = await getMyLeaveBalances();
@@ -406,7 +402,7 @@ useEffect(() => {
         }
       } catch (error) {
         if (!cancelled) {
-          setLeaveError(error?.response?.data?.message || 'Failed to load leave data.');
+          showToast(error?.response?.data?.message || 'Failed to load leave data.', 'error');
         }
       } finally {
         if (!cancelled) setLeaveLoading(false);
@@ -596,9 +592,6 @@ useEffect(() => {
           <p>{role === 'EMPLOYEE' ? "Let's Make Today Productive." : role === 'HR_ADMIN' ? 'Manage People, Engagement And HR Operations.' : 'Review Team Attendance, Leave And Performance.'}</p>
         </div>
       </section>
-
-      {attendanceError && <div className="form-alert">{attendanceError}</div>}
-      {leaveError && <div className="form-alert">{leaveError}</div>}
 
       <div className="summary-grid">{cards.map(([Icon, label, value, meta, tone, path]) => <SummaryCard key={label} icon={Icon} label={label} value={value} meta={meta} tone={tone} onClick={() => nav(path)} />)}</div>
 

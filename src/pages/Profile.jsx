@@ -20,22 +20,19 @@ export default function Profile() {
   const isOwnProfile = !requestedUserId || requestedUserId === String(user?.id);
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [message, setMessage] = useState('');
-  const [error, setError] = useState('');
-  const [passwordError, setPasswordError] = useState('');
   const [activeTab, setActiveTab] = useState(TABS[0]);
   const [photoObjectUrl, setPhotoObjectUrl] = useState('');
   const [photoUploading, setPhotoUploading] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   const loadProfile = () => {
     setLoading(true);
-    setError('');
     const loader = isOwnProfile ? hrmsService.getProfile() : getEmployeeById(requestedUserId);
     loader
       .then(setProfile)
       .catch((err) => {
         setProfile(null);
-        setError(err?.response?.data?.message || err.message || 'Failed to load profile.');
+        showToast(err?.response?.data?.message || err.message || 'Failed to load profile.', 'error');
       })
       .finally(() => setLoading(false));
   };
@@ -55,9 +52,8 @@ export default function Profile() {
 
   const save = async (event) => {
     event.preventDefault();
+    if (saving) return;                 // block a second submit -> only one toast
     const formEl = event.currentTarget;
-    setMessage('');
-    setError('');
     const form = new FormData(formEl);
     const updates = {
       firstName: form.get('firstName'),
@@ -67,35 +63,35 @@ export default function Profile() {
       dateOfBirth: form.get('dateOfBirth'),
     };
 
+    setSaving(true);
     try {
       const saved = await hrmsService.saveProfile(updates);
       setProfile(saved);
       updateUser({ ...user, name: `${saved.firstName} ${saved.lastName || ''}`.trim() });
-      setMessage('Profile updated.');
+      // ONLY message shown -> the top-right toast. No inline banner anywhere below.
       showToast('Profile updated.', 'success');
     } catch (err) {
       const msg = err?.response?.data?.message || err.message || 'Failed to update profile.';
-      setError(msg);
       showToast(msg, 'error');
+    } finally {
+      setSaving(false);
     }
   };
 
   const changePassword = async (event) => {
     event.preventDefault();
     const formEl = event.currentTarget;
-    setPasswordError('');
-    setMessage('');
     const form = new FormData(formEl);
     const oldPassword = form.get('oldPassword');
     const newPassword = form.get('newPassword');
     const confirmPassword = form.get('confirmPassword');
 
     if (newPassword.length < 8) {
-      setPasswordError('New password must be at least 8 characters.');
+      showToast('New password must be at least 8 characters.', 'error');
       return;
     }
     if (newPassword !== confirmPassword) {
-      setPasswordError('New password and confirmation do not match.');
+      showToast('New password and confirmation do not match.', 'error');
       return;
     }
 
@@ -105,7 +101,6 @@ export default function Profile() {
       formEl.reset();
     } catch (err) {
       const msg = err?.response?.data?.message || err.message || 'Could not change password.';
-      setPasswordError(msg);
       showToast(msg, 'error');
     }
   };
@@ -113,11 +108,9 @@ export default function Profile() {
   const handlePhotoChange = async (event) => {
     const file = event.target.files?.[0];
     if (!file) return;
-    setError('');
 
     const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png'];
     if (!allowedTypes.includes(file.type)) {
-      setError('Only JPG, JPEG and PNG images are allowed.');
       showToast('Only JPG, JPEG and PNG images are allowed.', 'error');
       event.target.value = '';
       return;
@@ -125,7 +118,6 @@ export default function Profile() {
     const MAX_PHOTO_SIZE = 5 * 1024 * 1024; // 5MB
 
     if (file.size > MAX_PHOTO_SIZE) {
-      setError('Profile photo size cannot exceed 5 MB.');
       showToast('Profile photo size cannot exceed 5 MB.', 'error');
       event.target.value = '';
       return;
@@ -138,11 +130,9 @@ export default function Profile() {
         updateUser({ ...user, photoUrl: saved.profilePhotoUrl });
         refreshAvatar?.()
       }
-      setMessage('Profile Photo Updated.');
       showToast('Profile Photo Updated.', 'success');
     } catch (err) {
       const msg = err?.response?.data?.message || err.message || 'Failed to upload photo.';
-      setError(msg);
       showToast(msg, 'error');
     } finally {
       setPhotoUploading(false);
@@ -151,7 +141,7 @@ export default function Profile() {
   };
 
   if (loading) return <section className="panel"><p className="empty-inline">Loading Profile…</p></section>;
-  if (!profile) return <section className="panel"><p className="empty-inline">{error || 'Profile not found.'}</p></section>;
+  if (!profile) return <section className="panel"><p className="empty-inline">Profile not found.</p></section>;
 
   const fullName = capitalizeName(`${profile.firstName} ${profile.lastName || ''}`.trim());
   const initials = fullName.split(' ').map((part) => part[0]).join('').slice(0, 2).toUpperCase();
@@ -164,8 +154,6 @@ export default function Profile() {
         title={isOwnProfile ? 'My Profile' : fullName}
         description="View And Manage Your Personal Information."
       />
-
-      {error && <div className="form-alert">{error}</div>}
 
       <section className="panel profile-card">
         <div className="profile-avatar-wrap">
@@ -192,7 +180,7 @@ export default function Profile() {
               key={tab}
               type="button"
               className={activeTab === tab ? 'active' : ''}
-              onClick={() => { setActiveTab(tab); setMessage(''); setError(''); setPasswordError(''); }}
+              onClick={() => setActiveTab(tab)}
               role="tab"
               aria-selected={activeTab === tab}
             >
@@ -218,8 +206,9 @@ export default function Profile() {
                     <option value="FEMALE">Female</option>
                   </select>
                 </label>
-                {message && <div className="success-alert full-span">{message}</div>}
-                <button className="btn btn-primary full-span"><Save size={18} />Save Changes</button>
+                <button className="btn btn-primary full-span" type="submit" disabled={saving}>
+                  <Save size={18} />{saving ? 'Saving…' : 'Save Changes'}
+                </button>
               </form>
             ) : (
               <div className="profile-info-grid">
@@ -250,7 +239,6 @@ export default function Profile() {
               <label className="full-span">Current Password<input name="oldPassword" type="password" required /></label>
               <label>New Password<input name="newPassword" type="password" required minLength={8} maxLength={20} /></label>
               <label>Confirm New Password<input name="confirmPassword" type="password" required minLength={8} maxLength={20} /></label>
-              {passwordError && <div className="form-alert full-span">{passwordError}</div>}
               <button className="btn btn-primary full-span"><KeyRound size={18} />Update Password</button>
             </form>
           )}

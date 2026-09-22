@@ -49,6 +49,15 @@ const fmtDateTime = (value) => {
   return d.toLocaleString('en-US', { month: 'short', day: '2-digit', year: 'numeric', hour: 'numeric', minute: '2-digit' });
 };
 
+// Shows "original → requested" only when the regularization actually changes
+// the time; if the two match (or only one is present) it's shown once, so
+// e.g. an unchanged check-in doesn't render as "09:21 AM → 09:21 AM".
+function fmtTimeChange(original, requested) {
+  if (!original && !requested) return '--';
+  if (!original || !requested || original === requested) return original || requested;
+  return `${original} → ${requested}`;
+}
+
 const STATUS_META = {
   PENDING: { tone: 'pending', label: 'Pending' },
   PARTIALLY_APPROVED: { tone: 'partial', label: 'Partially Approved' },
@@ -361,7 +370,7 @@ export default function RegularizationApprovals() {
                           <span className="reg-requested">{d.requestedStatus}</span>
                         </span>
                         {(d.originalCheckIn || d.requestedCheckIn) && (
-                          <span className="reg-detail-times">In: {d.originalCheckIn || '--'} → {d.requestedCheckIn || '--'} · Out: {d.originalCheckOut || '--'} → {d.requestedCheckOut || '--'}</span>
+                          <span className="reg-detail-times">In: {fmtTimeChange(d.originalCheckIn, d.requestedCheckIn)} · Out: {fmtTimeChange(d.originalCheckOut, d.requestedCheckOut)}</span>
                         )}
                         {d.remarks && <span className="reg-detail-remarks">"{d.remarks}"</span>}
                       </div>
@@ -371,11 +380,11 @@ export default function RegularizationApprovals() {
 
                         {d.status === 'PENDING' && actionTarget?.detailId !== d.id && (
                           <div className="reg-line-buttons">
-                            <button type="button" className="btn btn-icon btn-light reg-approve-btn" onClick={() => startAction(d, 'approve')} aria-label="Approve">
-                              <CheckCircle2 size={16} />
+                            <button type="button" className="btn btn-small btn-success" onClick={() => startAction(d, 'approve')}>
+                              <CheckCircle2 size={14} /> Approve
                             </button>
-                            <button type="button" className="btn btn-icon btn-light reg-reject-btn" onClick={() => startAction(d, 'reject')} aria-label="Reject">
-                              <XCircle size={16} />
+                            <button type="button" className="btn btn-small btn-danger-soft" onClick={() => startAction(d, 'reject')}>
+                              <XCircle size={14} /> Reject
                             </button>
                           </div>
                         )}

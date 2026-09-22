@@ -10,6 +10,7 @@ import {
 } from "../../services/payrollService";
 import { EmptyState } from "./payrollUi";
 import { useConfirm } from "../../context/ConfirmContext";
+import { useToast } from "../../context/ToastContext";
 
 const EMPTY_FORM = {
   panNumber: "",
@@ -31,13 +32,12 @@ const MODE_LABELS = {
 
 export default function PaymentDetailsPanel() {
   const { confirm } = useConfirm();
+  const { showToast } = useToast();
   const [employees, setEmployees] = useState([]);
   const [query, setQuery] = useState("");
   const [selectedId, setSelectedId] = useState("");
   const [details, setDetails] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
-  const [message, setMessage] = useState("");
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState(EMPTY_FORM);
   const [saving, setSaving] = useState(false);
@@ -58,16 +58,12 @@ export default function PaymentDetailsPanel() {
       return;
     }
     setLoading(true);
-    setError("");
-    setMessage("");
     try {
       setDetails(await getPaymentDetails(employeeId));
     } catch (err) {
       setDetails(null);
-      if (err.status === 404) {
-        setMessage("No payment details on file yet — create them below.");
-      } else {
-        setError(err.message || "Failed to load payment details.");
+      if (err.status !== 404) {
+        showToast(err.message || "Failed to load payment details.", "error");
       }
     } finally {
       setLoading(false);
@@ -102,8 +98,6 @@ export default function PaymentDetailsPanel() {
 
   async function submit(event) {
     event.preventDefault();
-    setError("");
-    setMessage("");
     setSaving(true);
     const payload = {
       panNumber: form.panNumber || undefined,
@@ -119,15 +113,15 @@ export default function PaymentDetailsPanel() {
       if (details) {
         const updated = await updatePaymentDetails(selectedId, payload);
         setDetails(updated);
-        setMessage(`Payment details updated for ${updated.employeeName}.`);
+        showToast(`Payment details updated for ${updated.employeeName}.`, "success");
       } else {
         const created = await createPaymentDetails({ employeeId: Number(selectedId), ...payload });
         setDetails(created);
-        setMessage(`Payment details created for ${created.employeeName}.`);
+        showToast(`Payment details created for ${created.employeeName}.`, "success");
       }
       resetForm();
     } catch (err) {
-      setError(err.message || "Failed to save payment details.");
+      showToast(err.message || "Failed to save payment details.", "error");
     } finally {
       setSaving(false);
     }
@@ -141,14 +135,12 @@ export default function PaymentDetailsPanel() {
       danger: true,
     });
     if (!ok) return;
-    setError("");
-    setMessage("");
     try {
       await deletePaymentDetails(selectedId);
       setDetails(null);
-      setMessage("Payment details deleted.");
+      showToast("Payment details deleted.", "success");
     } catch (err) {
-      setError(err.message || "Failed to delete payment details.");
+      showToast(err.message || "Failed to delete payment details.", "error");
     }
   }
 
@@ -156,9 +148,6 @@ export default function PaymentDetailsPanel() {
 
   return (
     <div className="payroll-stack">
-      {error && <div className="form-alert">{error}</div>}
-      {message && <div className="success-alert">{message}</div>}
-
       <section className="panel">
         <div className="payroll-toolbar" style={{ marginBottom: 0 }}>
           <div className="payroll-search">
@@ -195,6 +184,16 @@ export default function PaymentDetailsPanel() {
 
       {selectedId && loading && (
         <section className="panel"><div className="empty-inline">Loading payment details…</div></section>
+      )}
+
+      {selectedId && !loading && !details && !showForm && (
+        <section className="panel">
+          <EmptyState
+            icon={Landmark}
+            title="No payment details yet"
+            note="Add bank, tax and statutory details for this employee to get started."
+          />
+        </section>
       )}
 
       {selectedId && !loading && details && !showForm && (

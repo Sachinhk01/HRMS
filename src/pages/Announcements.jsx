@@ -104,7 +104,7 @@ export default function Announcements() {
         title="Announcements"
         description="Official Company Announcements, Policy Updates, And Broadcast Messages From HR."
         action={
-          canCreateAnnouncement ? (
+          canCreateAnnouncement && !composerOpen ? (
             <button type="button" className="btn btn-gradient" onClick={() => setComposerOpen(true)}>
               <Plus size={18} /> Add Announcement
             </button>

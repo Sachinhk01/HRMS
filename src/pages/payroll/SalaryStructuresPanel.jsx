@@ -10,6 +10,7 @@ import {
   payrollMonthLabel,
 } from "../../services/payrollService";
 import { DeductionsSection, EarningsSection, EmptyState, PayrollBadge } from "./payrollUi";
+import { useToast } from "../../context/ToastContext";
 
 const EMPTY_FORM = {
   employeeId: "",
@@ -20,12 +21,11 @@ const EMPTY_FORM = {
 };
 
 export default function SalaryStructuresPanel() {
+  const { showToast } = useToast();
   const [structures, setStructures] = useState([]);
   const [employees, setEmployees] = useState([]);
   const [templates, setTemplates] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-  const [message, setMessage] = useState("");
   const [query, setQuery] = useState("");
   const [activeOnly, setActiveOnly] = useState(false);
   const [showForm, setShowForm] = useState(false);
@@ -36,11 +36,10 @@ export default function SalaryStructuresPanel() {
 
   const refresh = useCallback(async () => {
     setLoading(true);
-    setError("");
     try {
       setStructures(await getSalaryStructures({ activeOnly }));
     } catch (err) {
-      setError(err.message || "Failed to load salary structures.");
+      showToast(err.message || "Failed to load salary structures.", "error");
     } finally {
       setLoading(false);
     }
@@ -87,8 +86,6 @@ export default function SalaryStructuresPanel() {
 
   async function submit(event) {
     event.preventDefault();
-    setError("");
-    setMessage("");
     setSaving(true);
     try {
       const payload = {
@@ -100,15 +97,15 @@ export default function SalaryStructuresPanel() {
       };
       if (isRevision) {
         const created = await createSalaryStructureRevision(payload);
-        setMessage(`Revision created for ${created.employeeName} (effective ${payrollMonthLabel(created.effectiveFrom)}).`);
+        showToast(`Revision created for ${created.employeeName} (effective ${payrollMonthLabel(created.effectiveFrom)}).`, "success");
       } else {
         const created = await createSalaryStructure(payload);
-        setMessage(`Salary structure created for ${created.employeeName}.`);
+        showToast(`Salary structure created for ${created.employeeName}.`, "success");
       }
       resetForm();
       await refresh();
     } catch (err) {
-      setError(err.message || "Failed to save salary structure.");
+      showToast(err.message || "Failed to save salary structure.", "error");
     } finally {
       setSaving(false);
     }
@@ -116,9 +113,6 @@ export default function SalaryStructuresPanel() {
 
   return (
     <div className="payroll-stack">
-      {error && <div className="form-alert">{error}</div>}
-      {message && <div className="success-alert">{message}</div>}
-
       <section className="panel">
         <div className="payroll-toolbar" style={{ marginBottom: 0 }}>
           <div className="payroll-search">

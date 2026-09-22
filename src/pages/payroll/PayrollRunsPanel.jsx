@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import {
   Banknote,
   CheckCircle2,
@@ -31,6 +32,7 @@ import {
 } from "../../services/payrollService";
 import { AttendanceSection, DeductionsSection, EarningsSection, EmptyState, PayrollBadge } from "./payrollUi";
 import { useConfirm } from "../../context/ConfirmContext";
+import { useToast } from "../../context/ToastContext";
 
 const EMPTY_EDIT_FORM = {
   totalWorkingDays: "",
@@ -55,14 +57,13 @@ const num = (value) => (value === "" || value === null || value === undefined ? 
 
 export default function PayrollRunsPanel() {
   const { confirm, promptDialog } = useConfirm();
+  const { showToast } = useToast();
   const [payrolls, setPayrolls] = useState([]);
   const [employees, setEmployees] = useState([]);
   const [month, setMonth] = useState(() => new Date().toISOString().slice(0, 7));
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-  const [message, setMessage] = useState("");
 
   const [showGenerate, setShowGenerate] = useState(false);
   const [genMonth, setGenMonth] = useState(() => new Date().toISOString().slice(0, 7));
@@ -77,10 +78,11 @@ export default function PayrollRunsPanel() {
   const [editing, setEditing] = useState(null);
   const [editForm, setEditForm] = useState(EMPTY_EDIT_FORM);
   const [saving, setSaving] = useState(false);
+  const [respondedIds, setRespondedIds] = useState(() => new Set());
+  const [processingId, setProcessingId] = useState(null);
 
   const refresh = useCallback(async (targetMonth = month) => {
     setLoading(true);
-    setError("");
     try {
       const payrollMonth = `${targetMonth}-01`;
       const [monthly, byStatus] = await Promise.all([
@@ -93,7 +95,7 @@ export default function PayrollRunsPanel() {
         setPayrolls(byStatus.filter((item) => inMonth.has(item.id)));
       }
     } catch (err) {
-      setError(err.message || "Failed to load payroll records.");
+      showToast(err.message || "Failed to load payroll records.", "error");
     } finally {
       setLoading(false);
     }
@@ -149,8 +151,6 @@ export default function PayrollRunsPanel() {
 
   async function submitGenerate(event) {
     event.preventDefault();
-    setError("");
-    setMessage("");
     setGenerating(true);
     setGenSummary(null);
     try {
@@ -161,13 +161,13 @@ export default function PayrollRunsPanel() {
         saveAsDraft: genSaveAsDraft,
       });
       setGenSummary(result);
-      setMessage(`Payroll generated: ${result.generated} created, ${result.failed} failed.`);
+      showToast(`Payroll generated: ${result.generated} created, ${result.failed} failed.`, result.failed > 0 ? "info" : "success");
       setSelectedIds([]);
       setGenRemarks("");
       setMonth(genMonth);
       await refresh(genMonth);
     } catch (err) {
-      setError(err.message || "Failed to generate payroll.");
+      showToast(err.message || "Failed to generate payroll.", "error");
     } finally {
       setGenerating(false);
     }
@@ -201,8 +201,6 @@ export default function PayrollRunsPanel() {
 
   async function submitEdit(event) {
     event.preventDefault();
-    setError("");
-    setMessage("");
     setSaving(true);
     try {
       const payload = {
@@ -224,19 +222,17 @@ export default function PayrollRunsPanel() {
         remarks: editForm.remarks || undefined,
       };
       const updated = await updateDraftPayroll(editing.id, payload);
-      setMessage(`Draft ${updated.payrollNumber} updated successfully.`);
+      showToast(`Draft ${updated.payrollNumber} updated successfully.`, "success");
       setEditing(null);
       await refresh();
     } catch (err) {
-      setError(err.message || "Failed to update draft.");
+      showToast(err.message || "Failed to update draft.", "error");
     } finally {
       setSaving(false);
     }
   }
 
   async function runStatusAction(item, status) {
-    setError("");
-    setMessage("");
     let paymentReference;
     if (status === "PAID") {
       const result = await promptDialog({
@@ -258,14 +254,27 @@ export default function PayrollRunsPanel() {
       message: `${item.payrollNumber} → ${status}?`,
       confirmText: "Confirm",
     });
-    if (!ok) return;
+    if (!ok) return false;
     try {
       const updated = await updatePayrollStatus(item.id, { status, paymentReference });
-      setMessage(`${updated.payrollNumber} marked as ${status}.`);
+      showToast(`${updated.payrollNumber} marked as ${status}.`, "success");
       if (detail?.id === item.id) setDetail(updated);
       await refresh();
+      return true;
     } catch (err) {
-      setError(err.message || `Failed to ${status.toLowerCase()} payroll.`);
+      showToast(err.message || `Failed to ${status.toLowerCase()} payroll.`, "error");
+      return false;
+    }
+  }
+
+  async function handleApproveReject(item, status) {
+    if (respondedIds.has(item.id) || processingId === item.id) return;
+    setProcessingId(item.id);
+    try {
+      const success = await runStatusAction(item, status);
+      if (success) setRespondedIds((prev) => new Set(prev).add(item.id));
+    } finally {
+      setProcessingId(null);
     }
   }
 
@@ -276,25 +285,22 @@ export default function PayrollRunsPanel() {
       confirmText: "Regenerate",
     });
     if (!ok) return;
-    setError("");
-    setMessage("");
     try {
       const updated = await regeneratePayroll(item.id);
-      setMessage(`New version ${updated.payrollNumber} (v${updated.version}) created.`);
+      showToast(`New version ${updated.payrollNumber} (v${updated.version}) created.`, "success");
       setDetail(updated);
       await refresh();
     } catch (err) {
-      setError(err.message || "Failed to regenerate payroll.");
+      showToast(err.message || "Failed to regenerate payroll.", "error");
     }
   }
 
   async function handleDownload(item) {
-    setError("");
     try {
       const { blob, filename } = await downloadPayslip(item.id);
       triggerBlobDownload(blob, filename);
     } catch (err) {
-      setError(err.message || "Failed to download payslip.");
+      showToast(err.message || "Failed to download payslip.", "error");
     }
   }
 
@@ -302,9 +308,6 @@ export default function PayrollRunsPanel() {
 
   return (
     <div className="payroll-stack">
-      {error && <div className="form-alert">{error}</div>}
-      {message && <div className="success-alert">{message}</div>}
-
       {/* Summary */}
       <div className="payroll-summary-grid">
         <section className="panel payroll-summary-card tone-blue">
@@ -412,7 +415,7 @@ export default function PayrollRunsPanel() {
 
         {genSummary && (
           <div className="full-span" style={{ marginTop: 14 }}>
-            <div className="success-alert" style={{ marginBottom: 8 }}>
+            <div className="payroll-result-summary" style={{ marginBottom: 8 }}>
               <CheckCircle2 size={16} />
               {genSummary.generated} payroll(s) generated for {payrollMonthLabel(genSummary.payrollMonth)}.
             </div>
@@ -422,7 +425,7 @@ export default function PayrollRunsPanel() {
               </div>
             )}
             {genSummary.failedEmployees?.map((item) => (
-              <div key={item.employeeId} className="form-alert" style={{ marginBottom: 6 }}>
+              <div key={item.employeeId} className="payroll-result-item" style={{ marginBottom: 6 }}>
                 <XCircle size={15} /> {item.employeeName} ({item.employeeCode}) — {item.reason}
               </div>
             ))}
@@ -505,14 +508,31 @@ export default function PayrollRunsPanel() {
                       {item.status === "DRAFT" && (
                         <button type="button" title="Edit draft" onClick={() => beginEdit(item)}><Pencil size={16} /></button>
                       )}
-                      {item.status === "GENERATED" && (
-                        <button type="button" title="Approve" onClick={() => runStatusAction(item, "APPROVED")}><CheckCircle2 size={16} /></button>
+                      {item.status === "DRAFT" && (
+                        <button type="button" className="danger" title="Cancel" onClick={() => runStatusAction(item, "CANCELLED")}><XCircle size={16} /></button>
+                      )}
+                      {(item.status === "GENERATED" || respondedIds.has(item.id)) && (
+                        <div className="payroll-approve-reject">
+                          <button
+                            type="button"
+                            className="btn-approve"
+                            disabled={respondedIds.has(item.id) || processingId === item.id}
+                            onClick={() => handleApproveReject(item, "APPROVED")}
+                          >
+                            <CheckCircle2 size={14} /> Approve
+                          </button>
+                          <button
+                            type="button"
+                            className="btn-reject"
+                            disabled={respondedIds.has(item.id) || processingId === item.id}
+                            onClick={() => handleApproveReject(item, "CANCELLED")}
+                          >
+                            <XCircle size={14} /> Reject
+                          </button>
+                        </div>
                       )}
                       {item.status === "APPROVED" && (
                         <button type="button" title="Mark as paid" onClick={() => runStatusAction(item, "PAID")}><Banknote size={16} /></button>
-                      )}
-                      {["DRAFT", "GENERATED"].includes(item.status) && (
-                        <button type="button" className="danger" title="Cancel" onClick={() => runStatusAction(item, "CANCELLED")}><XCircle size={16} /></button>
                       )}
                       <button type="button" title="Regenerate (new version)" onClick={() => handleRegenerate(item)}><RotateCcw size={16} /></button>
                       {canDownload(item) && (
@@ -528,7 +548,7 @@ export default function PayrollRunsPanel() {
       </section>
 
       {/* Detail modal */}
-      {detail && (
+      {detail && createPortal(
         <div className="payroll-overlay" onClick={() => setDetail(null)}>
           <div className="payroll-modal" onClick={(event) => event.stopPropagation()}>
             <div className="payroll-modal-head">
@@ -571,11 +591,12 @@ export default function PayrollRunsPanel() {
               )}
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Edit draft modal */}
-      {editing && (
+      {editing && createPortal(
         <div className="payroll-overlay" onClick={() => setEditing(null)}>
           <form className="payroll-modal" onClick={(event) => event.stopPropagation()} onSubmit={submitEdit}>
             <div className="payroll-modal-head">
@@ -616,7 +637,8 @@ export default function PayrollRunsPanel() {
               </div>
             </div>
           </form>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

@@ -31,8 +31,7 @@
 
 .reg-detail-line-action { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .reg-line-buttons { display: flex; gap: 8px; }
-.reg-approve-btn { color: #16a34a; }
-.reg-reject-btn { color: #dc2626; }
+.reg-line-buttons .btn { min-width: 108px; }
 
 /* ---------- Inline approve/reject/revert form ---------- */
 .reg-inline-action {

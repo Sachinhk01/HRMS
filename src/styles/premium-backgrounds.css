@@ -122,7 +122,6 @@ body { overflow-x: hidden; }
 /* App shell background — calm, no blobs */
 .main-content {
   position: relative;
-  isolation: isolate;
   background: var(--bg);
 }
 .main-content::before { display: none; }

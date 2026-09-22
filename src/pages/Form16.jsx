@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  CheckCircle2,
   Download,
   Edit3,
   FileText,
@@ -17,8 +16,8 @@ import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import PageHeader from '../components/PageHeader';
 import { useAuth } from '../context/AuthContext';
+import { useToast } from '../context/ToastContext';
 import { form16Service, getForm16EmployeeDropdown } from '../services/form16Service';
-import { getMyProfile } from '../services/employeeService';
 import './Form16.css';
 
 const num = (v) => (v === '' || v == null ? 0 : Number(v));
@@ -100,7 +99,7 @@ function FormPreview({ base, quarter, challans, salary, exemption, section16, ch
       <div><b>Assessment Year</b><br/>{base.assessmentYear || '—'}</div><div><b>Period From</b><br/>{base.employmentFrom || '—'}</div><div><b>Period To</b><br/>{base.employmentTo || '—'}</div>
     </div>
     <div className="f16-section-title">Summary of amount paid/credited and tax deducted at source</div>
-    <table className="f16-preview-table"><thead><tr><th>Quarter</th><th>Receipt No.</th><th>Amount paid</th><th>Tax Deducted</th><th>Tax Deposited</th></tr></thead><tbody>{qRows.map((r) => <tr key={r[0]}>{r.map((c,i)=><td key={i}>{c}</td>)}</tr>)}</tbody></table>
+    <table className="f16-preview-table"><thead><tr><th>Quarter</th><th>Receipt No.</th><th>Amount paid</th><th>Tax deducted</th><th>Tax deposited</th></tr></thead><tbody>{qRows.map((r) => <tr key={r[0]}>{r.map((c,i)=><td key={i}>{c}</td>)}</tr>)}</tbody></table>
     <div className="f16-section-title">PART B — Details of Salary Paid and Tax Deducted</div>
     <table className="f16-preview-table"><tbody>
       <tr><td>1(a) Salary under section 17(1)</td><td>{money(salary?.salaryUnderSection17_1)}</td></tr>
@@ -115,7 +114,7 @@ function FormPreview({ base, quarter, challans, salary, exemption, section16, ch
       <tr><td>Tax on total income</td><td>{money(lastFields?.taxOnTotalIncome)}</td></tr>
       <tr><th>Net tax payable</th><th>{money(lastFields?.netTaxPayable)}</th></tr>
     </tbody></table>
-    {!!challans?.length && <><div className="f16-section-title">Challan Identification Number (CIN)</div><table className="f16-preview-table"><thead><tr><th>Sl.</th><th>Tax Deposited</th><th>BSR Code</th><th>Date</th><th>Challan No.</th><th>OLTAS</th></tr></thead><tbody>{challans.map((c)=><tr key={c.id}><td>{c.serialNumber}</td><td>{money(c.taxDeposited)}</td><td>{c.bsrCode||'—'}</td><td>{c.taxDepositedDate||'—'}</td><td>{c.challanSerialNumber||'—'}</td><td>{c.statusOfMatchingWithOltas||'—'}</td></tr>)}</tbody></table></>}
+    {!!challans?.length && <><div className="f16-section-title">Challan Identification Number (CIN)</div><table className="f16-preview-table"><thead><tr><th>Sl.</th><th>Tax deposited</th><th>BSR Code</th><th>Date</th><th>Challan No.</th><th>OLTAS</th></tr></thead><tbody>{challans.map((c)=><tr key={c.id}><td>{c.serialNumber}</td><td>{money(c.taxDeposited)}</td><td>{c.bsrCode||'—'}</td><td>{c.taxDepositedDate||'—'}</td><td>{c.challanSerialNumber||'—'}</td><td>{c.statusOfMatchingWithOltas||'—'}</td></tr>)}</tbody></table></>}
     <div className="f16-section-title">Verification</div>
     <div className="f16-doc-box"><div className="f16-doc-cell">Place: <b>{verification?.place || '—'}</b><br/>Date: <b>{verification?.date || base.lastUpdatedOn || '—'}</b></div><div className="f16-doc-cell">Designation: <b>{verification?.designation || '—'}</b><br/>Full Name: <b>{verification?.fullName || '—'}</b><br/>Signature: <b>{verification?.signature || '—'}</b></div></div>
     <div className="f16-preview-note">Preview follows the structure of the supplied Form 16 blueprint while using MyHourly branding and a non-obstructive watermark.</div>
@@ -124,10 +123,9 @@ function FormPreview({ base, quarter, challans, salary, exemption, section16, ch
 
 export default function Form16() {
   const { user } = useAuth();
+  const { showToast } = useToast();
   const role = user?.role || user?.roles?.[0];
-  const isHr = role === 'HR_ADMIN';
-  const isEmployee = role === 'EMPLOYEE';
-  const canManage = isHr;
+  const canManage = ['HR_ADMIN', 'MANAGER', 'SUPER_ADMIN'].includes(role);
   const period = useMemo(financialPeriod, []);
   const [employees, setEmployees] = useState([]);
   const [employeeId, setEmployeeId] = useState('');
@@ -142,7 +140,7 @@ export default function Form16() {
   const [chapter, setChapter] = useState(null); const [chapterDraft, setChapterDraft] = useState(emptyChapter);
   const [lastFields, setLastFields] = useState(null); const [lastDraft, setLastDraft] = useState(emptyLast);
   const [verification, setVerification] = useState(null); const [verificationDraft, setVerificationDraft] = useState(emptyVerification);
-  const [tab, setTab] = useState('overview'); const [loading, setLoading] = useState(false); const [saving, setSaving] = useState(false); const [notice, setNotice] = useState(''); const [error, setError] = useState('');
+  const [tab, setTab] = useState('overview'); const [loading, setLoading] = useState(false); const [saving, setSaving] = useState(false);
 
   useEffect(() => { if (canManage) getForm16EmployeeDropdown().then(setEmployees).catch(() => setEmployees([])); }, [canManage]);
   useEffect(() => setBaseDraft((s) => ({ ...s, assessmentYear })), [assessmentYear]);
@@ -163,109 +161,43 @@ export default function Form16() {
     try { const d = await form16Service.getChallans(id); setChallans(d?.challans || []); } catch { setChallans([]); }
   }, []);
 
-  useEffect(() => {
-    if (!isEmployee) return undefined;
-
-    let cancelled = false;
-    const loadOwnForm = async () => {
-      setLoading(true);
-      setError('');
-      setNotice('');
-      try {
-        let profile = null;
-        try { profile = await getMyProfile(); } catch { profile = null; }
-
-        const candidateIds = [
-          user?.employeeId,
-          user?.employee?.id,
-          profile?.employeeId,
-          profile?.employee?.id,
-          profile?.id,
-          user?.id,
-        ].filter((value, index, values) => value != null && value !== '' && values.indexOf(value) === index);
-
-        if (!candidateIds.length) throw new Error('Employee Profile Could Not Be Resolved.');
-
-        let loaded = null;
-        let resolvedId = candidateIds[0];
-        let lastError = null;
-        for (const candidateId of candidateIds) {
-          try {
-            loaded = await form16Service.getByEmployeeYear(candidateId, assessmentYear);
-            resolvedId = candidateId;
-            if (loaded) break;
-          } catch (err) {
-            lastError = err;
-          }
-        }
-
-        if (!loaded) {
-          if (lastError?.status === 404) throw Object.assign(new Error('No Form 16 Is Available For This Assessment Year.'), { status: 404 });
-          throw lastError || new Error('Unable To Load Form 16.');
-        }
-
-        if (cancelled) return;
-        setEmployeeId(String(resolvedId));
-        setBase(loaded);
-        setBaseDraft({
-          employeeAddress: loaded.employeeAddress || '',
-          assessmentYear: loaded.assessmentYear || assessmentYear,
-          employmentFrom: loaded.employmentFrom || period.from,
-          employmentTo: loaded.employmentTo || period.to,
-          optingOutOfTaxation115BAC1A: !!loaded.optingOutOfTaxation115BAC1A,
-        });
-        await loadChildren(loaded.id);
-      } catch (err) {
-        if (cancelled) return;
-        setBase(null);
-        setQuarter(null); setChallans([]); setSalary(null); setExemption(null); setSection16(null); setChapter(null); setLastFields(null); setVerification(null);
-        setError(err?.message || 'Unable To Load Form 16.');
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    };
-
-    loadOwnForm();
-    return () => { cancelled = true; };
-  }, [isEmployee, user, assessmentYear, period.from, period.to, loadChildren]);
-
   const loadExisting = async () => {
-    if (!employeeId || !assessmentYear) { setError('Select an employee and assessment year.'); return; }
-    setLoading(true); setError(''); setNotice('');
+    if (!employeeId || !assessmentYear) { showToast('Select an employee and assessment year.', 'error'); return; }
+    setLoading(true);
     try {
       const d = await form16Service.getByEmployeeYear(employeeId, assessmentYear);
       setBase(d); setBaseDraft({ employeeAddress: d.employeeAddress || '', assessmentYear: d.assessmentYear || assessmentYear, employmentFrom: d.employmentFrom || period.from, employmentTo: d.employmentTo || period.to, optingOutOfTaxation115BAC1A: !!d.optingOutOfTaxation115BAC1A });
-      await loadChildren(d.id); setNotice('Form 16 Loaded Successfully.');
-    } catch (e) { setBase(null); setError(e.status === 404 ? 'No Form 16 exists for this employee and assessment year. Use Generate Form 16.' : e.message); }
+      await loadChildren(d.id); showToast('Form 16 loaded successfully.', 'success');
+    } catch (e) { setBase(null); showToast(e.status === 404 ? 'No Form 16 exists for this employee and assessment year. Use Generate Form 16.' : e.message, 'error'); }
     finally { setLoading(false); }
   };
 
   const generate = async () => {
-    if (!employeeId) { setError('Select an employee before generating Form 16.'); return; }
-    setSaving(true); setError(''); setNotice('');
-    try { const d = await form16Service.create(employeeId, baseDraft); setBase(d); await loadChildren(d.id); setNotice('Form 16 Generated Successfully. You Can Now Edit Part A And Part B Details.'); }
-    catch (e) { setError(e.message); } finally { setSaving(false); }
+    if (!employeeId) { showToast('Select an employee before generating Form 16.', 'error'); return; }
+    setSaving(true);
+    try { const d = await form16Service.create(employeeId, baseDraft); setBase(d); await loadChildren(d.id); showToast('Form 16 generated successfully. You can now edit Part A and Part B details.', 'success'); }
+    catch (e) { showToast(e.message, 'error'); } finally { setSaving(false); }
   };
 
   const toggleActive = async (active) => {
-    if (!employeeId || !base) return; setSaving(true); setError('');
-    try { active ? await form16Service.activate(employeeId) : await form16Service.deactivate(employeeId); setBase((b) => ({ ...b, active })); setNotice(`Form 16 ${active ? 'activated' : 'deactivated'} successfully.`); }
-    catch (e) { setError(e.message); } finally { setSaving(false); }
+    if (!employeeId || !base) return; setSaving(true);
+    try { active ? await form16Service.activate(employeeId) : await form16Service.deactivate(employeeId); setBase((b) => ({ ...b, active })); showToast(`Form 16 ${active ? 'activated' : 'deactivated'} successfully.`, 'success'); }
+    catch (e) { showToast(e.message, 'error'); } finally { setSaving(false); }
   };
 
   const saveSection = async ({ existing, draft, create, update, setter, draftSetter }) => {
-    if (!base?.id) { setError('Generate or load Form 16 first.'); return; }
-    setSaving(true); setError(''); setNotice('');
-    try { const result = existing ? await update(base.id, safePayload(draft)) : await create(base.id, safePayload(draft)); setter(result); draftSetter((s) => ({ ...s, ...result })); setNotice('Form 16 Section Saved Successfully.'); }
-    catch (e) { setError(e.message); } finally { setSaving(false); }
+    if (!base?.id) { showToast('Generate or load Form 16 first.', 'error'); return; }
+    setSaving(true);
+    try { const result = existing ? await update(base.id, safePayload(draft)) : await create(base.id, safePayload(draft)); setter(result); draftSetter((s) => ({ ...s, ...result })); showToast('Form 16 section saved successfully.', 'success'); }
+    catch (e) { showToast(e.message, 'error'); } finally { setSaving(false); }
   };
 
   const saveChallan = async () => {
-    if (!base?.id) return; setSaving(true); setError('');
-    try { editingChallan ? await form16Service.updateChallan(base.id, editingChallan.id, safePayload(challanDraft)) : await form16Service.createChallan(base.id, safePayload(challanDraft)); const d = await form16Service.getChallans(base.id); setChallans(d?.challans || []); setEditingChallan(null); setChallanDraft(emptyChallan); setNotice('Challan Saved Successfully.'); }
-    catch (e) { setError(e.message); } finally { setSaving(false); }
+    if (!base?.id) return; setSaving(true);
+    try { editingChallan ? await form16Service.updateChallan(base.id, editingChallan.id, safePayload(challanDraft)) : await form16Service.createChallan(base.id, safePayload(challanDraft)); const d = await form16Service.getChallans(base.id); setChallans(d?.challans || []); setEditingChallan(null); setChallanDraft(emptyChallan); showToast('Challan saved successfully.', 'success'); }
+    catch (e) { showToast(e.message, 'error'); } finally { setSaving(false); }
   };
-  const deleteChallan = async (id) => { if (!base?.id) return; try { await form16Service.deleteChallan(base.id, id); setChallans((s)=>s.filter((c)=>c.id!==id)); setNotice('Challan Deleted.'); } catch(e){setError(e.message);} };
+  const deleteChallan = async (id) => { if (!base?.id) return; try { await form16Service.deleteChallan(base.id, id); setChallans((s)=>s.filter((c)=>c.id!==id)); showToast('Challan deleted.', 'success'); } catch(e){showToast(e.message, 'error');} };
 
   const exportPdf = () => {
     if (!base) return;
@@ -291,41 +223,11 @@ export default function Form16() {
   const chapterFields = [['section80C','Section 80C'],['section80CCC','Section 80CCC'],['section80CCD1','Section 80CCD(1)'],['section80CCD1B','Section 80CCD(1B)'],['section80CCD2','Section 80CCD(2)'],['section80D','Section 80D'],['section80CCH','Section 80CCH — employee'],['section80CCH2','Section 80CCH — Central Govt.'],['section80E','Section 80E'],['section80G','Section 80G'],['section80TTA','Section 80TTA'],['section80TTB','Section 80TTB'],['section80EEA','Section 80EEA'],['section80GG','Section 80GG'],['amountDeductibleUnderAnyOtherProvisionChapterVIA','Other Chapter VI-A provision'],['otherChapterVIA','Other Chapter VI-A']].map(([key,label])=>({key,label}));
   const lastFieldsDef = [['taxOnTotalIncome','Tax on total income'],['rebateUnderSection87A','Rebate under section 87A'],['surcharge','Surcharge'],['healthAndEducationCess','Health and education cess'],['reliefUnderSection89','Relief under section 89'],['taxDeductedAtSourceForm12BAA','TDS as per Form 12BAA'],['taxCollectedAtSourceForm12BAA','TCS as per Form 12BAA']].map(([key,label])=>({key,label}));
 
-  if (isEmployee) {
-    return <div className="form16-page">
-      <PageHeader eyebrow="Payroll & Tax" title="Form 16" description="Download Your Form 16 Generated By HR." />
-      {error && <div className="f16-alert error">{error}</div>}
-      <section className="panel form16-toolbar">
-        <Field label="Assessment Year" value={assessmentYear} onChange={setAssessmentYear} placeholder="2026-27" />
-        <div className="form16-actions">
-          <button className="btn btn-primary" onClick={exportPdf} disabled={!base || loading}><Download size={16}/>{loading ? 'Loading...' : 'Download Form 16'}</button>
-        </div>
-      </section>
-      {base ? (
-        <section className="f16-panel">
-          <div className="f16-panel-head">
-            <div><b>{base.employeeName}</b> <span className={`f16-status ${base.active?'active':'inactive'}`}>{base.active?'ACTIVE':'INACTIVE'}</span></div>
-            <div className="f16-note">Certificate: {base.certificateNo || 'Generated By Backend'} • AY {base.assessmentYear}</div>
-          </div>
-          <div className="f16-employee-card">
-            <div><span>Employee Code</span><strong>{base.employeeCode||'—'}</strong></div>
-            <div><span>PAN</span><strong>{base.employeePan||'—'}</strong></div>
-            <div><span>Designation</span><strong>{base.designation||'—'}</strong></div>
-          </div>
-          <div className="f16-download-only-note">This Form 16 Is Read-Only. You Can Only Download The Form Generated By HR.</div>
-        </section>
-      ) : !loading && !error ? (
-        <section className="f16-panel"><div className="f16-empty"><FileText size={44}/><strong>No Form 16 Available</strong>HR Has Not Generated A Form 16 For This Assessment Year Yet.</div></section>
-      ) : null}
-    </div>;
-  }
-
   return <div className="form16-page">
-    <PageHeader eyebrow="Payroll & Tax" title="Form 16" description="HR Can Generate And Manage Form 16. Employees Can Only Download Their Own Form 16." />
-    {error && <div className="f16-alert error">{error}</div>}{notice && <div className="f16-alert success"><CheckCircle2 size={18}/>{notice}</div>}
+    <PageHeader eyebrow="Payroll & Tax" title="Form 16" description="Generate, edit, activate/deactivate and export Form 16 using the backend Form 16 endpoints." />
     <section className="panel form16-toolbar">
-      <Field label="Employee" value={employeeId}>{<select value={employeeId} onChange={(e)=>setEmployeeId(e.target.value)}><option value="">Select Employee</option>{employees.map((e)=><option key={e.id} value={e.id}>{e.employeeCode ? `${e.employeeCode} — ` : ''}{e.employeeName || e.name}</option>)}</select>}</Field>
-      <Field label="Assessment Year" value={assessmentYear} onChange={setAssessmentYear} placeholder="2026-27" />
+      <Field label="Employee" value={employeeId}>{<select value={employeeId} onChange={(e)=>setEmployeeId(e.target.value)}><option value="">Select employee</option>{employees.map((e)=><option key={e.id} value={e.id}>{e.employeeCode ? `${e.employeeCode} — ` : ''}{e.employeeName || e.name}</option>)}</select>}</Field>
+      <Field label="Assessment year" value={assessmentYear} onChange={setAssessmentYear} placeholder="2026-27" />
       <div className="form16-actions">
         <button className="btn btn-secondary" onClick={loadExisting} disabled={!canManage || loading}><RefreshCw size={16}/>{loading?'Loading...':'Load'}</button>
         <button className="btn btn-primary" onClick={generate} disabled={!canManage || saving}><FileText size={16}/>Generate Form 16</button>
@@ -341,15 +243,15 @@ export default function Form16() {
       <section className="f16-panel">
         <div className="f16-tabs">{[['overview','Overview'],['quarter','Part A — Quarter'],['challan','Challans'],['salary','Salary'],['exemption','Exemptions'],['section16','Section 16'],['chapter','Chapter VI-A'],['tax','Tax'],['verification','Verification']].map(([k,l])=><button key={k} className={`f16-tab ${tab===k?'active':''}`} onClick={()=>setTab(k)}>{l}</button>)}</div>
         {!base && tab!=='overview' ? <div className="f16-empty"><strong>Generate or load Form 16 first.</strong>The section endpoints require a Form 16 ID.</div> : null}
-        {tab==='overview' && <div className="f16-form"><div className="f16-section-heading"><h4>Form 16 Header</h4></div><div className="f16-form-grid"><Field label="Employee Address" full value={baseDraft.employeeAddress} onChange={(v)=>setBaseDraft(s=>({...s,employeeAddress:v}))}/><Field label="Employment From" type="date" value={baseDraft.employmentFrom} onChange={(v)=>setBaseDraft(s=>({...s,employmentFrom:v}))}/><Field label="Employment To" type="date" value={baseDraft.employmentTo} onChange={(v)=>setBaseDraft(s=>({...s,employmentTo:v}))}/><label className="f16-toggle"><input type="checkbox" checked={!!baseDraft.optingOutOfTaxation115BAC1A} onChange={(e)=>setBaseDraft(s=>({...s,optingOutOfTaxation115BAC1A:e.target.checked}))}/>Opting Out Of Taxation U/S 115BAC(1A)</label></div><hr className="f16-section-separator"/><div className="f16-note">The main Form 16 endpoint supports CREATE, GET, ACTIVATE, DEACTIVATE and DELETE. It does not expose a PUT/PATCH for the header, so header fields are entered before generation; editable tax sections below use their respective PUT endpoints.</div></div>}
-        {base && tab==='quarter' && <SectionEditor title="Quarter-Wise TDS Summary" exists={!!quarter} value={quarterDraft} setValue={setQuarterDraft} saving={saving} onSave={()=>saveSection({existing:quarter,draft:quarterDraft,create:form16Service.createQuarter,update:form16Service.updateQuarter,setter:setQuarter,draftSetter:setQuarterDraft})}>{<><div style={{overflowX:'auto'}}><table className="f16-quarter-table"><thead><tr><th>Quarter</th><th>Amount Paid/Credited</th><th>Tax Deducted</th><th>Tax Deposited/Remitted</th></tr></thead><tbody>{[1,2,3,4].map(q=><tr key={q}><td>Q{q}</td>{['AmountPaidCredited','TaxDeducted','TaxDepositedRemitted'].map(s=><td key={s}><input type="number" value={quarterDraft[`q${q}${s}`]??''} onChange={e=>setQuarterDraft(d=>({...d,[`q${q}${s}`]:e.target.value}))}/></td>)}</tr>)}</tbody></table></div><div className="f16-form-grid" style={{marginTop:14}}><Field label="Book Adjustment Tax Deposited" type="number" value={quarterDraft.bookAdjustmentTaxDeposited} onChange={v=>setQuarterDraft(d=>({...d,bookAdjustmentTaxDeposited:v}))}/><Field label="Matching Status With Form 24G" value={quarterDraft.statusOfMatchingWithForm24G} onChange={v=>setQuarterDraft(d=>({...d,statusOfMatchingWithForm24G:v}))}/></div><div className="f16-savebar"><button className="btn btn-primary" onClick={()=>saveSection({existing:quarter,draft:quarterDraft,create:form16Service.createQuarter,update:form16Service.updateQuarter,setter:setQuarter,draftSetter:setQuarterDraft})}><Save size={16}/>{quarter?'Save Changes':'Create Quarter Details'}</button></div></>}</SectionEditor>}
-        {base && tab==='challan' && <div className="f16-form"><div className="f16-section-heading"><h4>Tax Deposited Through Challan</h4></div><div className="f16-form-grid"><Field label="Tax Deposited" type="number" value={challanDraft.taxDeposited} onChange={v=>setChallanDraft(s=>({...s,taxDeposited:v}))}/><Field label="BSR Code" value={challanDraft.bsrCode} onChange={v=>setChallanDraft(s=>({...s,bsrCode:v}))}/><Field label="Deposit Date" type="date" value={challanDraft.taxDepositedDate} onChange={v=>setChallanDraft(s=>({...s,taxDepositedDate:v}))}/><Field label="Challan Serial Number" value={challanDraft.challanSerialNumber} onChange={v=>setChallanDraft(s=>({...s,challanSerialNumber:v}))}/><Field label="OLTAS Matching Status" value={challanDraft.statusOfMatchingWithOltas}>{<select value={challanDraft.statusOfMatchingWithOltas} onChange={e=>setChallanDraft(s=>({...s,statusOfMatchingWithOltas:e.target.value}))}><option>F</option><option>U</option><option>P</option><option>O</option></select>}</Field></div><div className="f16-savebar"><button className="btn btn-primary" onClick={saveChallan}><Plus size={16}/>{editingChallan?'Update Challan':'Add Challan'}</button></div><div className="f16-challan-list">{challans.map(c=><div className="f16-challan-row" key={c.id}><b>{c.serialNumber}</b><div><b>₹{money(c.taxDeposited)}</b><div className="f16-note">{c.taxDepositedDate} • BSR {c.bsrCode||'—'} • OLTAS {c.statusOfMatchingWithOltas||'—'}</div></div><div><button className="f16-icon-btn" onClick={()=>{setEditingChallan(c);setChallanDraft({...emptyChallan,...c});}}><Edit3 size={15}/></button> <button className="f16-icon-btn" onClick={()=>deleteChallan(c.id)}><Trash2 size={15}/></button></div></div>)}</div></div>}
+        {tab==='overview' && <div className="f16-form"><div className="f16-section-heading"><h4>Form 16 header</h4></div><div className="f16-form-grid"><Field label="Employee address" full value={baseDraft.employeeAddress} onChange={(v)=>setBaseDraft(s=>({...s,employeeAddress:v}))}/><Field label="Employment from" type="date" value={baseDraft.employmentFrom} onChange={(v)=>setBaseDraft(s=>({...s,employmentFrom:v}))}/><Field label="Employment to" type="date" value={baseDraft.employmentTo} onChange={(v)=>setBaseDraft(s=>({...s,employmentTo:v}))}/><label className="f16-toggle"><input type="checkbox" checked={!!baseDraft.optingOutOfTaxation115BAC1A} onChange={(e)=>setBaseDraft(s=>({...s,optingOutOfTaxation115BAC1A:e.target.checked}))}/>Opting out of taxation u/s 115BAC(1A)</label></div><hr className="f16-section-separator"/><div className="f16-note">The main Form 16 endpoint supports CREATE, GET, ACTIVATE, DEACTIVATE and DELETE. It does not expose a PUT/PATCH for the header, so header fields are entered before generation; editable tax sections below use their respective PUT endpoints.</div></div>}
+        {base && tab==='quarter' && <SectionEditor title="Quarter-wise TDS summary" exists={!!quarter} value={quarterDraft} setValue={setQuarterDraft} saving={saving} onSave={()=>saveSection({existing:quarter,draft:quarterDraft,create:form16Service.createQuarter,update:form16Service.updateQuarter,setter:setQuarter,draftSetter:setQuarterDraft})}>{<><div style={{overflowX:'auto'}}><table className="f16-quarter-table"><thead><tr><th>Quarter</th><th>Amount paid/credited</th><th>Tax deducted</th><th>Tax deposited/remitted</th></tr></thead><tbody>{[1,2,3,4].map(q=><tr key={q}><td>Q{q}</td>{['AmountPaidCredited','TaxDeducted','TaxDepositedRemitted'].map(s=><td key={s}><input type="number" value={quarterDraft[`q${q}${s}`]??''} onChange={e=>setQuarterDraft(d=>({...d,[`q${q}${s}`]:e.target.value}))}/></td>)}</tr>)}</tbody></table></div><div className="f16-form-grid" style={{marginTop:14}}><Field label="Book adjustment tax deposited" type="number" value={quarterDraft.bookAdjustmentTaxDeposited} onChange={v=>setQuarterDraft(d=>({...d,bookAdjustmentTaxDeposited:v}))}/><Field label="Matching status with Form 24G" value={quarterDraft.statusOfMatchingWithForm24G} onChange={v=>setQuarterDraft(d=>({...d,statusOfMatchingWithForm24G:v}))}/></div><div className="f16-savebar"><button className="btn btn-primary" onClick={()=>saveSection({existing:quarter,draft:quarterDraft,create:form16Service.createQuarter,update:form16Service.updateQuarter,setter:setQuarter,draftSetter:setQuarterDraft})}><Save size={16}/>{quarter?'Save Changes':'Create Quarter Details'}</button></div></>}</SectionEditor>}
+        {base && tab==='challan' && <div className="f16-form"><div className="f16-section-heading"><h4>Tax deposited through challan</h4></div><div className="f16-form-grid"><Field label="Tax deposited" type="number" value={challanDraft.taxDeposited} onChange={v=>setChallanDraft(s=>({...s,taxDeposited:v}))}/><Field label="BSR code" value={challanDraft.bsrCode} onChange={v=>setChallanDraft(s=>({...s,bsrCode:v}))}/><Field label="Deposit date" type="date" value={challanDraft.taxDepositedDate} onChange={v=>setChallanDraft(s=>({...s,taxDepositedDate:v}))}/><Field label="Challan serial number" value={challanDraft.challanSerialNumber} onChange={v=>setChallanDraft(s=>({...s,challanSerialNumber:v}))}/><Field label="OLTAS matching status" value={challanDraft.statusOfMatchingWithOltas}>{<select value={challanDraft.statusOfMatchingWithOltas} onChange={e=>setChallanDraft(s=>({...s,statusOfMatchingWithOltas:e.target.value}))}><option>F</option><option>U</option><option>P</option><option>O</option></select>}</Field></div><div className="f16-savebar"><button className="btn btn-primary" onClick={saveChallan}><Plus size={16}/>{editingChallan?'Update Challan':'Add Challan'}</button></div><div className="f16-challan-list">{challans.map(c=><div className="f16-challan-row" key={c.id}><b>{c.serialNumber}</b><div><b>₹{money(c.taxDeposited)}</b><div className="f16-note">{c.taxDepositedDate} • BSR {c.bsrCode||'—'} • OLTAS {c.statusOfMatchingWithOltas||'—'}</div></div><div><button className="f16-icon-btn" onClick={()=>{setEditingChallan(c);setChallanDraft({...emptyChallan,...c});}}><Edit3 size={15}/></button> <button className="f16-icon-btn" onClick={()=>deleteChallan(c.id)}><Trash2 size={15}/></button></div></div>)}</div></div>}
         {base && tab==='salary' && <SectionEditor title="Gross Salary — Part B" fields={salaryFields} value={salaryDraft} setValue={setSalaryDraft} exists={!!salary} saving={saving} onSave={()=>saveSection({existing:salary,draft:salaryDraft,create:form16Service.createSalary,update:form16Service.updateSalary,setter:setSalary,draftSetter:setSalaryDraft})}/>} 
-        {base && tab==='exemption' && <SectionEditor title="Allowances Exempt Under Section 10" fields={exemptionFields} value={exemptionDraft} setValue={setExemptionDraft} exists={!!exemption} saving={saving} note="Totals are calculated by the backend and shown in the preview." onSave={()=>saveSection({existing:exemption,draft:exemptionDraft,create:form16Service.createExemption,update:form16Service.updateExemption,setter:setExemption,draftSetter:setExemptionDraft})}/>} 
-        {base && tab==='section16' && <SectionEditor title="Deductions Under Section 16 & Other Income" fields={section16Fields} value={section16Draft} setValue={setSection16Draft} exists={!!section16} saving={saving} onSave={()=>saveSection({existing:section16,draft:section16Draft,create:form16Service.createSection16,update:form16Service.updateSection16,setter:setSection16,draftSetter:setSection16Draft})}/>} 
-        {base && tab==='chapter' && <SectionEditor title="Deductions Under Chapter VI-A" fields={chapterFields} value={chapterDraft} setValue={setChapterDraft} exists={!!chapter} saving={saving} note="The backend calculates total Chapter VI-A deduction and taxable income." onSave={()=>saveSection({existing:chapter,draft:chapterDraft,create:form16Service.createChapterVIA,update:form16Service.updateChapterVIA,setter:setChapter,draftSetter:setChapterDraft})}/>} 
-        {base && tab==='tax' && <SectionEditor title="Final Tax Computation" fields={lastFieldsDef} value={lastDraft} setValue={setLastDraft} exists={!!lastFields} saving={saving} note="Tax payable and net tax payable are calculated by backend endpoints." onSave={()=>saveSection({existing:lastFields,draft:lastDraft,create:form16Service.createLastFields,update:form16Service.updateLastFields,setter:setLastFields,draftSetter:setLastDraft})}/>} 
-        {base && tab==='verification' && <SectionEditor title="Verification" value={verificationDraft} setValue={setVerificationDraft} exists={!!verification} saving={saving} onSave={()=>saveSection({existing:verification,draft:verificationDraft,create:form16Service.createVerification,update:form16Service.updateVerification,setter:setVerification,draftSetter:setVerificationDraft})}>{<><div className="f16-form-grid"><Field label="Place" value={verificationDraft.place} onChange={v=>setVerificationDraft(s=>({...s,place:v}))}/><Field label="Designation" value={verificationDraft.designation} onChange={v=>setVerificationDraft(s=>({...s,designation:v}))}/><Field label="Full Name" value={verificationDraft.fullName} onChange={v=>setVerificationDraft(s=>({...s,fullName:v}))}/><Field label="Signature / Signatory Text" value={verificationDraft.signature} onChange={v=>setVerificationDraft(s=>({...s,signature:v}))}/></div><div className="f16-savebar"><button className="btn btn-primary" onClick={()=>saveSection({existing:verification,draft:verificationDraft,create:form16Service.createVerification,update:form16Service.updateVerification,setter:setVerification,draftSetter:setVerificationDraft})}><ShieldCheck size={16}/>{verification?'Save Verification':'Create Verification'}</button></div></>}</SectionEditor>}
+        {base && tab==='exemption' && <SectionEditor title="Allowances exempt under Section 10" fields={exemptionFields} value={exemptionDraft} setValue={setExemptionDraft} exists={!!exemption} saving={saving} note="Totals are calculated by the backend and shown in the preview." onSave={()=>saveSection({existing:exemption,draft:exemptionDraft,create:form16Service.createExemption,update:form16Service.updateExemption,setter:setExemption,draftSetter:setExemptionDraft})}/>} 
+        {base && tab==='section16' && <SectionEditor title="Deductions under Section 16 & Other Income" fields={section16Fields} value={section16Draft} setValue={setSection16Draft} exists={!!section16} saving={saving} onSave={()=>saveSection({existing:section16,draft:section16Draft,create:form16Service.createSection16,update:form16Service.updateSection16,setter:setSection16,draftSetter:setSection16Draft})}/>} 
+        {base && tab==='chapter' && <SectionEditor title="Deductions under Chapter VI-A" fields={chapterFields} value={chapterDraft} setValue={setChapterDraft} exists={!!chapter} saving={saving} note="The backend calculates total Chapter VI-A deduction and taxable income." onSave={()=>saveSection({existing:chapter,draft:chapterDraft,create:form16Service.createChapterVIA,update:form16Service.updateChapterVIA,setter:setChapter,draftSetter:setChapterDraft})}/>} 
+        {base && tab==='tax' && <SectionEditor title="Final tax computation" fields={lastFieldsDef} value={lastDraft} setValue={setLastDraft} exists={!!lastFields} saving={saving} note="Tax payable and net tax payable are calculated by backend endpoints." onSave={()=>saveSection({existing:lastFields,draft:lastDraft,create:form16Service.createLastFields,update:form16Service.updateLastFields,setter:setLastFields,draftSetter:setLastDraft})}/>} 
+        {base && tab==='verification' && <SectionEditor title="Verification" value={verificationDraft} setValue={setVerificationDraft} exists={!!verification} saving={saving} onSave={()=>saveSection({existing:verification,draft:verificationDraft,create:form16Service.createVerification,update:form16Service.updateVerification,setter:setVerification,draftSetter:setVerificationDraft})}>{<><div className="f16-form-grid"><Field label="Place" value={verificationDraft.place} onChange={v=>setVerificationDraft(s=>({...s,place:v}))}/><Field label="Designation" value={verificationDraft.designation} onChange={v=>setVerificationDraft(s=>({...s,designation:v}))}/><Field label="Full name" value={verificationDraft.fullName} onChange={v=>setVerificationDraft(s=>({...s,fullName:v}))}/><Field label="Signature / signatory text" value={verificationDraft.signature} onChange={v=>setVerificationDraft(s=>({...s,signature:v}))}/></div><div className="f16-savebar"><button className="btn btn-primary" onClick={()=>saveSection({existing:verification,draft:verificationDraft,create:form16Service.createVerification,update:form16Service.updateVerification,setter:setVerification,draftSetter:setVerificationDraft})}><ShieldCheck size={16}/>{verification?'Save Verification':'Create Verification'}</button></div></>}</SectionEditor>}
       </section>
       <aside className="form16-preview-wrap"><section className="f16-panel"><div className="f16-panel-head"><h3>Form 16 Preview</h3>{base && <span className={`f16-status ${base.active?'active':'inactive'}`}>{base.active?'ACTIVE':'INACTIVE'}</span>}</div>{loading?<div className="f16-loader"><Loader2 className="spin"/> Loading Form 16...</div>:<FormPreview base={base} quarter={quarter} challans={challans} salary={salary} exemption={exemption} section16={section16} chapter={chapter} lastFields={lastFields} verification={verification}/>}</section></aside>
     </div>

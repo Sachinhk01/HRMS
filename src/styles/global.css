@@ -119,6 +119,8 @@ a { text-decoration: none; color: inherit; }
 .btn-danger-soft { background: #ffecef; color: #c63f57; }
 .btn-danger { background: #dc2626; color: #fff; box-shadow: 0 8px 18px rgba(220, 38, 38, .22); }
 .btn-danger:hover { background: #b91c1c; }
+.btn-success { background: var(--green); color: #fff; box-shadow: 0 8px 18px rgba(17, 163, 106, .22); }
+.btn-success:hover { background: #0d8a5a; }
 .btn-block { width: 100%; }
 .btn-icon { padding: 10px; }
 .btn-small { padding: .55rem .8rem; font-size: .82rem; }

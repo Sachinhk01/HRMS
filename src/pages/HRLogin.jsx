@@ -17,6 +17,7 @@ import {
 
 import { StaffAccess } from '../components/StaffAccess.jsx';
 import { useAuth } from '../context/AuthContext';
+import { useToast } from '../context/ToastContext';
 import { getRememberedEmail, setRememberedEmail } from '../services/authStorage';
 import './EmployeeLogin.css';
 import './HRLogin.css';
@@ -39,25 +40,24 @@ const cardRise = {
 export function HRLogin() {
   const { login } = useAuth();
   const navigate = useNavigate();
+  const { showToast } = useToast();
 
   const [email, setEmail] = useState(() => getRememberedEmail('HR_ADMIN'));
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(() => Boolean(getRememberedEmail('HR_ADMIN')));
   const [staffOpen, setStaffOpen] = useState(false);
-  const [serverError, setServerError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setServerError('');
     setIsSubmitting(true);
     try {
       await login({ email, password, expectedRole: 'HR_ADMIN', rememberMe });
       setRememberedEmail('HR_ADMIN', rememberMe ? email : '');
       navigate('/dashboard');
     } catch (error) {
-      setServerError(error.message || 'Unable to sign in. Please try again.');
+      showToast(error.message || 'Unable to sign in. Please try again.', 'error');
     } finally {
       setIsSubmitting(false);
     }
@@ -211,8 +211,6 @@ export function HRLogin() {
                   Forgot Password?
                 </Link>
               </div>
-
-              {serverError && <div className="form-alert">{serverError}</div>}
 
               <button
                 type="submit"

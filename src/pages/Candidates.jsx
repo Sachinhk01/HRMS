@@ -15,7 +15,6 @@ export default function Candidates() {
   const [rows, setRows] = useState(getCandidates());
   const [password, setPassword] = useState(generateTemporaryPassword());
   const [credentials, setCredentials] = useState(null);
-  const [error, setError] = useState('');
   const ordered = useMemo(() => sortRecent(rows), [rows]);
   const { page, setPage, pageItems, pageSize } = usePagination(ordered, 6);
 
@@ -35,7 +34,6 @@ export default function Candidates() {
   };
   const submit = (event) => {
     event.preventDefault();
-    setError('');
     const form = new FormData(event.currentTarget);
     try {
       const candidate = addCandidate(user, {
@@ -48,7 +46,7 @@ export default function Candidates() {
       setPassword(generateTemporaryPassword());
       refresh(); setPage(1);
       showToast('Candidate added and login credentials generated.', 'success');
-    } catch (err) { setError(err.message); showToast(err.message, 'error'); }
+    } catch (err) { showToast(err.message, 'error'); }
   };
 
   const copyCredentials = async () => {
@@ -70,7 +68,6 @@ export default function Candidates() {
         <label>Experience<input name="experience" placeholder="e.g. 2 years" /></label>
         <label>Status<select name="status"><option value="SCREENING">Screening</option><option value="INTERVIEW">Interview</option><option value="SELECTED">Selected</option><option value="REJECTED">Rejected</option></select></label>
         <label>Temporary Login Password<div className="inline-field"><input value={password} onChange={(event) => setPassword(event.target.value)} minLength="6" required /><button type="button" className="icon-btn" title="Generate password" onClick={() => setPassword(generateTemporaryPassword())}><KeyRound size={17} /></button></div></label>
-        {error && <div className="form-alert full-span">{error}</div>}
         <button className="btn btn-primary full-span">Add Candidate And Create Login</button>
       </form>
       {credentials && <div className="credentials-card"><div><strong>Login Credentials Generated</strong><span>{credentials.email}</span><code>{credentials.password}</code></div><button className="btn btn-secondary" onClick={copyCredentials}><ClipboardCopy size={16} /> Copy</button></div>}

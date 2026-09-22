@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   CalendarDays, CheckCircle2, Clock3, TimerOff, TriangleAlert,
-  Search, Download, FileSpreadsheet, Printer, ChevronDown,
+  Search, ChevronDown,
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import ExportMenu from './ExportMenu';
 import { getEmployeeAttendanceHistory } from '../services/attendanceService';
 
 const STATUS_LABELS = {
@@ -235,9 +236,7 @@ export default function EmployeeAttendancePanel({ employeeId, employeeName }) {
           />
         </label>
         <div className="emp-attn-actions">
-          <button type="button" className="emp-attn-btn" onClick={handleExportExcel} disabled={!filteredRows.length}><FileSpreadsheet size={14} /> Excel</button>
-          <button type="button" className="emp-attn-btn" onClick={handleExportPdf} disabled={!filteredRows.length}><Download size={14} /> PDF</button>
-          <button type="button" className="emp-attn-btn" onClick={() => window.print()} disabled={!filteredRows.length}><Printer size={14} /> Print</button>
+          <ExportMenu disabled={!filteredRows.length} onExport={(format) => (format === 'excel' ? handleExportExcel() : handleExportPdf())} />
         </div>
       </div>
 

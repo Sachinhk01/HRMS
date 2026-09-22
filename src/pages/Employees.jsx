@@ -103,7 +103,6 @@ export default function Employees() {
   const [showAdd, setShowAdd] = useState(false);
   const [addStep, setAddStep] = useState(1); // 1 = account, 2 = profile
   const [form, setForm] = useState(EMPTY_FORM);
-  const [formErr, setFormErr] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
   // Each lookup list is fetched and tracked independently, so one failing
@@ -209,7 +208,7 @@ export default function Employees() {
       } catch (error) {
         if (!cancelled) {
           setDepartments([]);
-          setFormErr(error?.response?.data?.message || error.message || 'Failed to load departments. Check that you have permission and the server is reachable.');
+          showToast(error?.response?.data?.message || error.message || 'Failed to load departments. Check that you have permission and the server is reachable.', 'error');
         }
       } finally {
         if (!cancelled) setDeptLoading(false);
@@ -239,7 +238,7 @@ export default function Employees() {
       } catch (error) {
         if (!cancelled) {
           setDesignations([]);
-          setFormErr(error?.response?.data?.message || error.message || 'Failed to load designations for that department.');
+          showToast(error?.response?.data?.message || error.message || 'Failed to load designations for that department.', 'error');
         }
       } finally {
         if (!cancelled) setDesigLoading(false);
@@ -262,7 +261,7 @@ export default function Employees() {
       } catch (error) {
         if (!cancelled) {
           setJobTitles([]);
-          setFormErr(error?.response?.data?.message || error.message || 'Failed to load job titles for that designation.');
+          showToast(error?.response?.data?.message || error.message || 'Failed to load job titles for that designation.', 'error');
         }
       } finally {
         if (!cancelled) setTitleLoading(false);
@@ -274,7 +273,6 @@ export default function Employees() {
 
   const openAddModal = useCallback(() => {
     setForm(EMPTY_FORM);
-    setFormErr('');
     setAddStep(1);
     setDepartments([]);
     setDesignations([]);
@@ -287,7 +285,6 @@ export default function Employees() {
     if (submitting) return;
     setShowAdd(false);
     setForm(EMPTY_FORM);
-    setFormErr('');
     setAddStep(1);
   }, [submitting]);
 
@@ -319,21 +316,18 @@ export default function Employees() {
 
   function goNext() {
     const error = validateStep1();
-    if (error) { setFormErr(error); return; }
-    setFormErr('');
+    if (error) { showToast(error, 'error'); return; }
     setAddStep(2);
   }
 
   function goBack() {
-    setFormErr('');
     setAddStep(1);
   }
 
   async function handleSubmit(e) {
     e.preventDefault();
     const error = validateStep2();
-    if (error) { setFormErr(error); return; }
-    setFormErr('');
+    if (error) { showToast(error, 'error'); return; }
     setSubmitting(true);
     try {
       await createEmployee({
@@ -359,7 +353,7 @@ export default function Employees() {
       showToast(`${form.firstName} ${form.lastName} was added successfully.`, 'success');
       load();
     } catch (error) {
-      setFormErr(error?.response?.data?.message || error.message || 'Failed to create employee. Please check the details and try again.');
+      showToast(error?.response?.data?.message || error.message || 'Failed to create employee. Please check the details and try again.', 'error');
     } finally {
       setSubmitting(false);
     }
@@ -599,10 +593,6 @@ export default function Employees() {
 
               <form onSubmit={addStep === 1 ? (e) => { e.preventDefault(); goNext(); } : handleSubmit}>
                 <div className="emp-modal-body emp-form-body">
-                  {formErr && (
-                    <div className="form-alert"><AlertTriangle size={15} /> {formErr}</div>
-                  )}
-
                   {addStep === 1 && (
                     <div className="emp-form-grid">
                       <label className="form-field">

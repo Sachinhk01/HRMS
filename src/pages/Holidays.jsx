@@ -53,13 +53,11 @@ export default function Holidays() {
   const [year, setYear] = useState(String(new Date().getFullYear()));
   const [form, setForm] = useState(EMPTY_FORM);
   const [editingId, setEditingId] = useState(null);
-  const [error, setError] = useState('');
   const { showToast } = useToast();
   const { confirm } = useConfirm();
 
   async function refresh() {
     setLoading(true);
-    setError('');
     try {
         const [holidaysResult, upcomingResult] = await Promise.all([
           getHolidays({ size: 200, active: true }),
@@ -68,7 +66,7 @@ export default function Holidays() {
       setHolidays(holidaysResult?.content || []);
       setUpcoming((upcomingResult || [])[0] || null);
     } catch (err) {
-      setError(err?.response?.data?.message || err.message || 'Failed to load holidays.');
+      showToast(err?.response?.data?.message || err.message || 'Failed to load holidays.', 'error');
     } finally {
       setLoading(false);
     }
@@ -143,8 +141,6 @@ export default function Holidays() {
   return (
     <div className="page-stack holidays-page page-reveal">
       <PageHeader eyebrow="Organisation calendar" title="Holiday List" description="View Company Holidays And Plan Attendance And Leave In Advance." />
-
-      {error && <div className="form-alert">{error}</div>}
 
       <div className="holiday-overview-grid">
         <section className="panel holiday-upcoming-card">

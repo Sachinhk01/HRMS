@@ -15,6 +15,7 @@ import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import PageHeader from '../components/PageHeader';
 import ExportMenu from '../components/ExportMenu';
+import { useToast } from '../context/ToastContext';
 import { getEmployees } from '../services/employeeService';
 import { getAttendanceReport } from '../services/attendanceService';
 import { getLeaveReport } from '../services/leaveService';
@@ -72,6 +73,7 @@ function downloadPdf(rows) {
 }
 
 export default function Reports() {
+  const { showToast } = useToast();
   const [employees, setEmployees] = useState([]);
   const [employeesLoading, setEmployeesLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -79,11 +81,9 @@ export default function Reports() {
 
   const [leaveSummary, setLeaveSummary] = useState(null);
   const [loadingLeaves, setLoadingLeaves] = useState(true);
-  const [leavesError, setLeavesError] = useState('');
 
   const [attendanceSummary, setAttendanceSummary] = useState(null);
   const [loadingAttendance, setLoadingAttendance] = useState(true);
-  const [attendanceError, setAttendanceError] = useState('');
 
   useEffect(() => {
     let cancelled = false;
@@ -105,7 +105,6 @@ export default function Reports() {
     let cancelled = false;
     async function loadLeaves() {
       setLoadingLeaves(true);
-      setLeavesError('');
       try {
         // size: 1 — we only need `summary`, which is computed over the full
         // filtered set regardless of page size, not the row content.
@@ -114,7 +113,7 @@ export default function Reports() {
       } catch {
         if (!cancelled) {
           setLeaveSummary(null);
-          setLeavesError('Failed to load leave report. HR/Manager access is required.');
+          showToast('Failed to load leave report. HR/Manager access is required.', 'error');
         }
       } finally {
         if (!cancelled) setLoadingLeaves(false);
@@ -128,14 +127,13 @@ export default function Reports() {
     let cancelled = false;
     async function loadAttendance() {
       setLoadingAttendance(true);
-      setAttendanceError('');
       try {
         const result = await getAttendanceReport({ size: 1 });
         if (!cancelled) setAttendanceSummary(result?.summary || null);
       } catch {
         if (!cancelled) {
           setAttendanceSummary(null);
-          setAttendanceError('Failed to load attendance report. HR/Manager access is required.');
+          showToast('Failed to load attendance report. HR/Manager access is required.', 'error');
         }
       } finally {
         if (!cancelled) setLoadingAttendance(false);
@@ -221,9 +219,6 @@ export default function Reports() {
         title="Reports"
         description="Live Summaries Pulled From The Backend."
       />
-
-      {attendanceError && <div className="form-alert">{attendanceError}</div>}
-      {leavesError && <div className="form-alert">{leavesError}</div>}
 
       <div className="reports-kpi-grid">
         {kpis.map((kpi) => (

@@ -363,15 +363,15 @@ export default function CelebrationWall() {
 
   const deleteWallPost = async (item) => {
     const ok = await confirm({
-      title: 'Delete post',
-      message: `Delete "${item.title}"? This is meant to remove it for everyone.`,
-      confirmText: 'Delete',
+      title: 'Remove post',
+      message: `Remove "${item.title}"? This is meant to remove it for everyone.`,
+      confirmText: 'Remove',
       danger: true,
     });
     if (!ok) return;
     try {
       await deleteAnnouncement(item.announcementId);
-      showToast('Post deleted for everyone.', 'success');
+      showToast('Post removed for everyone.', 'success');
       setNotifications((current) => current.filter(
         (n) => !(n.referenceType === 'ANNOUNCEMENT' && String(n.referenceId) === String(item.announcementId))
       ));
@@ -393,7 +393,7 @@ export default function CelebrationWall() {
         showToast('Hidden from your view.', 'error');
         return;
       }
-      showToast(err?.response?.data?.message || err.message || 'Failed to delete post.', 'error');
+      showToast(err?.response?.data?.message || err.message || 'Failed to remove post.', 'error');
     }
   };
 
@@ -403,7 +403,7 @@ export default function CelebrationWall() {
         eyebrow="People & Culture"
         title="Celebration Wall"
         description="View Company Celebrations, Milestones, Birthdays, Anniversaries, And Achievements."
-        action={canCreateCelebration ? <button type="button" className="btn celebration-add-btn" onClick={() => setComposerOpen(true)}><Plus size={18} /> Add Celebration</button> : null}
+        action={canCreateCelebration && !composerOpen ? <button type="button" className="btn celebration-add-btn" onClick={() => setComposerOpen(true)}><Plus size={18} /> Add Celebration</button> : null}
       />
 
 
@@ -426,7 +426,14 @@ export default function CelebrationWall() {
                 {!employees.length && <span className="empty-inline">No Employees Available to Tag.</span>}
               </div>
             </div>
-            <div className="celebration-form-actions full-span"><label className="celebration-file"><ImagePlus size={17} /> Add Photos<input type="file" accept="image/*" multiple hidden onChange={(e) => setCelebrationFiles(Array.from(e.target.files || []))} /></label>{celebrationFiles.length > 0 && <span>{celebrationFiles.length} photo{celebrationFiles.length > 1 ? 's' : ''} selected</span>}<button className="btn celebration-publish-btn" disabled={creating}><Send size={17} />{creating ? 'Publishing…' : 'Publish Celebration'}</button></div>
+            <div className="celebration-form-actions full-span">
+              <label className="celebration-file"><ImagePlus size={17} /> Add Photos<input type="file" accept="image/*" multiple hidden onChange={(e) => setCelebrationFiles(Array.from(e.target.files || []))} /></label>
+              {celebrationFiles.length > 0 && <span>{celebrationFiles.length} photo{celebrationFiles.length > 1 ? 's' : ''} selected</span>}
+              <div className="celebration-form-buttons">
+                <button type="button" className="btn btn-soft" onClick={() => setComposerOpen(false)}>Cancel</button>
+                <button className="btn celebration-publish-btn" disabled={creating}><Send size={17} />{creating ? 'Publishing…' : 'Publish Celebration'}</button>
+              </div>
+            </div>
           </form>
         </section>
       )}
@@ -516,7 +523,7 @@ export default function CelebrationWall() {
                       {((canEditCelebration && post.announcementId) || canDeletePost(post)) && (
                         <div className="celebration-card-admin">
                           {canEditCelebration && post.announcementId && <button type="button" onClick={() => editWallPost(post)}><Pencil size={15} /> Edit</button>}
-                          {canDeletePost(post) && <button type="button" className="danger" onClick={() => deleteWallPost(post)}><Trash2 size={15} /> Delete</button>}
+                          {canDeletePost(post) && <button type="button" className="danger" onClick={() => deleteWallPost(post)}><Trash2 size={15} /> Remove</button>}
                         </div>
                       )}
                     </div>
@@ -651,10 +658,9 @@ export default function CelebrationWall() {
               <div className="side-content" key={item.id}>
                 <div className="side-content-title">
                   <strong>{item.title}</strong>
-                  {((canEditCelebration && item.announcementId) || canDeletePost(item)) && (
+                  {canEditCelebration && item.announcementId && (
                     <div className="side-post-actions">
-                      {canEditCelebration && item.announcementId && <button type="button" onClick={() => editWallPost(item)} title="Edit"><Pencil size={14} /></button>}
-                      {canDeletePost(item) && <button type="button" className="danger" onClick={() => deleteWallPost(item)} title="Delete"><Trash2 size={14} /></button>}
+                      <button type="button" onClick={() => editWallPost(item)} title="Edit"><Pencil size={14} /></button>
                     </div>
                   )}
                 </div>
@@ -682,13 +688,6 @@ export default function CelebrationWall() {
               <div className="side-content" key={item.id}>
                 <div className="side-content-title">
                   <strong>{item.title}</strong>
-                  {canDeletePost(item) && (
-                    <div className="side-post-actions">
-                      <button type="button" className="danger" onClick={() => deleteWallPost(item)} title="Delete">
-                        <Trash2 size={14} />
-                      </button>
-                    </div>
-                  )}
                 </div>
                 <span>{item.message || new Date(item.eventDate || item.createdAt).toLocaleDateString()}</span>
               </div>
