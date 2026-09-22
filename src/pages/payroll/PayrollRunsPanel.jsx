@@ -104,6 +104,7 @@ export default function PayrollRunsPanel() {
       }
     } catch (err) {
       setError(err.message || "Failed to load payroll records.");
+      showToast(err.message || "Failed to load payroll records.", "error");
     } finally {
       setLoading(false);
     }
@@ -206,14 +207,19 @@ export default function PayrollRunsPanel() {
         remarks: genRemarks || undefined,
         saveAsDraft: genSaveAsDraft,
       });
-      setGenSummary(result);
-      showToast(`Payroll generated: ${result.generated} created, ${result.failed} failed.`, "success");
+      if (result.generated > 0) {
+        showToast(`Payroll generated: ${result.generated} created.`, "success");
+      }
+      if (result.failed > 0) {
+        showToast(`Payroll generation failed for ${result.failed} employee(s).`, "error");
+      }
       setSelectedIds([]);
       setGenRemarks("");
       setMonth(genMonth);
       await refresh(genMonth);
     } catch (err) {
       setError(err.message || "Failed to generate payroll.");
+      showToast(err.message || "Failed to generate payroll.", "error");
     } finally {
       setGenerating(false);
     }
@@ -274,6 +280,7 @@ export default function PayrollRunsPanel() {
       await refresh();
     } catch (err) {
       setError(err.message || "Failed to update draft.");
+      showToast(err.message || "Failed to update draft.", "error");
     } finally {
       setSaving(false);
     }
@@ -310,6 +317,7 @@ export default function PayrollRunsPanel() {
       await refresh();
     } catch (err) {
       setError(err.message || `Failed to ${status.toLowerCase()} payroll.`);
+      showToast(err.message || `Failed to ${status.toLowerCase()} payroll.`, "error");
     }
   }
 
@@ -379,6 +387,7 @@ export default function PayrollRunsPanel() {
       await refresh();
     } catch (err) {
       setError(err.message || "Failed to regenerate payroll.");
+      showToast(err.message || "Failed to regenerate payroll.", "error");
     } finally {
       setRegenBusy(false);
     }
@@ -391,6 +400,7 @@ export default function PayrollRunsPanel() {
       triggerBlobDownload(blob, filename);
     } catch (err) {
       setError(err.message || "Failed to download payslip.");
+      showToast(err.message || "Failed to download payslip.", "error");
     }
   }
 
@@ -400,7 +410,6 @@ export default function PayrollRunsPanel() {
 
   return (
     <div className="payroll-stack">
-      {error && <div className="form-alert">{error}</div>}
 
       {/* Summary */}
       <div className="payroll-summary-grid">
@@ -511,7 +520,7 @@ export default function PayrollRunsPanel() {
           </form>
         )}
 
-        {genSummary && (
+        {false && genSummary && (
           <div className="full-span" style={{ marginTop: 14 }}>
             <div className="success-alert" style={{ marginBottom: 8 }}>
               <CheckCircle2 size={16} />

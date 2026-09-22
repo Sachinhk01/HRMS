@@ -10,6 +10,7 @@ import {
 } from "../../services/payrollService";
 import { EmptyState, LineItem } from "./payrollUi";
 import { useConfirm } from "../../context/ConfirmContext";
+import { useToast } from "../../context/ToastContext";
 
 const EMPTY_FORM = {
   employeeType: "FULL_TIME",
@@ -45,6 +46,7 @@ function calculateGross(template) {
 
 export default function SalaryTemplatesPanel() {
   const { confirm } = useConfirm();
+  const { showToast } = useToast();
   const [templates, setTemplates] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -62,6 +64,7 @@ export default function SalaryTemplatesPanel() {
       setTemplates(await getSalaryTemplates({ activeOnly: false }));
     } catch (err) {
       setError(err.message || "Failed to load salary templates.");
+      showToast(err.message || "Failed to load salary templates.", "error");
     } finally {
       setLoading(false);
     }
@@ -128,14 +131,17 @@ export default function SalaryTemplatesPanel() {
       if (editing) {
         await updateSalaryTemplate(editing.id, buildPayload());
         setMessage("Salary template updated successfully.");
+        showToast("Salary template updated successfully.", "success");
       } else {
         await createSalaryTemplate({ employeeType: form.employeeType, ...buildPayload() });
         setMessage("Salary template created successfully.");
+        showToast("Salary template created successfully.", "success");
       }
       resetForm();
       await refresh();
     } catch (err) {
       setError(err.message || "Failed to save salary template.");
+      showToast(err.message || "Failed to save salary template.", "error");
     } finally {
       setSaving(false);
     }
@@ -155,17 +161,16 @@ export default function SalaryTemplatesPanel() {
     try {
       await updateSalaryTemplateStatus(item.id, !item.active);
       setMessage(`${item.employeeType} template ${item.active ? "deactivated" : "activated"}.`);
+      showToast(`${item.employeeType} template ${item.active ? "deactivated" : "activated"}.`, "success");
       await refresh();
     } catch (err) {
       setError(err.message || "Failed to update template status.");
+      showToast(err.message || "Failed to update template status.", "error");
     }
   }
 
   return (
     <div className="payroll-stack">
-      {error && <div className="form-alert">{error}</div>}
-      {message && <div className="success-alert">{message}</div>}
-
       <section className="panel">
         <div className="payroll-toolbar" style={{ marginBottom: 0 }}>
           <div className="payroll-search">
