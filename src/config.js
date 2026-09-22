@@ -141,6 +141,9 @@ export const ROUTE_ROLES = {
   ],
   '/payroll': ['EMPLOYEE', 'HR_ADMIN'],
   '/form16': ['EMPLOYEE', 'HR_ADMIN', 'MANAGER'],
+  // Settings is opened from the gear in the top bar for these roles.
+  // Keep this route in sync with the visibility rule in TopBar.jsx.
+  '/settings': ['HR_ADMIN', 'MANAGER', 'SUPER_ADMIN'],
 
   '/notifications': [
   'EMPLOYEE',
