@@ -190,12 +190,16 @@ export default function EmployeeAttendancePanel({ employeeId, employeeName }) {
 
   function handleExportPdf() {
     const doc = new jsPDF();
+    doc.setFontSize(11);
+    doc.setTextColor(90, 98, 117);
+    doc.text(employeeName || String(employeeId), 14, 14);
+    doc.setTextColor(0, 0, 0);
     doc.setFontSize(14);
-    doc.text(`Attendance - ${employeeName || employeeId}`, 14, 16);
+    doc.text('Attendance Report', 14, 22);
     doc.setFontSize(10);
-    doc.text(`Month: ${monthValue}`, 14, 22);
+    doc.text(`Month: ${monthValue}`, 14, 28);
     autoTable(doc, {
-      startY: 28,
+      startY: 34,
       head: [['Date', 'Check In', 'Check Out', 'Worked', 'Break', 'Status']],
       body: buildExportRows().map((row) => [row.Date, row['Check In'], row['Check Out'], row.Worked, row.Break, row.Status]),
       styles: { fontSize: 9 },

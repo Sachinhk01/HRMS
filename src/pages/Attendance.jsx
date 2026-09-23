@@ -126,14 +126,22 @@ function downloadAttendanceExcel(rows, fileLabel) {
   XLSX.writeFile(workbook, `attendance-${fileLabel}.xlsx`);
 }
 
-function downloadAttendancePdf(rows, fileLabel, title) {
+function downloadAttendancePdf(rows, fileLabel, title, employeeName) {
   const doc = new jsPDF({ orientation: 'landscape' });
+  let y = 14;
+  if (employeeName) {
+    doc.setFontSize(11);
+    doc.setTextColor(90, 98, 117);
+    doc.text(employeeName, 14, y);
+    doc.setTextColor(0, 0, 0);
+    y += 8;
+  }
   doc.setFontSize(14);
-  doc.text(title, 14, 16);
+  doc.text(title, 14, y);
   autoTable(doc, {
     head: [EXPORT_HEADER],
     body: attendanceRowsToAoA(rows),
-    startY: 22,
+    startY: y + 6,
     styles: { fontSize: 9 },
     headStyles: { fillColor: [37, 99, 235] },
   });
@@ -186,6 +194,33 @@ const LEGEND = [
   { code: 'W', label: 'Weekend', cls: 'weekend', icon: CalendarCheck },
 ];
 
+// A "search by date" box only makes sense against the exact ISO date
+// string the table renders (YYYY-MM-DD) — matching it as a text substring
+// only works within whatever page happens to be loaded. Instead, turn what
+// was typed into a fromDate/toDate range so the backend does the actual
+// filtering across the WHOLE history, not just the current page:
+//   "2026"        -> the whole year
+//   "2026-09"     -> the whole month
+//   "2026-09-18"  -> that exact day
+// Anything else (still being typed, or not date-shaped) returns null and no
+// date filter is sent.
+function parseSearchDateRange(query) {
+  const q = (query || '').trim();
+  if (!q) return null;
+  if (/^\d{4}$/.test(q)) {
+    return { fromDate: `${q}-01-01`, toDate: `${q}-12-31` };
+  }
+  if (/^\d{4}-\d{2}$/.test(q)) {
+    const [y, m] = q.split('-').map(Number);
+    const lastDay = new Date(y, m, 0).getDate();
+    return { fromDate: `${q}-01`, toDate: `${q}-${String(lastDay).padStart(2, '0')}` };
+  }
+  if (/^\d{4}-\d{2}-\d{2}$/.test(q)) {
+    return { fromDate: q, toDate: q };
+  }
+  return null;
+}
+
 const easeOut = [0.16, 1, 0.3, 1];
 
 const fadeUp = {
@@ -224,8 +259,23 @@ export default function Attendance() {
 
   // ---- UI-only state (no logic impact) ----
   const [searchQuery, setSearchQuery] = useState('');
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [activeLegend, setActiveLegend] = useState(null);
+
+  // Debounce the search box so we're not re-querying the backend on every
+  // keystroke — waits for a short pause in typing before applying it.
+  useEffect(() => {
+    const timer = window.setTimeout(() => setDebouncedSearchQuery(searchQuery), 400);
+    return () => window.clearTimeout(timer);
+  }, [searchQuery]);
+
+  // Whenever the search text or status filter actually changes, jump back
+  // to page 1 — staying on e.g. page 2 of an unfiltered list would otherwise
+  // silently show "no results" for a filter that only has 1 page of matches.
+  useEffect(() => {
+    setHistoryPage(1);
+  }, [debouncedSearchQuery, statusFilter]);
 
   // ---- Export filters (HR/Manager only — matches backend /reports/attendance) ----
   // 'month' sends year+month, 'range' sends startDate+endDate. Employees never
@@ -283,6 +333,8 @@ export default function Attendance() {
       size: PAGE_SIZE,
       sortBy: "attendanceDate",
       sortDirection: "desc",
+      ...(statusFilter !== 'ALL' ? { status: statusFilter } : {}),
+      ...(parseSearchDateRange(debouncedSearchQuery) || {}),
     }),
     getAttendanceCalendar(
       visibleMonth.getMonth() + 1,
@@ -368,7 +420,7 @@ if (failures.length) {
   useEffect(() => {
     void loadAttendanceData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [historyPage, visibleMonth]);
+  }, [historyPage, visibleMonth, statusFilter, debouncedSearchQuery]);
 
   const recordsByDate = useMemo(() => new Map(calendarEntries.map((entry) => [entry.date, entry])), [calendarEntries]);
 
@@ -395,18 +447,10 @@ if (failures.length) {
     && (state === ATTENDANCE_STATE.WORKING || state === ATTENDANCE_STATE.ON_BREAK || hasCheckedOut);
   const totalElapsedLabel = formatMinutesLabel((dashboard?.workingMinutes || 0) + (dashboard?.breakMinutes || 0));
 
-  // ---- UI-only derived views (do not touch data flow) ----
-  const filteredHistory = useMemo(() => {
-    let rows = historyItems;
-    if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase();
-      rows = rows.filter((r) => String(r.attendanceDate || '').toLowerCase().includes(q));
-    }
-    if (statusFilter !== 'ALL') {
-      rows = rows.filter((r) => normalizeAttendanceStatus(r.attendanceStatus) === statusFilter);
-    }
-    return rows;
-  }, [historyItems, searchQuery, statusFilter]);
+  // Filtering now happens server-side (status + search-derived date range are
+  // sent as query params in loadAttendanceData), so historyItems already IS
+  // the correctly filtered page — no further client-side filtering needed.
+  const filteredHistory = historyItems;
 
   const progressPercent = useMemo(() => {
     const mins = Number(dashboard?.workingMinutes || 0);
@@ -530,7 +574,7 @@ if (failures.length) {
       if (format === 'excel') {
         downloadAttendanceExcel(rows, fileLabel);
       } else {
-        downloadAttendancePdf(rows, fileLabel, title);
+        downloadAttendancePdf(rows, fileLabel, title, user.name);
       }
       showToast(`Attendance report downloaded as ${format === 'excel' ? 'Excel' : 'PDF'}.`, 'success');
     } catch (exportError) {

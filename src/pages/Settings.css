@@ -376,6 +376,31 @@
 }
 .settings-state svg { flex-shrink: 0; color: #94a3b8; }
 
+/* ---------- Empty state: no group selected yet ---------- */
+.settings-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 10px;
+  padding: 64px 32px;
+  min-height: 320px;
+}
+.settings-empty-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f1f5f9;
+  color: #94a3b8;
+  margin-bottom: 4px;
+}
+.settings-empty-state h2 { margin: 0; font-size: 17px; font-weight: 800; color: #0f172a; }
+.settings-empty-state p { margin: 0; max-width: 320px; font-size: 13px; color: #68738c; line-height: 1.5; }
+
 /* ---------- Loading skeleton ---------- */
 .settings-skeleton { display: flex; flex-direction: column; gap: 14px; }
 .skel-line {

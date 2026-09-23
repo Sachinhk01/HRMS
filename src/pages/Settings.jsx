@@ -179,20 +179,29 @@ function InputField({ field, value, disabled, onChange }) {
 }
 
 export default function Settings() {
-  const [activeKey, setActiveKey] = useState(GROUPS[0].key);
+  const [activeKey, setActiveKey] = useState(null);
   const [data, setData] = useState(null);
   const [originalData, setOriginalData] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [editMode, setEditMode] = useState(false);
   const [notFound, setNotFound] = useState(false);
   const [forbidden, setForbidden] = useState(false);
   const { showToast } = useToast();
 
-  const group = GROUPS.find((g) => g.key === activeKey);
-  const Icon = group.icon;
+  const group = GROUPS.find((g) => g.key === activeKey) || null;
+  const Icon = group?.icon;
 
   useEffect(() => {
+    if (!group) {
+      setData(null);
+      setOriginalData(null);
+      setLoading(false);
+      setNotFound(false);
+      setForbidden(false);
+      setEditMode(false);
+      return;
+    }
     setLoading(true);
     setNotFound(false);
     setForbidden(false);
@@ -245,7 +254,7 @@ export default function Settings() {
     }
   };
 
-  const fieldByName = (name) => group.fields.find((f) => f.name === name);
+  const fieldByName = (name) => group?.fields.find((f) => f.name === name);
 
   return (
     <div className="page-stack">
@@ -283,130 +292,142 @@ export default function Settings() {
           })}
         </nav>
 
-        <section className={`settings-detail panel accent-${group.accent}`}>
-          <div className="settings-detail-banner" aria-hidden="true" />
-          <header className="settings-detail-header">
-            <div className="settings-detail-heading">
-              <span className="settings-detail-icon">
-                <Icon size={20} />
+        <section className={`settings-detail panel${group ? ` accent-${group.accent}` : ''}`}>
+          {!group ? (
+            <div className="settings-empty-state">
+              <span className="settings-empty-icon">
+                <ListChecks size={22} />
               </span>
-              <div>
-                <h2>{group.label}</h2>
-                <p>{group.description}</p>
-              </div>
+              <h2>Select a configuration section</h2>
+              <p>Choose Attendance, Leave or Company from the left to view and edit its settings.</p>
             </div>
+          ) : (
+            <>
+              <div className="settings-detail-banner" aria-hidden="true" />
+              <header className="settings-detail-header">
+                <div className="settings-detail-heading">
+                  <span className="settings-detail-icon">
+                    <Icon size={20} />
+                  </span>
+                  <div>
+                    <h2>{group.label}</h2>
+                    <p>{group.description}</p>
+                  </div>
+                </div>
 
-            {!loading && !forbidden && !notFound && data && (
-              <div className="settings-detail-actions">
-                {!editMode ? (
-                  <button type="button" className="btn btn-primary" onClick={startEdit}>
-                    <Pencil size={16} />
-                    Edit
-                  </button>
-                ) : (
-                  <>
-                    <button type="button" className="btn btn-secondary" onClick={cancelEdit} disabled={saving}>
-                      <X size={16} />
-                      Cancel
-                    </button>
-                    <button type="submit" form="settings-form" className="btn btn-primary" disabled={saving}>
-                      {saving ? <Loader2 size={16} className="spin" /> : <Save size={16} />}
-                      {saving ? 'Saving…' : 'Save changes'}
-                    </button>
-                  </>
+                {!loading && !forbidden && !notFound && data && (
+                  <div className="settings-detail-actions">
+                    {!editMode ? (
+                      <button type="button" className="btn btn-primary" onClick={startEdit}>
+                        <Pencil size={16} />
+                        Edit
+                      </button>
+                    ) : (
+                      <>
+                        <button type="button" className="btn btn-secondary" onClick={cancelEdit} disabled={saving}>
+                          <X size={16} />
+                          Cancel
+                        </button>
+                        <button type="submit" form="settings-form" className="btn btn-primary" disabled={saving}>
+                          {saving ? <Loader2 size={16} className="spin" /> : <Save size={16} />}
+                          {saving ? 'Saving…' : 'Save changes'}
+                        </button>
+                      </>
+                    )}
+                  </div>
+                )}
+              </header>
+
+              <div className="settings-detail-body">
+                {loading && (
+                  <div className="settings-skeleton" aria-live="polite" aria-label={`Loading ${group.label.toLowerCase()} settings`}>
+                    <div className="skel-line skel-title" />
+                    <div className="skel-grid">
+                      <div className="skel-line" />
+                      <div className="skel-line" />
+                      <div className="skel-line" />
+                      <div className="skel-line" />
+                    </div>
+                    <div className="skel-line skel-title" />
+                    <div className="skel-row" />
+                    <div className="skel-row" />
+                  </div>
+                )}
+
+                {!loading && forbidden && (
+                  <div className="settings-state">
+                    <ShieldOff size={20} />
+                    <p>You don't have access to {group.label.toLowerCase()} settings.</p>
+                  </div>
+                )}
+
+                {!loading && notFound && (
+                  <div className="settings-state">
+                    <Inbox size={20} />
+                    <p>{group.label} settings haven't been initialized yet for this company.</p>
+                  </div>
+                )}
+
+                {!loading && !forbidden && !notFound && data && (
+                  <form id="settings-form" onSubmit={save}>
+                    {group.sections.map((section, sIdx) => {
+                      const SectionIcon = section.icon;
+                      const toggleFields = section.fields.map(fieldByName).filter((f) => f.type === 'boolean');
+                      const inputFields = section.fields.map(fieldByName).filter((f) => f.type !== 'boolean');
+
+                      return (
+                        <div
+                          className="settings-section"
+                          key={section.title}
+                          style={{ animationDelay: `${sIdx * 0.06}s` }}
+                        >
+                          <div className="settings-section-title">
+                            <SectionIcon size={15} />
+                            <span>{section.title}</span>
+                          </div>
+
+                          {inputFields.length > 0 && (
+                            <div className="settings-field-grid">
+                              {inputFields.map((field) => (
+                                <InputField
+                                  key={field.name}
+                                  field={field}
+                                  value={data[field.name]}
+                                  disabled={!editMode}
+                                  onChange={(val) => updateField(field.name, val)}
+                                />
+                              ))}
+                            </div>
+                          )}
+
+                          {toggleFields.length > 0 && (
+                            <div className="toggle-list">
+                              {toggleFields.map((field) => (
+                                <ToggleField
+                                  key={field.name}
+                                  field={field}
+                                  checked={!!data[field.name]}
+                                  disabled={!editMode}
+                                  onChange={(val) => updateField(field.name, val)}
+                                />
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </form>
+                )}
+
+                {!loading && !forbidden && !notFound && !data && (
+                  <div className="settings-state">
+                    <Inbox size={20} />
+                    <p>No settings found.</p>
+                  </div>
                 )}
               </div>
-            )}
-          </header>
-
-          <div className="settings-detail-body">
-            {loading && (
-              <div className="settings-skeleton" aria-live="polite" aria-label={`Loading ${group.label.toLowerCase()} settings`}>
-                <div className="skel-line skel-title" />
-                <div className="skel-grid">
-                  <div className="skel-line" />
-                  <div className="skel-line" />
-                  <div className="skel-line" />
-                  <div className="skel-line" />
-                </div>
-                <div className="skel-line skel-title" />
-                <div className="skel-row" />
-                <div className="skel-row" />
-              </div>
-            )}
-
-            {!loading && forbidden && (
-              <div className="settings-state">
-                <ShieldOff size={20} />
-                <p>You don't have access to {group.label.toLowerCase()} settings.</p>
-              </div>
-            )}
-
-            {!loading && notFound && (
-              <div className="settings-state">
-                <Inbox size={20} />
-                <p>{group.label} settings haven't been initialized yet for this company.</p>
-              </div>
-            )}
-
-            {!loading && !forbidden && !notFound && data && (
-              <form id="settings-form" onSubmit={save}>
-                {group.sections.map((section, sIdx) => {
-                  const SectionIcon = section.icon;
-                  const toggleFields = section.fields.map(fieldByName).filter((f) => f.type === 'boolean');
-                  const inputFields = section.fields.map(fieldByName).filter((f) => f.type !== 'boolean');
-
-                  return (
-                    <div
-                      className="settings-section"
-                      key={section.title}
-                      style={{ animationDelay: `${sIdx * 0.06}s` }}
-                    >
-                      <div className="settings-section-title">
-                        <SectionIcon size={15} />
-                        <span>{section.title}</span>
-                      </div>
-
-                      {inputFields.length > 0 && (
-                        <div className="settings-field-grid">
-                          {inputFields.map((field) => (
-                            <InputField
-                              key={field.name}
-                              field={field}
-                              value={data[field.name]}
-                              disabled={!editMode}
-                              onChange={(val) => updateField(field.name, val)}
-                            />
-                          ))}
-                        </div>
-                      )}
-
-                      {toggleFields.length > 0 && (
-                        <div className="toggle-list">
-                          {toggleFields.map((field) => (
-                            <ToggleField
-                              key={field.name}
-                              field={field}
-                              checked={!!data[field.name]}
-                              disabled={!editMode}
-                              onChange={(val) => updateField(field.name, val)}
-                            />
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </form>
-            )}
-
-            {!loading && !forbidden && !notFound && !data && (
-              <div className="settings-state">
-                <Inbox size={20} />
-                <p>No settings found.</p>
-              </div>
-            )}
-          </div>
+            </>
+          )}
         </section>
       </div>
     </div>

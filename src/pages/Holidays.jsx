@@ -35,7 +35,7 @@ function HolidayTypeBadge({ type }) {
 }
 
 const PAGE_SIZE = 8;
-const EMPTY_FORM = { holidayName: '', holidayDate: '', holidayType: 'HOLIDAY', description: '' };
+const EMPTY_FORM = { holidayName: '', holidayDate: '', holidayType: '', description: '' };
 
 function formatDate(value, options = {}) {
   if (!value) return '—';
@@ -53,6 +53,7 @@ export default function Holidays() {
   const [year, setYear] = useState(String(new Date().getFullYear()));
   const [form, setForm] = useState(EMPTY_FORM);
   const [editingId, setEditingId] = useState(null);
+  const [formErrors, setFormErrors] = useState({});
   const { showToast } = useToast();
   const { confirm } = useConfirm();
 
@@ -91,10 +92,21 @@ export default function Holidays() {
   function resetForm() {
     setForm(EMPTY_FORM);
     setEditingId(null);
+    setFormErrors({});
+  }
+
+  function validateForm() {
+    const errors = {};
+    if (!form.holidayName.trim()) errors.holidayName = 'Holiday Name is required';
+    if (!form.holidayDate) errors.holidayDate = 'Holiday Date is required';
+    if (!form.holidayType) errors.holidayType = 'Holiday Type is required';
+    setFormErrors(errors);
+    return Object.keys(errors).length === 0;
   }
 
   async function submit(event) {
     event.preventDefault();
+    if (!validateForm()) return;
     try {
       if (editingId) {
         await updateHoliday(editingId, { ...form, attendanceAllowed: false, recurring: false, active: true });
@@ -118,6 +130,7 @@ export default function Holidays() {
       holidayType: item.holidayType,
       description: item.description || '',
     });
+    setFormErrors({});
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
@@ -164,18 +177,52 @@ export default function Holidays() {
               <button className="btn btn-primary" type="submit" form="holiday-form"><Plus size={18} /> {editingId ? 'Save Changes' : 'Add Holiday'}</button>
             </div>
           </div>
-          <form id="holiday-form" className="form-grid" onSubmit={submit}>
-            <label>Holiday Name<input value={form.holidayName} onChange={(event) => setForm({ ...form, holidayName: event.target.value })} placeholder="e.g. Republic Day" required /></label>
-            <label>Date<input type="date" value={form.holidayDate} onChange={(event) => setForm({ ...form, holidayDate: event.target.value })} required /></label>
-            <label>Type
-              <select value={form.holidayType} onChange={(event) => setForm({ ...form, holidayType: event.target.value })}>
+          <form id="holiday-form" className="form-grid" onSubmit={submit} noValidate>
+            <label>
+              Holiday Name
+              <input
+                value={form.holidayName}
+                onChange={(event) => {
+                  setForm({ ...form, holidayName: event.target.value });
+                  if (formErrors.holidayName) setFormErrors({ ...formErrors, holidayName: undefined });
+                }}
+                placeholder="e.g. Republic Day"
+              />
+              {formErrors.holidayName && <p className="field-error">{formErrors.holidayName}</p>}
+            </label>
+            <label>
+              Date
+              <input
+                type="date"
+                value={form.holidayDate}
+                onChange={(event) => {
+                  setForm({ ...form, holidayDate: event.target.value });
+                  if (formErrors.holidayDate) setFormErrors({ ...formErrors, holidayDate: undefined });
+                }}
+              />
+              {formErrors.holidayDate && <p className="field-error">{formErrors.holidayDate}</p>}
+            </label>
+            <label>
+              Type
+              <select
+                value={form.holidayType}
+                onChange={(event) => {
+                  setForm({ ...form, holidayType: event.target.value });
+                  if (formErrors.holidayType) setFormErrors({ ...formErrors, holidayType: undefined });
+                }}
+              >
+                <option value="" disabled hidden>Select Holiday Type</option>
                 <option value="HOLIDAY">Company Holiday</option>
                 <option value="PUBLIC_HOLIDAY">National Holiday</option>
                 <option value="OPTIONAL_HOLIDAY">Optional Holiday</option>
                 <option value="WEEKEND">Weekend</option>
               </select>
+              {formErrors.holidayType && <p className="field-error">{formErrors.holidayType}</p>}
             </label>
-            <label>Description<input value={form.description} onChange={(event) => setForm({ ...form, description: event.target.value })} placeholder="Optional Note" /></label>
+            <label>
+              Description
+              <input value={form.description} onChange={(event) => setForm({ ...form, description: event.target.value })} placeholder="Optional Note" />
+            </label>
           </form>
         </section>
       )}

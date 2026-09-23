@@ -93,10 +93,30 @@ export function ForgotPassword() {
             )}
 
             {sent && (
-              <div className="fp-success">
-                <ShieldCheck size={18} />
-                <span>Didn't Get It? Check Spam, or Try Again in a Few Minutes.</span>
-              </div>
+              <>
+                <div className="fp-success">
+                  <ShieldCheck size={18} />
+                  <span>
+                    Didn't get it? Check spam, or{' '}
+                    <button
+                      type="button"
+                      className="fp-resend-link"
+                      onClick={handleSubmit}
+                      disabled={isSubmitting}
+                    >
+                      {isSubmitting ? 'sending...' : 'try again'}
+                    </button>
+                    .
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  className="hrms-btn hrms-btn--primary hrms-btn--block fp-link-btn"
+                  onClick={() => setSent(false)}
+                >
+                  Use a Different Email
+                </button>
+              </>
             )}
           </motion.div>
         </motion.div>

@@ -117,6 +117,8 @@ a { text-decoration: none; color: inherit; }
 .btn-secondary { background: #f2f5fa; color: #3f4c66; }
 .btn-light { background: #fff; color: var(--blue); }
 .btn-danger-soft { background: #ffecef; color: #c63f57; }
+.btn-revert { background: #fff7ed; color: #c2410c; border: 1px solid #fed7aa; }
+.btn-revert:hover { background: #ffedd5; }
 .btn-danger { background: #dc2626; color: #fff; box-shadow: 0 8px 18px rgba(220, 38, 38, .22); }
 .btn-danger:hover { background: #b91c1c; }
 .btn-success { background: var(--green); color: #fff; box-shadow: 0 8px 18px rgba(17, 163, 106, .22); }

@@ -89,6 +89,7 @@ export default function RegularizationApprovals() {
   const [tab, setTab] = useState('pending'); // 'pending' | 'all'
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [allRows, setAllRows] = useState([]);
 
   const [search, setSearch] = useState('');
   const [employeeFilter, setEmployeeFilter] = useState('ALL');
@@ -115,12 +116,29 @@ export default function RegularizationApprovals() {
     }
   };
 
+  // Summary cards always reflect every team request (approved, partial,
+  // pending) regardless of which tab is active — the "pending" tab's table
+  // only shows unresolved rows, so counting off `rows` there made Approved/
+  // Partially Approved permanently show 0. Load the full set separately.
+  const loadSummary = async () => {
+    try {
+      const data = await getAllRegularizations();
+      setAllRows(Array.isArray(data) ? data : []);
+    } catch {
+      /* summary cards just keep showing the last known counts */
+    }
+  };
+
   useEffect(() => {
     load(tab);
     setEmployeeFilter('ALL');
     setStatusFilter('ALL');
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tab]);
+
+  useEffect(() => {
+    loadSummary();
+  }, []);
 
   const employees = useMemo(
     () => Array.from(new Set(rows.map((r) => r.employeeName).filter(Boolean))),
@@ -143,17 +161,17 @@ export default function RegularizationApprovals() {
   const { page, setPage, pageItems } = usePagination(filtered, 6);
 
   const summary = useMemo(() => {
-    const acc = { total: rows.length, pending: 0, partial: 0, approved: 0 };
-    rows.forEach((r) => {
+    const acc = { total: allRows.length, pending: 0, partial: 0, approved: 0 };
+    allRows.forEach((r) => {
       if (r.status === 'PENDING') acc.pending += 1;
       else if (r.status === 'PARTIALLY_APPROVED') acc.partial += 1;
       else if (r.status === 'APPROVED') acc.approved += 1;
     });
     return acc;
-  }, [rows]);
+  }, [allRows]);
 
   const SUMMARY_CARDS = [
-    { icon: ClipboardList, label: tab === 'pending' ? 'Pending Requests' : 'Total Requests', value: tab === 'pending' ? summary.pending || summary.total : summary.total, tone: 'blue', desc: 'Direct Reports' },
+    { icon: ClipboardList, label: tab === 'pending' ? 'Pending Requests' : 'Total Requests', value: tab === 'pending' ? summary.pending : summary.total, tone: 'blue', desc: 'Direct Reports' },
     { icon: Clock3, label: 'Awaiting Decision', value: summary.pending, tone: 'amber', desc: 'Fully Pending' },
     { icon: RefreshCw, label: 'Partially Approved', value: summary.partial, tone: 'blue', desc: 'Some Lines Done' },
     { icon: CheckCircle2, label: 'Approved', value: summary.approved, tone: 'green', desc: 'Fully Approved' },
@@ -199,6 +217,10 @@ export default function RegularizationApprovals() {
       showToast('Please add a reason for rejection.', 'error');
       return;
     }
+    if (remarks.length > 500) {
+      showToast('Reason must be 500 characters or fewer.', 'error');
+      return;
+    }
     setActing(true);
     try {
       if (actionTarget.type === 'approve') {
@@ -219,6 +241,7 @@ export default function RegularizationApprovals() {
       cancelAction();
       await refreshOpenRequest();
       await load(tab);
+      await loadSummary();
     } catch (error) {
       showToast(error.message || 'Failed to record decision.', 'error');
     } finally {
@@ -357,27 +380,29 @@ export default function RegularizationApprovals() {
                 <p className="reg-detail-sub">
                   {fmtDate(selected.fromDate)} – {fmtDate(selected.toDate)} · <StatusBadge tone={(STATUS_META[selected.status] || {}).tone}>{(STATUS_META[selected.status] || {}).label || selected.status}</StatusBadge>
                 </p>
-                <p className="reg-detail-reason"><strong>Reason:</strong> {selected.reason}</p>
+                <p className="reg-detail-reason"><strong>Reason</strong>{selected.reason}</p>
 
                 <div className="reg-detail-list">
                   {(selected.details || []).map((d) => (
                     <div className="reg-detail-line" key={d.id}>
                       <div className="reg-detail-line-info">
-                        <span className="reg-detail-date">{fmtDate(d.attendanceDate)}</span>
                         <span className="reg-detail-transition">
-                          <span className="reg-original">{d.originalStatus}</span>
-                          <span aria-hidden="true">→</span>
-                          <span className="reg-requested">{d.requestedStatus}</span>
+                          <span className="reg-status-chip reg-original">{d.originalStatus}</span>
+                          <span className="reg-transition-arrow" aria-hidden="true">→</span>
+                          <span className="reg-status-chip reg-requested">{d.requestedStatus}</span>
                         </span>
                         {(d.originalCheckIn || d.requestedCheckIn) && (
-                          <span className="reg-detail-times">In: {fmtTimeChange(d.originalCheckIn, d.requestedCheckIn)} · Out: {fmtTimeChange(d.originalCheckOut, d.requestedCheckOut)}</span>
+                          <span className="reg-detail-times">
+                            <Clock3 size={12} />
+                            <span><b>In</b> {fmtTimeChange(d.originalCheckIn, d.requestedCheckIn)}</span>
+                            <span className="reg-times-divider" />
+                            <span><b>Out</b> {fmtTimeChange(d.originalCheckOut, d.requestedCheckOut)}</span>
+                          </span>
                         )}
-                        {d.remarks && <span className="reg-detail-remarks">"{d.remarks}"</span>}
+                        {d.remarks && <span className="reg-detail-remarks">“{d.remarks}”</span>}
                       </div>
 
                       <div className="reg-detail-line-action">
-                        <StatusBadge tone={(d.status || '').toLowerCase()}>{d.status}</StatusBadge>
-
                         {d.status === 'PENDING' && actionTarget?.detailId !== d.id && (
                           <div className="reg-line-buttons">
                             <button type="button" className="btn btn-small btn-success" onClick={() => startAction(d, 'approve')}>
@@ -391,10 +416,14 @@ export default function RegularizationApprovals() {
 
                         {d.status === 'APPROVED' && canRevert && actionTarget?.detailId !== d.id && (
                           <div className="reg-line-buttons">
-                            <button type="button" className="btn btn-small btn-secondary" onClick={() => startAction(d, 'revert')}>
+                            <button type="button" className="btn btn-small btn-revert" onClick={() => startAction(d, 'revert')}>
                               <Undo2 size={14} /> Revert
                             </button>
                           </div>
+                        )}
+
+                        {((d.status === 'APPROVED' && !canRevert) || d.status === 'REJECTED' || d.status === 'REVERTED') && actionTarget?.detailId !== d.id && (
+                          <span className="reg-detail-line-status">{d.status === 'APPROVED' ? 'Approved' : d.status === 'REJECTED' ? 'Rejected' : 'Reverted'}</span>
                         )}
                       </div>
 
@@ -404,10 +433,12 @@ export default function RegularizationApprovals() {
                             <>
                               <textarea
                                 rows={2}
+                                maxLength={500}
                                 placeholder={actionTarget.type === 'approve' ? 'Remarks (optional)' : 'Reason for rejection (required)'}
                                 value={remarks}
-                                onChange={(e) => setRemarks(e.target.value)}
+                                onChange={(e) => setRemarks(e.target.value.slice(0, 500))}
                               />
+                              <span className="reg-remarks-count">{remarks.length}/500</span>
                               <div className="reg-inline-action-buttons">
                                 <button type="button" className="btn btn-small btn-secondary" onClick={cancelAction} disabled={acting}>Cancel</button>
                                 <button

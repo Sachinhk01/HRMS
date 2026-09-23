@@ -7,6 +7,7 @@ import EmployeeLogin from './pages/EmployeeLogin';
 import ManagerLogin from './pages/ManagerLogin';
 import HRLogin from './pages/HRLogin';
 import ForgotPassword from './pages/ForgotPassword';
+import ResetPassword from './pages/ResetPassword';
 import Dashboard from './pages/Dashboard';
 import Attendance from './pages/Attendance';
 import Leave from './pages/Leave';
@@ -66,6 +67,10 @@ export default function App() {
       <Route
         path="/forgot-password"
         element={user ? <Navigate to="/dashboard" replace /> : <ForgotPassword />}
+      />
+      <Route
+        path="/reset-password"
+        element={user ? <Navigate to="/dashboard" replace /> : <ResetPassword />}
       />
 
       <Route element={<ProtectedRoute />}>

@@ -303,7 +303,7 @@ export default function Regularization() {
             <label htmlFor="reg-to">To Date</label>
             <input id="reg-to" type="date" value={rangeTo} onChange={(e) => setRangeTo(e.target.value)} />
           </div>
-          <button type="button" className="btn btn-secondary" onClick={loadAttendance} disabled={loadingAttendance}>
+          <button type="button" className="btn btn-primary" onClick={loadAttendance} disabled={loadingAttendance}>
             <CalendarRange size={16} />
             {loadingAttendance ? 'Loading…' : 'Load Attendance'}
           </button>

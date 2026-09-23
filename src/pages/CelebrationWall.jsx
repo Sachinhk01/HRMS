@@ -124,7 +124,7 @@ function normalizeNotificationToPost(item) {
 // title as a second line of defence — title text the backend uses for
 // these operational alerts, regardless of what notificationType (or lack
 // thereof) came with them.
-const OPERATIONAL_TITLE_RE = /^(late check-?in|missed check-?out|absent|leave (applied|update|approved|rejected|cancelled))$/i;
+const OPERATIONAL_TITLE_RE = /^(late check-?in|missed check-?out|checkout reminder|absent|leave (applied|update|approved|rejected|cancelled))$/i;
 
 const easeOut = [0.16, 1, 0.3, 1];
 const fadeUp = {
@@ -225,6 +225,7 @@ export default function CelebrationWall() {
       const blockedTypes = [
         'LATE_CHECK_IN',
         'MISSED_CHECKOUT',
+        'CHECKOUT_REMINDER',
         'ABSENT',
         'LEAVE_APPLIED',
         'LEAVE_REJECTED',
