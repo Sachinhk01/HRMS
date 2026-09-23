@@ -33,9 +33,9 @@ export default function Payroll() {
   return (
     <div className="payroll-page">
       <PageHeader
-        eyebrow="Payroll"
-        title="Payroll Management"
-        description="Generate payroll runs, manage salary templates and structures, and handle payment details."
+        eyebrow="Salary"
+        title="Salary Management"
+        description="Generate salary runs, manage salary templates and structures, and handle payment details."
       />
 
       <div className="payroll-tabs">
