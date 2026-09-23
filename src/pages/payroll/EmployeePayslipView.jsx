@@ -122,7 +122,7 @@ export default function EmployeePayslipView() {
   if (!employeeId) {
     return (
       <div className="payroll-page">
-        <PageHeader title="Payroll" description="Your payslips and payment details." />
+        <PageHeader title="Salary" description="Your salary slips and payment details." />
         <EmptyState icon={FileText} title="Sign in to view your payslips" note="Your payslips appear here once you log in." />
       </div>
     );
@@ -131,8 +131,8 @@ export default function EmployeePayslipView() {
   return (
     <div className="payroll-page">
       <PageHeader
-        eyebrow="Payroll"
-        title="My Payslips"
+        eyebrow="Salary"
+        title="My Salary"
         description="Your salary slips, earnings breakdown and payment details."
       />
 
@@ -145,7 +145,7 @@ export default function EmployeePayslipView() {
           <EmptyState
             icon={FileText}
             title="No payslips yet"
-            note="Once payroll is processed, your payslips will appear here."
+            note="Once your salary is processed, your salary slips will appear here."
           />
         </div>
       ) : (

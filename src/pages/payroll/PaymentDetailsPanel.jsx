@@ -88,9 +88,6 @@ export default function PaymentDetailsPanel() {
       setDetails(await getPaymentDetails(employeeId));
     } catch (err) {
       setDetails(null);
-      if (err.status !== 404) {
-        showToast(err.message || "Failed to load payment details.", "error");
-      }
       showToast(
         err.status === 404
           ? "No payment details on file yet — create them below."
@@ -132,6 +129,11 @@ export default function PaymentDetailsPanel() {
     event.preventDefault();
     setError("");
     setMessage("");
+    const validationError = validatePaymentDetails(form);
+    if (validationError) {
+      setError(validationError);
+      return;
+    }
     setSaving(true);
     const payload = {
       panNumber: form.panNumber || undefined,

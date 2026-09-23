@@ -15,7 +15,7 @@ export const ROLE_MENUS = {
     ['/leave', 'Leave'],
     ['/regularization', 'Regularization'],
     ['/celebrations', 'Celebration Wall'],
-    ['/payroll', 'Payroll'],
+    ['/payroll', 'Salary'],
     ['/profile', 'Profile'],
   ],
 
@@ -27,7 +27,7 @@ export const ROLE_MENUS = {
     ['/celebrations', 'Celebration Wall'],
     ['/announcements', 'Announcements'],
     ['/events', 'Events'],
-    ['/payroll', 'Payroll'],
+    ['/payroll', 'Salary Management'],
     ['/form16', 'Form 16'],
     ['/reports', 'Reports'],
     ['/profile', 'Profile'],
@@ -43,6 +43,7 @@ export const ROLE_MENUS = {
     ['/celebrations', 'Celebration Wall'],
     ['/performance', 'Performance'],
     ['/employees', 'Employees'],
+    ['/payroll', 'My Salary'],
     ['/form16', 'Form 16'],
     ['/profile', 'Profile'],
   ],
@@ -153,7 +154,8 @@ export const ROUTE_ROLES = {
   '/regularization-approvals': [
     'MANAGER',
   ],
-  '/payroll': ['EMPLOYEE', 'HR_ADMIN'],
+  // Managers are employees too: this route renders their own read-only salary view.
+  '/payroll': ['EMPLOYEE', 'HR_ADMIN', 'MANAGER'],
   '/form16': ['HR_ADMIN', 'MANAGER', 'SUPER_ADMIN'],
   '/settings': [
     'HR_ADMIN',

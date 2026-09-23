@@ -316,9 +316,7 @@ export default function PayrollRunsPanel() {
   async function handleRegenerate(item) {
     const ok = await confirm({
       title: "Regenerate payroll",
-      message: Object.keys(payload).length
-        ? `Create a new version of ${item.payrollNumber} with ${Object.keys(payload).length} field(s) changed?`
-        : `Create a new version of ${item.payrollNumber} with no changes?`,
+      message: `Create a new version superseding ${item.payrollNumber}?`,
       confirmText: "Regenerate",
     });
     if (!ok) return;
@@ -328,7 +326,6 @@ export default function PayrollRunsPanel() {
       const updated = await regeneratePayroll(item.id);
       setMessage(`New version ${updated.payrollNumber} (v${updated.version}) created.`);
       setDetail(updated);
-      setRegenerating(null);
       await refresh();
     } catch (err) {
       setError(err.message || "Failed to regenerate payroll.");
@@ -462,7 +459,7 @@ export default function PayrollRunsPanel() {
           </form>
         )}
 
-        {false && genSummary && (
+        {genSummary && (
           <div className="full-span" style={{ marginTop: 14 }}>
             <div className="payroll-result-summary" style={{ marginBottom: 8 }}>
               <CheckCircle2 size={16} />
@@ -560,21 +557,19 @@ export default function PayrollRunsPanel() {
                       {item.status === "DRAFT" && (
                         <button type="button" className="danger" title="Cancel" onClick={() => runStatusAction(item, "CANCELLED")}><XCircle size={16} /></button>
                       )}
-                      {(item.status === "GENERATED" || respondedIds.has(item.id)) && (
+                      {item.status === "GENERATED" && (
                         <div className="payroll-approve-reject">
                           <button
                             type="button"
                             className="btn-approve"
-                            disabled={respondedIds.has(item.id) || processingId === item.id}
-                            onClick={() => handleApproveReject(item, "APPROVED")}
+                            onClick={() => runStatusAction(item, "APPROVED")}
                           >
                             <CheckCircle2 size={14} /> Approve
                           </button>
                           <button
                             type="button"
                             className="btn-reject"
-                            disabled={respondedIds.has(item.id) || processingId === item.id}
-                            onClick={() => handleApproveReject(item, "CANCELLED")}
+                            onClick={() => runStatusAction(item, "CANCELLED")}
                           >
                             <XCircle size={14} /> Reject
                           </button>
@@ -586,7 +581,9 @@ export default function PayrollRunsPanel() {
                       {["DRAFT", "GENERATED"].includes(item.status) && (
                         <button type="button" className="danger" title="Cancel" onClick={() => runStatusAction(item, "CANCELLED")}><XCircle size={16} /></button>
                       )}
-                      <button type="button" title="Regenerate (new version)" onClick={() => handleRegenerate(item)}><RotateCcw size={16} /></button>
+                      {canRegenerate(item) && (
+                        <button type="button" title="Regenerate (new version)" onClick={() => handleRegenerate(item)}><RotateCcw size={16} /></button>
+                      )}
                       {canDownload(item) && (
                         <button type="button" title="Download payslip" onClick={() => handleDownload(item)}><Download size={16} /></button>
                       )}
@@ -689,7 +686,8 @@ export default function PayrollRunsPanel() {
               </div>
             </div>
           </form>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );
