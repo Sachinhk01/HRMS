@@ -8,6 +8,7 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import ExportMenu from './ExportMenu';
 import { getEmployeeAttendanceHistory } from '../services/attendanceService';
+import { capitalizeName } from '../utils/formatName';
 
 const STATUS_LABELS = {
   PRESENT: 'Present',
@@ -192,7 +193,7 @@ export default function EmployeeAttendancePanel({ employeeId, employeeName }) {
     const doc = new jsPDF();
     doc.setFontSize(11);
     doc.setTextColor(90, 98, 117);
-    doc.text(employeeName || String(employeeId), 14, 14);
+    doc.text(capitalizeName(employeeName) || String(employeeId), 14, 14);
     doc.setTextColor(0, 0, 0);
     doc.setFontSize(14);
     doc.text('Attendance Report', 14, 22);

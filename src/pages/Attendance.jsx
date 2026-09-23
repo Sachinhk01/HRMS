@@ -30,6 +30,7 @@ import Pagination from '../components/Pagination';
 import ExportMenu from '../components/ExportMenu';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
+import { capitalizeName } from '../utils/formatName';
 import {
   ATTENDANCE_STATE,
   checkIn,
@@ -94,6 +95,20 @@ function displayDuration(value) {
   return value || '0h 0m';
 }
 
+// For a record with no checkout, the backend measures "worked" as
+// check-in-time until the current server time. That's correct for TODAY
+// (still clocked in), but for a PAST day that missed checkout it keeps
+// counting all the way up to right now — producing impossible totals like
+// "94h 12m" or "627h 16m" days later. Since that duration is computed
+// server-side, the frontend can't recompute a correct value for those old
+// records — but it can at least avoid showing the runaway figure.
+function workedDisplay(record, todayKey) {
+  const hasCheckout = Boolean(record.checkOutTime) && record.checkOutTime !== '--';
+  const isToday = record.attendanceDate === todayKey;
+  if (!hasCheckout && !isToday) return '—';
+  return displayDuration(record.todayWorkingHours);
+}
+
 // ---------------------------------------------------------------------
 // Client-side attendance export (PDF / Excel).
 //
@@ -108,11 +123,12 @@ function displayDuration(value) {
 const EXPORT_HEADER = ['Date', 'Check In', 'Check Out', 'Worked', 'Break', 'Status'];
 
 function attendanceRowsToAoA(rows) {
+  const todayKey = dateKey(new Date().getFullYear(), new Date().getMonth(), new Date().getDate());
   return rows.map((r) => [
     r.attendanceDate || '',
     displayTime(r.checkInTime),
     displayTime(r.checkOutTime),
-    displayDuration(r.todayWorkingHours),
+    workedDisplay(r, todayKey),
     displayDuration(r.todayBreakHours),
     STATUS_LABELS[normalizeAttendanceStatus(r.attendanceStatus)] || r.attendanceStatus || '',
   ]);
@@ -280,6 +296,10 @@ export default function Attendance() {
   // ---- Export filters (HR/Manager only — matches backend /reports/attendance) ----
   // 'month' sends year+month, 'range' sends startDate+endDate. Employees never
   // see these controls since only HR/Manager can hit that endpoint at all.
+  // NOTE: this same selection now also scopes the table below (see the
+  // resolveExportRange() call inside loadAttendanceData) — previously it only
+  // affected the exported file, so picking a month/date range here visibly
+  // did nothing to the on-screen list, which looked like a broken filter.
   const [exportRangeType, setExportRangeType] = useState('month');
   const [exportMonth, setExportMonth] = useState(() => {
     const now = new Date();
@@ -287,6 +307,36 @@ export default function Attendance() {
   });
   const [exportFromDate, setExportFromDate] = useState('');
   const [exportToDate, setExportToDate] = useState('');
+
+  // Resolves the Month-wise/Date-wise picker into a concrete fromDate/toDate
+  // pair, plus the file label/title used on export. Shared by the table
+  // fetch and the export handler so both stay in sync.
+  function resolveExportRange() {
+    if (exportRangeType === 'month' && exportMonth) {
+      const [yearStr, monthStr] = exportMonth.split('-');
+      const year = Number(yearStr);
+      const monthIndex = Number(monthStr) - 1;
+      const lastDay = new Date(year, monthIndex + 1, 0).getDate();
+      const fromDate = dateKey(year, monthIndex, 1);
+      const toDate = dateKey(year, monthIndex, lastDay);
+      return { fromDate, toDate, fileLabel: exportMonth, title: `Attendance Report — ${exportMonth}` };
+    }
+    const fromDate = exportFromDate || undefined;
+    const toDate = exportToDate || undefined;
+    return {
+      fromDate,
+      toDate,
+      fileLabel: [fromDate, toDate].filter(Boolean).join('_to_') || 'all',
+      title: `Attendance Report — ${fromDate || 'Start'} to ${toDate || 'Today'}`,
+    };
+  }
+
+  // Reset to page 1 whenever the month/date-wise scope changes, same as
+  // search/status above.
+  useEffect(() => {
+    setHistoryPage(1);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [exportRangeType, exportMonth, exportFromDate, exportToDate]);
 
   useEffect(() => {
     const clockTimer = window.setInterval(() => setCurrentTime(new Date()), 1000);
@@ -325,6 +375,17 @@ export default function Attendance() {
       const daysInVisibleMonth = new Date(visibleMonth.getFullYear(), visibleMonth.getMonth() + 1, 0).getDate();
       const monthEndStr = dateKey(visibleMonth.getFullYear(), visibleMonth.getMonth(), daysInVisibleMonth);
 
+      const searchRange = parseSearchDateRange(debouncedSearchQuery);
+      // The Month-wise/Date-wise picker (and its default of "this month") is
+      // only rendered for HR/Manager (canViewAll) — for a regular employee
+      // it doesn't exist on screen, so it must never silently scope their
+      // table to the current month behind the scenes.
+      const scopeRange = canViewAll ? resolveExportRange() : null;
+      // A typed search date is more specific than the month/date-wise picker,
+      // so it takes priority when both are present; otherwise fall back to
+      // whatever range the Month-wise/Date-wise selector is set to.
+      const dateRange = searchRange || (scopeRange ? { fromDate: scopeRange.fromDate, toDate: scopeRange.toDate } : {});
+
       const [dashboardResult, historyResult, calendarResult, monthDetailResult] =
   await Promise.allSettled([
     getAttendanceDashboard(),
@@ -334,7 +395,7 @@ export default function Attendance() {
       sortBy: "attendanceDate",
       sortDirection: "desc",
       ...(statusFilter !== 'ALL' ? { status: statusFilter } : {}),
-      ...(parseSearchDateRange(debouncedSearchQuery) || {}),
+      ...dateRange,
     }),
     getAttendanceCalendar(
       visibleMonth.getMonth() + 1,
@@ -420,7 +481,7 @@ if (failures.length) {
   useEffect(() => {
     void loadAttendanceData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [historyPage, visibleMonth, statusFilter, debouncedSearchQuery]);
+  }, [historyPage, visibleMonth, statusFilter, debouncedSearchQuery, exportRangeType, exportMonth, exportFromDate, exportToDate]);
 
   const recordsByDate = useMemo(() => new Map(calendarEntries.map((entry) => [entry.date, entry])), [calendarEntries]);
 
@@ -523,27 +584,9 @@ if (failures.length) {
   async function handleExport(format) {
     try {
       // Resolve the month-wise or date-range filter picked in the toolbar
-      // into a concrete fromDate/toDate pair.
-      let fromDate;
-      let toDate;
-      let fileLabel;
-      let title;
-
-      if (exportRangeType === 'month' && exportMonth) {
-        const [yearStr, monthStr] = exportMonth.split('-');
-        const year = Number(yearStr);
-        const monthIndex = Number(monthStr) - 1;
-        const lastDay = new Date(year, monthIndex + 1, 0).getDate();
-        fromDate = dateKey(year, monthIndex, 1);
-        toDate = dateKey(year, monthIndex, lastDay);
-        fileLabel = exportMonth;
-        title = `Attendance Report — ${exportMonth}`;
-      } else {
-        fromDate = exportFromDate || undefined;
-        toDate = exportToDate || undefined;
-        fileLabel = [fromDate, toDate].filter(Boolean).join('_to_') || 'all';
-        title = `Attendance Report — ${fromDate || 'Start'} to ${toDate || 'Today'}`;
-      }
+      // into a concrete fromDate/toDate pair (same logic the table itself
+      // now uses, via resolveExportRange()).
+      const { fromDate, toDate, fileLabel, title } = resolveExportRange();
 
       // /attendance/history is correctly permissioned for EMPLOYEE, MANAGER
       // and HR_ADMIN, so pull every row in range from it (looping pages
@@ -574,7 +617,7 @@ if (failures.length) {
       if (format === 'excel') {
         downloadAttendanceExcel(rows, fileLabel);
       } else {
-        downloadAttendancePdf(rows, fileLabel, title, user.name);
+        downloadAttendancePdf(rows, fileLabel, title, capitalizeName(user.name));
       }
       showToast(`Attendance report downloaded as ${format === 'excel' ? 'Excel' : 'PDF'}.`, 'success');
     } catch (exportError) {
@@ -892,7 +935,7 @@ if (failures.length) {
                           <td data-label="Date">{record.attendanceDate}</td>
                           <td data-label="Check In">{displayTime(record.checkInTime)}</td>
                           <td data-label="Check Out">{displayTime(record.checkOutTime)}</td>
-                          <td data-label="Worked">{displayDuration(record.todayWorkingHours)}</td>
+                          <td data-label="Worked">{workedDisplay(record, todayKey)}</td>
                           <td data-label="Break">{displayDuration(record.todayBreakHours)}</td>
                           <td data-label="Status">
                             <span className={`status-pill status-${statusClass(record.attendanceStatus)}`}>

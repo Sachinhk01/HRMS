@@ -127,8 +127,13 @@ export default function Form16() {
   const { showToast } = useToast();
   const role = user?.role || user?.roles?.[0];
   const isHr = role === 'HR_ADMIN';
+  const isManager = role === 'MANAGER';
   const isEmployee = role === 'EMPLOYEE';
+  // HR generates Form 16 and edits its sections (per the page's own rules).
   const canManage = isHr;
+  // Managers can browse employees, load an existing Form 16, view the read-only
+  // preview and download it for their team — but cannot generate or edit one.
+  const canView = isHr || isManager;
   const period = useMemo(financialPeriod, []);
   const [employees, setEmployees] = useState([]);
   const [employeesLoading, setEmployeesLoading] = useState(false);
@@ -146,10 +151,16 @@ export default function Form16() {
   const [lastFields, setLastFields] = useState(null); const [lastDraft, setLastDraft] = useState(emptyLast);
   const [verification, setVerification] = useState(null); const [verificationDraft, setVerificationDraft] = useState(emptyVerification);
   const [tab, setTab] = useState('overview'); const [loading, setLoading] = useState(false); const [saving, setSaving] = useState(false);
-  const [error, setError] = useState(''); const [notice, setNotice] = useState('');
+  // These were referenced (read AND written, e.g. setError('') / setNotice('')
+  // inside loadExisting) without ever being declared as state — every call to
+  // "Load" crashed with a ReferenceError on the very first line, before the
+  // actual API call even ran, which is why Form 16 loaded but employee/
+  // company details, quarters, salary etc. never showed up.
+  const [error, setError] = useState('');
+  const [notice, setNotice] = useState('');
 
   useEffect(() => {
-    if (!canManage) return;
+    if (!canView) return;
     let cancelled = false;
     setEmployeesLoading(true);
     setEmployeeListError('');
@@ -166,7 +177,7 @@ export default function Form16() {
       })
       .finally(() => { if (!cancelled) setEmployeesLoading(false); });
     return () => { cancelled = true; };
-  }, [canManage]);
+  }, [canView]);
   useEffect(() => setBaseDraft((s) => ({ ...s, assessmentYear })), [assessmentYear]);
 
   const loadChildren = useCallback(async (id) => {
@@ -248,13 +259,13 @@ export default function Form16() {
   const lastFieldsDef = [['taxOnTotalIncome','Tax on total income'],['rebateUnderSection87A','Rebate under section 87A'],['surcharge','Surcharge'],['healthAndEducationCess','Health and education cess'],['reliefUnderSection89','Relief under section 89'],['taxDeductedAtSourceForm12BAA','TDS as per Form 12BAA'],['taxCollectedAtSourceForm12BAA','TCS as per Form 12BAA']].map(([key,label])=>({key,label}));
 
   return <div className="form16-page">
-    <PageHeader eyebrow="Payroll & Tax" title="Form 16" description="HR Can Generate And Manage Form 16. Employees Can Only Download Their Own Form 16." />
+    <PageHeader eyebrow="Payroll & Tax" title="Form 16" description={isManager ? 'View And Download Form 16 For Your Team. HR Generates And Manages Form 16 Details.' : 'HR Can Generate And Manage Form 16. Employees Can Only Download Their Own Form 16.'} />
     {error && <div className="f16-alert error">{error}</div>}{notice && <div className="f16-alert success"><CheckCircle2 size={18}/>{notice}</div>}
     <section className="panel form16-toolbar">
       <Field label="Employee" value={employeeId}>{<select value={employeeId} onChange={(e)=>setEmployeeId(e.target.value)}><option value="">Select Employee</option>{employees.map((e)=><option key={e.id} value={e.id}>{e.employeeCode ? `${e.employeeCode} — ` : ''}{e.employeeName || e.name}</option>)}</select>}</Field>
       <Field label="Assessment Year" value={assessmentYear} onChange={setAssessmentYear} placeholder="2026-27" />
       <div className="form16-actions">
-        <button className="btn btn-secondary" onClick={loadExisting} disabled={!canManage || loading}><RefreshCw size={16}/>{loading?'Loading...':'Load'}</button>
+        <button className="btn btn-secondary" onClick={loadExisting} disabled={!canView || loading}><RefreshCw size={16}/>{loading?'Loading...':'Load'}</button>
         <button className="btn btn-primary" onClick={generate} disabled={!canManage || saving}><FileText size={16}/>Generate Form 16</button>
         <button className="btn btn-secondary" onClick={exportPdf} disabled={!base}><Download size={16}/>Download PDF</button>
         <button className="btn btn-secondary" onClick={()=>toggleActive(true)} disabled={!base || base.active || saving}><Power size={16}/>Activate</button>
@@ -266,7 +277,8 @@ export default function Form16() {
 
     <div className="f16-grid">
       <section className="f16-panel">
-        <div className="f16-tabs">{[['overview','Overview'],['quarter','Part A — Quarter'],['challan','Challans'],['salary','Salary'],['exemption','Exemptions'],['section16','Section 16'],['chapter','Chapter VI-A'],['tax','Tax'],['verification','Verification']].map(([k,l])=><button key={k} className={`f16-tab ${tab===k?'active':''}`} onClick={()=>setTab(k)}>{l}</button>)}</div>
+        <div className="f16-tabs">{(canManage ? [['overview','Overview'],['quarter','Part A — Quarter'],['challan','Challans'],['salary','Salary'],['exemption','Exemptions'],['section16','Section 16'],['chapter','Chapter VI-A'],['tax','Tax'],['verification','Verification']] : [['overview','Overview']]).map(([k,l])=><button key={k} className={`f16-tab ${tab===k?'active':''}`} onClick={()=>setTab(k)}>{l}</button>)}</div>
+        {!canManage && <div className="f16-note" style={{marginTop:8}}>Detailed sections are managed by HR. Use the preview panel on the right to view and download this Form 16.</div>}
         {!base && tab!=='overview' ? <div className="f16-empty"><strong>Generate or load Form 16 first.</strong>The section endpoints require a Form 16 ID.</div> : null}
         {tab==='overview' && <div className="f16-form"><div className="f16-section-heading"><h4>Form 16 Header</h4></div><div className="f16-form-grid"><Field label="Employee Address" full value={baseDraft.employeeAddress} onChange={(v)=>setBaseDraft(s=>({...s,employeeAddress:v}))}/><Field label="Employment From" type="date" value={baseDraft.employmentFrom} onChange={(v)=>setBaseDraft(s=>({...s,employmentFrom:v}))}/><Field label="Employment To" type="date" value={baseDraft.employmentTo} onChange={(v)=>setBaseDraft(s=>({...s,employmentTo:v}))}/><label className="f16-toggle"><input type="checkbox" checked={!!baseDraft.optingOutOfTaxation115BAC1A} onChange={(e)=>setBaseDraft(s=>({...s,optingOutOfTaxation115BAC1A:e.target.checked}))}/>Opting Out Of Taxation U/S 115BAC(1A)</label></div><hr className="f16-section-separator"/><div className="f16-note">The main Form 16 endpoint supports CREATE, GET, ACTIVATE, DEACTIVATE and DELETE. It does not expose a PUT/PATCH for the header, so header fields are entered before generation; editable tax sections below use their respective PUT endpoints.</div></div>}
         {base && tab==='quarter' && <SectionEditor title="Quarter-Wise TDS Summary" exists={!!quarter} value={quarterDraft} setValue={setQuarterDraft} saving={saving} onSave={()=>saveSection({existing:quarter,draft:quarterDraft,create:form16Service.createQuarter,update:form16Service.updateQuarter,setter:setQuarter,draftSetter:setQuarterDraft})}>{<><div style={{overflowX:'auto'}}><table className="f16-quarter-table"><thead><tr><th>Quarter</th><th>Amount Paid/Credited</th><th>Tax Deducted</th><th>Tax Deposited/Remitted</th></tr></thead><tbody>{[1,2,3,4].map(q=><tr key={q}><td>Q{q}</td>{['AmountPaidCredited','TaxDeducted','TaxDepositedRemitted'].map(s=><td key={s}><input type="number" value={quarterDraft[`q${q}${s}`]??''} onChange={e=>setQuarterDraft(d=>({...d,[`q${q}${s}`]:e.target.value}))}/></td>)}</tr>)}</tbody></table></div><div className="f16-form-grid" style={{marginTop:14}}><Field label="Book Adjustment Tax Deposited" type="number" value={quarterDraft.bookAdjustmentTaxDeposited} onChange={v=>setQuarterDraft(d=>({...d,bookAdjustmentTaxDeposited:v}))}/><Field label="Matching Status With Form 24G" value={quarterDraft.statusOfMatchingWithForm24G} onChange={v=>setQuarterDraft(d=>({...d,statusOfMatchingWithForm24G:v}))}/></div><div className="f16-savebar"><button className="btn btn-primary" onClick={()=>saveSection({existing:quarter,draft:quarterDraft,create:form16Service.createQuarter,update:form16Service.updateQuarter,setter:setQuarter,draftSetter:setQuarterDraft})}><Save size={16}/>{quarter?'Save Changes':'Create Quarter Details'}</button></div></>}</SectionEditor>}
