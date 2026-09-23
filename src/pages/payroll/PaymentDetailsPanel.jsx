@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Landmark, Pencil, Plus, Search, Trash2, X } from "lucide-react";
 import {
   createPaymentDetails,
@@ -67,6 +67,8 @@ export default function PaymentDetailsPanel() {
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState(EMPTY_FORM);
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+  const [message, setMessage] = useState("");
 
   useEffect(() => {
     getEmployeeDropdown().then(setEmployees).catch(() => setEmployees([]));
@@ -78,7 +80,7 @@ export default function PaymentDetailsPanel() {
     )
     .slice(0, 40), [employees, query]);
 
-  async function load(employeeId) {
+  const load = useCallback(async (employeeId) => {
     if (!employeeId) {
       setDetails(null);
       return;
@@ -97,9 +99,9 @@ export default function PaymentDetailsPanel() {
     } finally {
       setLoading(false);
     }
-  }
+  }, [showToast]);
 
-  useEffect(() => { load(selectedId); }, [selectedId]);
+  useEffect(() => { load(selectedId); }, [selectedId, load]);
 
   function resetForm() {
     setForm(EMPTY_FORM);
@@ -184,6 +186,8 @@ export default function PaymentDetailsPanel() {
 
   return (
     <div className="payroll-stack">
+      {error && <div className="form-alert">{error}</div>}
+      {message && <div className="success-alert">{message}</div>}
       <section className="panel">
         <div className="payroll-toolbar" style={{ marginBottom: 0 }}>
           <div className="payroll-search">

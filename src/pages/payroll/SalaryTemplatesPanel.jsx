@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from "react";
 import { Layers, Pencil, Plus, Power, Search, X } from "lucide-react";
 import {
   createSalaryTemplate,
-  EMPLOYMENT_TYPES,
   formatINR,
   getSalaryTemplates,
   updateSalaryTemplate,
@@ -10,7 +9,6 @@ import {
 } from "../../services/payrollService";
 import { EmptyState, LineItem } from "./payrollUi";
 import { useConfirm } from "../../context/ConfirmContext";
-import { useToast } from "../../context/ToastContext";
 
 const EMPTY_FORM = {
   employeeType: "FULL_TIME",
@@ -46,7 +44,6 @@ function calculateGross(template) {
 
 export default function SalaryTemplatesPanel() {
   const { confirm } = useConfirm();
-  const { showToast } = useToast();
   const [templates, setTemplates] = useState([]);
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState("");
@@ -54,6 +51,8 @@ export default function SalaryTemplatesPanel() {
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState(EMPTY_FORM);
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+  const [message, setMessage] = useState("");
 
   async function refresh() {
     setLoading(true);
@@ -120,6 +119,8 @@ export default function SalaryTemplatesPanel() {
 
   async function submit(event) {
     event.preventDefault();
+    setError("");
+    setMessage("");
     setSaving(true);
     try {
       if (editing) {
@@ -158,6 +159,8 @@ export default function SalaryTemplatesPanel() {
 
   return (
     <div className="payroll-stack">
+      {error && <div className="form-alert">{error}</div>}
+      {message && <div className="success-alert">{message}</div>}
       <section className="panel">
         <div className="payroll-toolbar" style={{ marginBottom: 0 }}>
           <div className="payroll-search">
