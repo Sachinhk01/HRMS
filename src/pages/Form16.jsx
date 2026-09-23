@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
+  CheckCircle2,
   Download,
   Edit3,
   FileText,
@@ -145,6 +146,7 @@ export default function Form16() {
   const [lastFields, setLastFields] = useState(null); const [lastDraft, setLastDraft] = useState(emptyLast);
   const [verification, setVerification] = useState(null); const [verificationDraft, setVerificationDraft] = useState(emptyVerification);
   const [tab, setTab] = useState('overview'); const [loading, setLoading] = useState(false); const [saving, setSaving] = useState(false);
+  const [error, setError] = useState(''); const [notice, setNotice] = useState('');
 
   useEffect(() => {
     if (!canManage) return;
