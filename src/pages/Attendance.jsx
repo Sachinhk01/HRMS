@@ -376,11 +376,11 @@ export default function Attendance() {
       const monthEndStr = dateKey(visibleMonth.getFullYear(), visibleMonth.getMonth(), daysInVisibleMonth);
 
       const searchRange = parseSearchDateRange(debouncedSearchQuery);
-      // The Month-wise/Date-wise picker (and its default of "this month") is
-      // only rendered for HR/Manager (canViewAll) — for a regular employee
-      // it doesn't exist on screen, so it must never silently scope their
-      // table to the current month behind the scenes.
-      const scopeRange = canViewAll ? resolveExportRange() : null;
+      // The Month-wise/Date-wise picker is shown to every role (see the
+      // history toolbar below) and /attendance/history is self-scoped via
+      // the auth token for EMPLOYEE, MANAGER and HR_ADMIN alike, so it's
+      // safe to resolve and apply it regardless of role.
+      const scopeRange = resolveExportRange();
       // A typed search date is more specific than the month/date-wise picker,
       // so it takes priority when both are present; otherwise fall back to
       // whatever range the Month-wise/Date-wise selector is set to.
@@ -867,49 +867,48 @@ if (failures.length) {
                   {Object.keys(STATUS_LABELS).map((s) => <option key={s} value={s}>{STATUS_LABELS[s]}</option>)}
                 </select>
 
-                {/* Export is HR/Manager-only — matches the backend's
-                    @PreAuthorize("hasAnyRole('HR','MANAGER')") on
-                    /reports/attendance. Employees never see these controls. */}
-                {canViewAll && (
+                {/* /attendance/history (what this toolbar filters) is
+                    self-scoped via the auth token and already permissioned
+                    for EMPLOYEE, MANAGER and HR_ADMIN alike, so the
+                    Month-wise/Date-wise filter is shown to every role.
+                    Export itself stays HR/Manager-only — employees don't
+                    need a downloadable file, just the on-screen filter. */}
+                <select
+                  className="compact-select"
+                  value={exportRangeType}
+                  onChange={(e) => setExportRangeType(e.target.value)}
+                >
+                  <option value="month">Month-wise</option>
+                  <option value="range">Date-wise</option>
+                </select>
+
+                {exportRangeType === 'month' ? (
+                  <input
+                    type="month"
+                    className="compact-select"
+                    value={exportMonth}
+                    onChange={(e) => setExportMonth(e.target.value)}
+                  />
+                ) : (
                   <>
-                    <select
+                    <input
+                      type="date"
                       className="compact-select"
-                      value={exportRangeType}
-                      onChange={(e) => setExportRangeType(e.target.value)}
-                    >
-                      <option value="month">Month-wise</option>
-                      <option value="range">Date-wise</option>
-                    </select>
-
-                    {exportRangeType === 'month' ? (
-                      <input
-                        type="month"
-                        className="compact-select"
-                        value={exportMonth}
-                        onChange={(e) => setExportMonth(e.target.value)}
-                      />
-                    ) : (
-                      <>
-                        <input
-                          type="date"
-                          className="compact-select"
-                          value={exportFromDate}
-                          max={exportToDate || undefined}
-                          onChange={(e) => setExportFromDate(e.target.value)}
-                        />
-                        <input
-                          type="date"
-                          className="compact-select"
-                          value={exportToDate}
-                          min={exportFromDate || undefined}
-                          onChange={(e) => setExportToDate(e.target.value)}
-                        />
-                      </>
-                    )}
-
-                    <ExportMenu onExport={handleExport} />
+                      value={exportFromDate}
+                      max={exportToDate || undefined}
+                      onChange={(e) => setExportFromDate(e.target.value)}
+                    />
+                    <input
+                      type="date"
+                      className="compact-select"
+                      value={exportToDate}
+                      min={exportFromDate || undefined}
+                      onChange={(e) => setExportToDate(e.target.value)}
+                    />
                   </>
                 )}
+
+                {canViewAll && <ExportMenu onExport={handleExport} />}
               </div>
 
               <div className="table-wrap">
