@@ -8,6 +8,9 @@ import { ToastProvider } from './context/ToastContext';
 import { ConfirmProvider } from './context/ConfirmContext';
 import './styles/global.css';
 import './styles/premium-backgrounds.css';
+import { installFormValidationMessages } from './utils/formValidation';
+
+installFormValidationMessages();
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>

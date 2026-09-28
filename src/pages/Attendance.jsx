@@ -31,6 +31,7 @@ import ExportMenu from '../components/ExportMenu';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import { capitalizeName } from '../utils/formatName';
+import { getMyProfile } from '../services/employeeService';
 import {
   ATTENDANCE_STATE,
   checkIn,
@@ -120,11 +121,15 @@ function workedDisplay(record, todayKey) {
 // report endpoint we fetch the same rows the table already shows (just for
 // the chosen month/date range) and build the PDF/Excel file in the browser.
 // ---------------------------------------------------------------------
-const EXPORT_HEADER = ['Date', 'Check In', 'Check Out', 'Worked', 'Break', 'Status'];
+const EXPORT_HEADER = ['Employee ID', 'Employee Name', 'Job Title', 'Date', 'Check In', 'Check Out', 'Worked', 'Break', 'Status'];
 
-function attendanceRowsToAoA(rows) {
+// `employee` = { code, name, jobTitle } for the person whose rows are exported.
+function attendanceRowsToAoA(rows, employee = {}) {
   const todayKey = dateKey(new Date().getFullYear(), new Date().getMonth(), new Date().getDate());
   return rows.map((r) => [
+    employee.code || r.employeeCode || (r.employeeId != null ? String(r.employeeId) : ''),
+    employee.name || capitalizeName(r.employeeName || ''),
+    employee.jobTitle || '',
     r.attendanceDate || '',
     displayTime(r.checkInTime),
     displayTime(r.checkOutTime),
@@ -134,21 +139,24 @@ function attendanceRowsToAoA(rows) {
   ]);
 }
 
-function downloadAttendanceExcel(rows, fileLabel) {
-  const worksheet = XLSX.utils.aoa_to_sheet([EXPORT_HEADER, ...attendanceRowsToAoA(rows)]);
-  worksheet['!cols'] = [{ wch: 14 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 10 }, { wch: 14 }];
+function downloadAttendanceExcel(rows, fileLabel, employee) {
+  const worksheet = XLSX.utils.aoa_to_sheet([EXPORT_HEADER, ...attendanceRowsToAoA(rows, employee)]);
+  worksheet['!cols'] = [{ wch: 14 }, { wch: 22 }, { wch: 22 }, { wch: 14 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 10 }, { wch: 14 }];
   const workbook = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(workbook, worksheet, 'Attendance');
   XLSX.writeFile(workbook, `attendance-${fileLabel}.xlsx`);
 }
 
-function downloadAttendancePdf(rows, fileLabel, title, employeeName) {
+function downloadAttendancePdf(rows, fileLabel, title, employee = {}) {
   const doc = new jsPDF({ orientation: 'landscape' });
   let y = 14;
-  if (employeeName) {
+  const headerLine = [employee.name, employee.code && `ID: ${employee.code}`, employee.jobTitle]
+    .filter(Boolean)
+    .join('  |  ');
+  if (headerLine) {
     doc.setFontSize(11);
     doc.setTextColor(90, 98, 117);
-    doc.text(employeeName, 14, y);
+    doc.text(headerLine, 14, y);
     doc.setTextColor(0, 0, 0);
     y += 8;
   }
@@ -156,7 +164,7 @@ function downloadAttendancePdf(rows, fileLabel, title, employeeName) {
   doc.text(title, 14, y);
   autoTable(doc, {
     head: [EXPORT_HEADER],
-    body: attendanceRowsToAoA(rows),
+    body: attendanceRowsToAoA(rows, employee),
     startY: y + 6,
     styles: { fontSize: 9 },
     headStyles: { fillColor: [37, 99, 235] },
@@ -573,6 +581,21 @@ if (failures.length) {
     return handleLocationAwareAction((coords) => checkOut(coords), 'checkOut');
   }
 
+  // "Today" button: jump the calendar to the current month AND select today's
+  // date (so the details panel updates too). If we're already on the current
+  // month, keep the same Date object so no needless refetch is triggered.
+  function handleGoToToday() {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = now.getMonth();
+    setVisibleMonth((current) => (
+      current.getFullYear() === year && current.getMonth() === month
+        ? current
+        : new Date(year, month, 1)
+    ));
+    setSelectedDate(dateKey(year, month, now.getDate()));
+  }
+
   function handleStartBreak() {
     return handleLocationAwareAction(() => startBreak('LUNCH'), 'startBreak');
   }
@@ -614,10 +637,24 @@ if (failures.length) {
         return;
       }
 
+      // Employee ID (code) + job title come from the logged-in employee's
+      // profile; the history rows only carry a numeric id and the name.
+      let profile = null;
+      try {
+        profile = await getMyProfile();
+      } catch {
+        profile = null; // still export — columns fall back to what the rows have
+      }
+      const employee = {
+        code: profile?.employeeCode || '',
+        name: capitalizeName(user.name),
+        jobTitle: profile?.jobTitle || profile?.designationName || '',
+      };
+
       if (format === 'excel') {
-        downloadAttendanceExcel(rows, fileLabel);
+        downloadAttendanceExcel(rows, fileLabel, employee);
       } else {
-        downloadAttendancePdf(rows, fileLabel, title, capitalizeName(user.name));
+        downloadAttendancePdf(rows, fileLabel, title, employee);
       }
       showToast(`Attendance report downloaded as ${format === 'excel' ? 'Excel' : 'PDF'}.`, 'success');
     } catch (exportError) {
@@ -981,7 +1018,7 @@ if (failures.length) {
                   <button type="button" className="calendar-nav-button" onClick={() => setVisibleMonth((c) => new Date(c.getFullYear(), c.getMonth() + 1, 1))} aria-label="Next month"><ChevronRight size={20} /></button>
                 </div>
                 <div className="calendar-toolbar-right">
-                  <button type="button" className="btn btn-soft btn-today" onClick={() => setVisibleMonth(() => new Date(new Date().getFullYear(), new Date().getMonth(), 1))}>
+                  <button type="button" className="btn btn-soft btn-today" onClick={handleGoToToday}>
                     <Target size={14} /> Today
                   </button>
                 </div>

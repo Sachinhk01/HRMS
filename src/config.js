@@ -23,6 +23,7 @@ export const ROLE_MENUS = {
     ['/dashboard', 'Dashboard'],
     ['/employees', 'Employees'],
     ['/attendance', 'Attendance'],
+    ['/leave', 'Leave'],
     ['/regularization', 'Regularization'],
     ['/celebrations', 'Celebration Wall'],
     ['/announcements', 'Announcements'],

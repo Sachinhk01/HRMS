@@ -85,6 +85,15 @@ const fadeUp = {
 };
 const stagger = { hidden: {}, show: { transition: { staggerChildren: 0.07, delayChildren: 0.04 } } };
 
+// Native date inputs allow 5-6 digit years while typing; keep the year to 4 digits.
+const MIN_DATE = '1900-01-01';
+const MAX_DATE = '9999-12-31';
+const limitYearTo4 = (value) => {
+  if (!value) return '';
+  const match = /^(\d+)-(\d{2})-(\d{2})$/.exec(value);
+  return match ? `${match[1].slice(0, 4)}-${match[2]}-${match[3]}` : value;
+};
+
 export default function Leave() {
   const { user } = useAuth();
   const [rows, setRows] = useState([]);
@@ -388,11 +397,11 @@ export default function Leave() {
 
             <label className="lf-field">
               <span className="lf-label"><CalendarDays size={14} /> From Date</span>
-              <input name="from" type="date" required value={formFrom} onChange={(e) => setFormFrom(e.target.value)} />
+              <input name="from" type="date" required min={MIN_DATE} max={MAX_DATE} value={formFrom} onChange={(e) => setFormFrom(limitYearTo4(e.target.value))} />
             </label>
             <label className="lf-field">
               <span className="lf-label"><CalendarDays size={14} /> To Date</span>
-              <input name="to" type="date" required value={formTo} onChange={(e) => setFormTo(e.target.value)} />
+              <input name="to" type="date" required min={formFrom || MIN_DATE} max={MAX_DATE} value={formTo} onChange={(e) => setFormTo(limitYearTo4(e.target.value))} />
             </label>
 
             <label className="lf-field full-span">
@@ -496,7 +505,7 @@ export default function Leave() {
               <p>You're About to Cancel Your <strong>{cancelTarget.leaveType}</strong> Request From <strong>{cancelTarget.startDate}</strong> to <strong>{cancelTarget.endDate}</strong>. This Action Cannot be Undone.</p>
               <div className="modal-actions">
                 <button className="btn btn-soft" onClick={() => setCancelTarget(null)}>Keep request</button>
-                <button className="btn btn-danger-soft" onClick={() => handleCancel(cancelTarget.id)}><X size={16} /> Yes, cancel</button>
+                <button className="btn btn-danger-soft" onClick={() => handleCancel(cancelTarget.id)}><X size={16} />Cancel</button>
               </div>
             </motion.div>
           </motion.div>

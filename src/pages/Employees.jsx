@@ -18,6 +18,7 @@ import {
 } from '../services/employeeService';
 import './Employees.css';
 import { capitalizeName } from '../utils/formatName';
+import { listJobTitles } from '../services/masterDataService';
 
 const DEPT_COLORS = {
   Engineering: '#2563eb', Sales: '#16a34a', HR: '#d97706', Marketing: '#db2777',
@@ -57,13 +58,16 @@ const stagger = { hidden: {}, show: { transition: { staggerChildren: 0.06, delay
 // @PreAuthorize on POST /admin/users/register and /admin/employee-profile/{userId}.
 const CAN_CREATE_ROLES = ['SUPER_ADMIN', 'HR_ADMIN', 'MANAGER'];
 
+// Job Title filter is shown in the HR and Manager portals only.
+const CAN_FILTER_JOB_TITLE_ROLES = ['HR_ADMIN', 'MANAGER'];
+
 const ROLE_OPTIONS = ['EMPLOYEE', 'HR_ADMIN', 'MANAGER', 'PAYROLL_ADMIN'];
 const GENDER_OPTIONS = ['MALE', 'FEMALE'];
 const EMPLOYMENT_TYPE_OPTIONS = ['FULL_TIME', 'PART_TIME', 'CONTRACT', 'INTERN'];
 
 const EMPTY_FORM = {
   // Step 1 — account
-  username: '', email: '', password: '', role: 'EMPLOYEE',
+  username: '', email: '', password: '', role: '',
   // Step 2 — profile
   firstName: '', lastName: '', phoneNumber: '', gender: '', dateOfBirth: '',
   dateOfJoining: '', employmentType: '', departmentId: '', designationId: '',
@@ -74,6 +78,7 @@ export default function Employees() {
   const { user } = useAuth();
   const userRole = user?.roles?.[0] || user?.role;
   const canCreate = CAN_CREATE_ROLES.includes(userRole);
+  const canFilterByJobTitle = CAN_FILTER_JOB_TITLE_ROLES.includes(userRole);
 
   // Picks up ?search= from the global TopBar search so landing here from
   // "Search anything..." arrives with the query already applied.
@@ -93,6 +98,8 @@ export default function Employees() {
   }, [searchParams]);
   const [deptFilter, setDeptFilter] = useState('ALL');
   const [desigFilter, setDesigFilter] = useState('ALL');
+  const [jobTitleFilter, setJobTitleFilter] = useState('ALL');
+  const [masterJobTitles, setMasterJobTitles] = useState([]); // every active job title, so newly added ones are filterable
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [view, setView] = useState('grid');
   const [drawerEmp, setDrawerEmp] = useState(null);
@@ -134,6 +141,28 @@ export default function Employees() {
   const departmentNames = useMemo(() => Array.from(new Set(rows.map((e) => e.departmentName).filter(Boolean))), [rows]);
   const designationNames = useMemo(() => Array.from(new Set(rows.map((e) => e.designationName).filter(Boolean))), [rows]);
 
+  // Load the full job-title list (HR / Manager only) so titles like MERN Stack Developer or
+  // DevOps Engineer appear in the filter even before an employee has been assigned to them.
+  useEffect(() => {
+    if (!canFilterByJobTitle) return undefined;
+    let cancelled = false;
+    (async () => {
+      try {
+        const page = await listJobTitles({ page: 0, size: 200, sortBy: 'jobTitle', sortDirection: 'asc' });
+        const names = (page?.content || []).filter((t) => t.active).map((t) => t.jobTitle);
+        if (!cancelled) setMasterJobTitles(names);
+      } catch {
+        if (!cancelled) setMasterJobTitles([]); // fall back to the titles found on the employee list
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [canFilterByJobTitle]);
+
+  const jobTitleNames = useMemo(
+    () => Array.from(new Set([...masterJobTitles, ...rows.map((e) => e.jobTitle).filter(Boolean)])).sort((a, b) => a.localeCompare(b)),
+    [masterJobTitles, rows]
+  );
+
   // Reporting manager dropdown: restricted to show only Anagha (EMP0001) as
   // requested — the underlying employee list from the API is untouched,
   // this just filters what's rendered in this one select.
@@ -153,9 +182,10 @@ export default function Employees() {
     }
     if (deptFilter !== 'ALL') list = list.filter((e) => e.departmentName === deptFilter);
     if (desigFilter !== 'ALL') list = list.filter((e) => e.designationName === desigFilter);
+    if (canFilterByJobTitle && jobTitleFilter !== 'ALL') list = list.filter((e) => e.jobTitle === jobTitleFilter);
     if (statusFilter !== 'ALL') list = list.filter((e) => (statusFilter === 'ACTIVE' ? e.active : !e.active));
     return list;
-  }, [rows, searchQuery, deptFilter, desigFilter, statusFilter]);
+  }, [rows, searchQuery, deptFilter, desigFilter, jobTitleFilter, canFilterByJobTitle, statusFilter]);
 
   const { page, setPage, pageItems, pageSize } = usePagination(filtered, view === 'grid' ? 9 : 8);
 
@@ -324,6 +354,13 @@ export default function Employees() {
     setAddStep(1);
   }
 
+  // Back must never behave like a submit: stop the click here, skip validation, and go to step 1.
+  function handleBackClick(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    goBack();
+  }
+
   async function handleSubmit(e) {
     e.preventDefault();
     const error = validateStep2();
@@ -417,6 +454,12 @@ export default function Employees() {
           <option value="ALL">All Designations</option>
           {designationNames.map((d) => <option key={d} value={d}>{d}</option>)}
         </select>
+        {canFilterByJobTitle && (
+          <select className="compact-select" value={jobTitleFilter} onChange={(e) => setJobTitleFilter(e.target.value)}>
+            <option value="ALL">All Job Titles</option>
+            {jobTitleNames.map((t) => <option key={t} value={t}>{t}</option>)}
+          </select>
+        )}
         <select className="compact-select" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
           <option value="ALL">All Status</option>
           <option value="ACTIVE">Active</option>
@@ -563,9 +606,6 @@ export default function Employees() {
                 )}
               </div>
 
-              <div className="emp-modal-footer">
-                <button className="btn btn-soft" style={{ width: '100%' }} onClick={() => setDrawerEmp(null)}>Close</button>
-              </div>
             </motion.div>
           </motion.div>
         )}
@@ -610,6 +650,7 @@ export default function Employees() {
                       <label className="form-field">
                         <span>Role</span>
                         <select value={form.role} onChange={updateField('role')} required>
+                          <option value="">Select Role</option>
                           {ROLE_OPTIONS.map((r) => <option key={r} value={r}>{r.replace('_', ' ')}</option>)}
                         </select>
                       </label>
@@ -708,13 +749,13 @@ export default function Employees() {
                 <div className="emp-modal-footer emp-form-footer">
                   {addStep === 2 ? (
                     <>
-                      <button type="button" className="btn btn-soft" onClick={goBack} disabled={submitting}><ChevronLeft size={15} /> Back</button>
-                      <button type="submit" className="btn btn-primary" disabled={submitting}>
+                      <button key="back" type="button" formNoValidate className="btn btn-soft" onClick={handleBackClick} disabled={submitting}><ChevronLeft size={15} /> Back</button>
+                      <button key="create" type="submit" className="btn btn-primary" disabled={submitting}>
                         {submitting ? <><Loader2 className="spin" size={15} /> Creating…</> : <>Create Employee</>}
                       </button>
                     </>
                   ) : (
-                    <button type="submit" className="btn btn-primary" style={{ width: '100%' }}>
+                    <button key="continue" type="submit" className="btn btn-primary" style={{ width: '100%' }}>
                       Continue <ChevronRight size={15} />
                     </button>
                   )}
