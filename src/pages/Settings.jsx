@@ -1,209 +1,150 @@
 import { useEffect, useState } from 'react';
 import {
-  Plus,
-  Search,
   Pencil,
-  Trash2,
-  Power,
+  Save,
   X,
-  Loader2,
-  AlertTriangle,
+  Clock,
+  CalendarDays,
   Building2,
-  Users,
-  Tag,
-  ChevronLeft,
   ChevronRight,
+  ShieldOff,
+  Inbox,
+  Loader2,
+  Check,
+  Timer,
+  Gauge,
+  ListChecks,
+  Repeat2,
+  MapPin,
+  Globe2,
+  Database,
 } from 'lucide-react';
-import { useToast } from '../../context/ToastContext';
-import { useConfirm } from '../../context/ConfirmContext';
-import {
-  listDepartments, createDepartment, updateDepartment, setDepartmentStatus, deleteDepartment,
-  listDesignations, createDesignation, updateDesignation, setDesignationStatus, deleteDesignation,
-  listJobTitles, createJobTitle, updateJobTitle, setJobTitleStatus, deleteJobTitle,
-  lookupDepartments, lookupDesignations, getDesignation,
-} from '../../services/masterDataService';
-// Reuses .switch / .switch-thumb from the parent Settings page (Settings.css
-// is already loaded whenever this component is mounted).
-import './MasterDataSettings.css';
+import PageHeader from '../components/PageHeader';
+import { hrmsService } from '../services/hrmsService';
+import { useToast } from '../context/ToastContext';
+import { useAuth } from '../context/AuthContext';
+import MasterDataSettings from './settings/MasterDataSettings';
+import './Settings.css';
 
-const PAGE_SIZE = 10;
-const SEARCH_MAX_LENGTH = 100;
-
-// One config per resource drives the whole table + form — see
-// MasterModule_frontendGuide.pdf for the backend contract this mirrors.
-const RESOURCES = {
-  department: {
-    key: 'department',
-    label: 'Departments',
-    singular: 'Department',
+// Each group maps 1:1 to a live SettingController group (GET/PUT /settings/{group}).
+// Field lists mirror the *active* backend request DTO fields exactly (see
+// Settings_Module_Frontend_API_Implementation_Guide_Final.pdf §3). The backend
+// also has notification and work-log settings modules, but their controller
+// endpoints are commented out — so there are no groups for them here. Re-add a
+// group only after those endpoints are actually uncommented in SettingController.
+//
+// `sections` purely controls layout/grouping within a group's detail panel —
+// every field still lives in `fields` and is looked up by name, so the DTO
+// shape driving get/save is untouched.
+//
+// A group with `custom: true` (Master Data) does not use get/save/fields/sections.
+// It renders its own `component`, which loads and saves its own data.
+//
+// A group with `roles` is only shown to those roles. Master Data is limited to
+// HR_ADMIN and MANAGER because the backend's @PreAuthorize on the master data
+// endpoints does not include SUPER_ADMIN (they get 403).
+const GROUPS = [
+  {
+    key: 'attendance',
+    label: 'Attendance',
+    description: 'Office hours, grace periods & attendance rules',
+    icon: Clock,
+    accent: 'blue',
+    get: hrmsService.getAttendanceSettings,
+    save: hrmsService.updateAttendanceSettings,
+    fields: [
+      { name: 'officeStartTime', label: 'Office Start Time', type: 'time', required: true },
+      { name: 'officeEndTime', label: 'Office End Time', type: 'time', required: true },
+      { name: 'gracePeriodMinutes', label: 'Grace Period (minutes)', type: 'number', min: 0, required: true },
+      { name: 'minimumWorkingMinutes', label: 'Minimum Working Minutes', type: 'number', min: 0, required: true },
+      { name: 'halfDayWorkingMinutes', label: 'Half-Day Working Minutes', type: 'number', min: 0, required: true },
+      { name: 'checkoutCutoffMinutes', label: 'Checkout Cutoff (minutes)', type: 'number', min: 0, required: true },
+      { name: 'overtimeEnabled', label: 'Overtime Enabled', type: 'boolean', hint: 'Let employees log hours worked beyond office end time.' },
+      { name: 'weekendAttendanceAllowed', label: 'Weekend Attendance Allowed', type: 'boolean', hint: 'Allow check-ins to be recorded on Saturdays & Sundays.' },
+      { name: 'holidayAttendanceAllowed', label: 'Holiday Attendance Allowed', type: 'boolean', hint: 'Allow check-ins to be recorded on company holidays.' },
+    ],
+    sections: [
+      { title: 'Working Hours', icon: Timer, fields: ['officeStartTime', 'officeEndTime', 'gracePeriodMinutes'] },
+      { title: 'Working Time Thresholds', icon: Gauge, fields: ['minimumWorkingMinutes', 'halfDayWorkingMinutes', 'checkoutCutoffMinutes'] },
+      { title: 'Attendance Rules', icon: ListChecks, fields: ['overtimeEnabled', 'weekendAttendanceAllowed', 'holidayAttendanceAllowed'] },
+    ],
+  },
+  {
+    key: 'leave',
+    label: 'Leave',
+    description: 'Annual quota, guidelines & carry-forward policy',
+    icon: CalendarDays,
+    accent: 'violet',
+    get: hrmsService.getLeaveSettings,
+    save: hrmsService.updateLeaveSettings,
+    fields: [
+      { name: 'monthlyGuideline', label: 'Monthly Guideline (days)', type: 'number', min: 0, required: true },
+      { name: 'annualPaidLeave', label: 'Annual Paid Leave (days)', type: 'number', min: 0, required: true },
+      { name: 'carryForwardAllowed', label: 'Carry Forward Allowed', type: 'boolean', hint: 'Let unused leave roll over into the next year.' },
+    ],
+    sections: [
+      { title: 'Leave Allowances', icon: Gauge, fields: ['monthlyGuideline', 'annualPaidLeave'] },
+      { title: 'Leave Rules', icon: Repeat2, fields: ['carryForwardAllowed'] },
+    ],
+  },
+  {
+    key: 'company',
+    label: 'Company',
+    description: 'Profile, address & regional configuration',
     icon: Building2,
-    nameField: 'departmentName',
-    nameLabel: 'Department Name',
-    codeField: 'departmentCode',
-    hasDescription: true,
-    maxName: 100,
-    maxDescription: 255,
-    defaultSortBy: 'departmentName',
-    parent: null,
-    api: { list: listDepartments, create: createDepartment, update: updateDepartment, setStatus: setDepartmentStatus, remove: deleteDepartment },
+    accent: 'teal',
+    get: hrmsService.getCompanySettings,
+    save: hrmsService.updateCompanySettings,
+    fields: [
+      { name: 'companyName', label: 'Company Name', type: 'text', required: true, maxLength: 150 },
+      { name: 'companyCode', label: 'Company Code', type: 'text', required: true, maxLength: 30 },
+      { name: 'email', label: 'Company Email', type: 'email', required: true, maxLength: 150 },
+      { name: 'phoneNumber', label: 'Phone Number', type: 'text', pattern: '^[0-9]{10,15}$', title: '10 to 15 digits, numbers only' },
+      { name: 'website', label: 'Website', type: 'text', maxLength: 150 },
+      { name: 'addressLine1', label: 'Address Line 1', type: 'text', maxLength: 255 },
+      { name: 'addressLine2', label: 'Address Line 2', type: 'text', maxLength: 255 },
+      { name: 'city', label: 'City', type: 'text', maxLength: 100 },
+      { name: 'state', label: 'State', type: 'text', maxLength: 100 },
+      { name: 'country', label: 'Country', type: 'text', maxLength: 100 },
+      { name: 'postalCode', label: 'Postal Code', type: 'text', maxLength: 20 },
+      { name: 'timeZone', label: 'Time Zone', type: 'text', required: true },
+      { name: 'currency', label: 'Currency', type: 'text', required: true, maxLength: 10 },
+      { name: 'workingDaysPerWeek', label: 'Working Days per Week', type: 'number', min: 1, max: 7 },
+    ],
+    sections: [
+      { title: 'Company Identity', icon: Building2, fields: ['companyName', 'companyCode', 'email', 'phoneNumber', 'website'] },
+      { title: 'Address', icon: MapPin, fields: ['addressLine1', 'addressLine2', 'city', 'state', 'country', 'postalCode'] },
+      { title: 'Regional Settings', icon: Globe2, fields: ['timeZone', 'currency', 'workingDaysPerWeek'] },
+    ],
   },
-  designation: {
-    key: 'designation',
-    label: 'Designations',
-    singular: 'Designation',
-    icon: Users,
-    nameField: 'designationName',
-    nameLabel: 'Designation Name',
-    codeField: 'designationCode',
-    hasDescription: true,
-    maxName: 255,
-    maxDescription: 255,
-    defaultSortBy: 'designationName',
-    parent: { field: 'departmentId', nameField: 'departmentName', label: 'Department' },
-    api: { list: listDesignations, create: createDesignation, update: updateDesignation, setStatus: setDesignationStatus, remove: deleteDesignation },
+  {
+    key: 'master-data',
+    label: 'Master Data',
+    description: 'Departments, designations & job titles',
+    icon: Database,
+    accent: 'blue',
+    custom: true,
+    component: MasterDataSettings,
+    roles: ['HR_ADMIN', 'MANAGER'],
   },
-  jobTitle: {
-    key: 'jobTitle',
-    label: 'Job Titles',
-    singular: 'Job Title',
-    icon: Tag,
-    nameField: 'jobTitle',
-    nameLabel: 'Job Title',
-    codeField: 'jobTitleCode',
-    hasDescription: false,
-    maxName: 100,
-    defaultSortBy: 'jobTitle',
-    parent: { field: 'designationId', nameField: 'designationName', label: 'Designation' },
-    api: { list: listJobTitles, create: createJobTitle, update: updateJobTitle, setStatus: setJobTitleStatus, remove: deleteJobTitle },
-  },
-};
+];
 
-const TABS = [RESOURCES.department, RESOURCES.designation, RESOURCES.jobTitle];
-
-function errMsg(err, fallback) {
-  return err?.message || fallback;
+// Backend LocalTime fields need HH:mm:ss; the <input type="time"> control only
+// gives/accepts HH:mm, so convert on the way in and out.
+function toTimeInputValue(value) {
+  return value ? value.slice(0, 5) : '';
+}
+function fromTimeInputValue(value) {
+  if (!value) return null;
+  return value.length === 5 ? `${value}:00` : value;
 }
 
-export default function MasterDataSettings() {
-  const [activeKey, setActiveKey] = useState('department');
-  const resource = RESOURCES[activeKey];
-
-  const [rows, setRows] = useState([]);
-  const [page, setPage] = useState(0);
-  const [totalPages, setTotalPages] = useState(1);
-  const [totalElements, setTotalElements] = useState(0);
-  const [search, setSearch] = useState('');
-  const [searchInput, setSearchInput] = useState('');
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [modal, setModal] = useState(null); // { mode: 'create' | 'edit', item? }
-  const { showToast } = useToast();
-  const { confirm } = useConfirm();
-
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError('');
-    try {
-      const result = await resource.api.list({
-        page,
-        size: PAGE_SIZE,
-        search,
-        sortBy: resource.defaultSortBy,
-        sortDirection: 'asc',
-      });
-      setRows(result?.content || []);
-      setTotalPages(result?.totalPages ?? 1);
-      setTotalElements(result?.totalElements ?? 0);
-    } catch (err) {
-      setError(errMsg(err, `Failed to load ${resource.label.toLowerCase()}.`));
-      setRows([]);
-    } finally {
-      setLoading(false);
-    }
-  }, [resource, page, search]);
-
-  useEffect(() => { load(); }, [load]);
-
-  function switchTab(key) {
-    if (key === activeKey) return;
-    setActiveKey(key);
-    setPage(0);
-    setSearch('');
-    setSearchInput('');
-  }
-
-  function submitSearch(event) {
-    event.preventDefault();
-    setPage(0);
-    setSearch(searchInput.trim());
-  }
-
-  async function toggleStatus(item) {
-    const next = !item.active;
-    try {
-      await resource.api.setStatus(item.id, next);
-      showToast(`${resource.singular} ${next ? 'activated' : 'deactivated'}.`, 'success');
-      load();
-    } catch (err) {
-      showToast(errMsg(err, 'Failed to update status.'), 'error');
-    }
-  }
-
-  async function removeItem(item) {
-    const ok = await confirm({
-      title: `Delete ${resource.singular.toLowerCase()}`,
-      message: `Delete "${item[resource.nameField]}"? If it's still referenced by employees${resource.parent ? ` or ${resource.parent.label.toLowerCase()}s` : ''}, the delete will fail — deactivating it is usually the safer move.`,
-      confirmText: 'Delete',
-      danger: true,
-    });
-    if (!ok) return;
-    try {
-      await resource.api.remove(item.id);
-      showToast(`${resource.singular} deleted.`, 'success');
-      if (rows.length === 1 && page > 0) setPage((p) => p - 1);
-      else load();
-    } catch (err) {
-      showToast(errMsg(err, `Couldn't delete — it's probably still in use. Try deactivating instead.`), 'error');
-    }
-  }
-
-  const colSpan = 3 + (resource.parent ? 1 : 0) + (resource.hasDescription ? 1 : 0);
-
+function ToggleField({ field, checked, disabled, onChange }) {
   return (
-    <div className="mdm">
-      <div className="mdm-tabs" role="tablist" aria-label="Master data type">
-        {TABS.map((r) => {
-          const Icon = r.icon;
-          return (
-            <button
-              key={r.key}
-              type="button"
-              role="tab"
-              aria-selected={activeKey === r.key}
-              className={`mdm-tab${activeKey === r.key ? ' is-active' : ''}`}
-              onClick={() => switchTab(r.key)}
-            >
-              <Icon size={15} />
-              {r.label}
-            </button>
-          );
-        })}
-      </div>
-
-      <div className="mdm-toolbar">
-        <form className="mdm-search" onSubmit={submitSearch}>
-          <Search size={15} />
-          <input
-            maxLength={SEARCH_MAX_LENGTH}
-            value={searchInput}
-            onChange={(event) => setSearchInput(event.target.value)}
-            placeholder={`Search ${resource.label.toLowerCase()}…`}
-          />
-        </form>
-        <button type="button" className="btn btn-primary" onClick={() => setModal({ mode: 'create' })}>
-          <Plus size={16} />
-          Add {resource.singular}
-        </button>
+    <div className={`toggle-row${disabled ? ' is-disabled' : ''}`}>
+      <div className="toggle-row-text">
+        <strong>{field.label}</strong>
+        {field.hint && <span>{field.hint}</span>}
       </div>
       <button
         type="button"
@@ -257,230 +198,271 @@ function InputField({ field, value, disabled, onChange }) {
   );
 }
 
-function MasterDataFormModal({ resource, mode, item, existingNames, onClose, onSaved }) {
-  const isEdit = mode === 'edit';
-  const [name, setName] = useState(isEdit ? (item[resource.nameField] || '') : '');
-  const [description, setDescription] = useState(isEdit ? (item.description || '') : '');
-  const [active, setActive] = useState(isEdit ? !!item.active : true);
-
-  const [departments, setDepartments] = useState([]);
-  const [designations, setDesignations] = useState([]);
-  const [departmentId, setDepartmentId] = useState('');
-  const [designationId, setDesignationId] = useState('');
-  const [loadingParents, setLoadingParents] = useState(resource.key !== 'department');
+export default function Settings() {
+  const [activeKey, setActiveKey] = useState(null);
+  const [data, setData] = useState(null);
+  const [originalData, setOriginalData] = useState(null);
+  const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [formError, setFormError] = useState('');
+  const [editMode, setEditMode] = useState(false);
+  const [notFound, setNotFound] = useState(false);
+  const [forbidden, setForbidden] = useState(false);
   const { showToast } = useToast();
+  const { user } = useAuth();
 
-  // Load the parent dropdown(s). Lookups only return ACTIVE rows (§7 of the
-  // guide), so when editing a row whose parent has since been deactivated,
-  // fall back to showing that stored value as its own option.
+  const userRole = user?.role || user?.roles?.[0];
+  // Only the groups this role is allowed to see (groups without `roles` are for everyone).
+  const visibleGroups = GROUPS.filter((g) => !g.roles || g.roles.includes(userRole));
+
+  const group = visibleGroups.find((g) => g.key === activeKey) || null;
+  const Icon = group?.icon;
+  const CustomPanel = group?.component;
+
   useEffect(() => {
-    let cancelled = false;
-    async function init() {
-      try {
-        if (resource.key === 'designation') {
-          const depts = await lookupDepartments();
-          if (cancelled) return;
-          let list = depts || [];
-          if (isEdit && item.departmentId && !list.some((d) => String(d.id) === String(item.departmentId))) {
-            list = [...list, { id: item.departmentId, name: `${item.departmentName} (inactive)` }];
-          }
-          setDepartments(list);
-          if (isEdit) setDepartmentId(String(item.departmentId));
-        } else if (resource.key === 'jobTitle') {
-          const depts = await lookupDepartments();
-          if (cancelled) return;
-          setDepartments(depts || []);
-          if (isEdit) {
-            // JobTitleResponse doesn't carry departmentId, only designationId
-            // (§4.2) — fetch the designation to recover it for the cascade.
-            const parentDesignation = await getDesignation(item.designationId).catch(() => null);
-            if (cancelled) return;
-            if (parentDesignation?.departmentId) {
-              const deptId = String(parentDesignation.departmentId);
-              let deptList = depts || [];
-              if (!deptList.some((d) => String(d.id) === deptId)) {
-                deptList = [...deptList, { id: parentDesignation.departmentId, name: `${parentDesignation.departmentName} (inactive)` }];
-              }
-              setDepartments(deptList);
-              setDepartmentId(deptId);
-              const desigs = await lookupDesignations(deptId).catch(() => []);
-              if (cancelled) return;
-              let desigList = desigs || [];
-              if (!desigList.some((d) => String(d.id) === String(item.designationId))) {
-                desigList = [...desigList, { id: item.designationId, name: `${item.designationName} (inactive)` }];
-              }
-              setDesignations(desigList);
-              setDesignationId(String(item.designationId));
-            }
-          }
-        }
-      } catch {
-        // A failed lookup shouldn't block the modal — selects just stay empty
-        // and the user sees "Select department" with no options.
-      } finally {
-        if (!cancelled) setLoadingParents(false);
-      }
-    }
-    init();
-    return () => { cancelled = true; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [resource.key]);
-
-  async function onDepartmentChange(id) {
-    setDepartmentId(id);
-    setDesignationId('');
-    setDesignations([]);
-    if (resource.key === 'jobTitle' && id) {
-      try {
-        const desigs = await lookupDesignations(id);
-        setDesignations(desigs || []);
-      } catch {
-        setDesignations([]);
-      }
-    }
-  }
-
-  const trimmedName = name.trim();
-  const originalName = isEdit ? (item[resource.nameField] || '').trim().toLowerCase() : null;
-  const isLikelyDuplicate = !!trimmedName
-    && existingNames.includes(trimmedName.toLowerCase())
-    && trimmedName.toLowerCase() !== originalName;
-
-  function validate() {
-    if (!trimmedName) return `${resource.nameLabel} is required.`;
-    if (trimmedName.length > resource.maxName) return `${resource.nameLabel} must be ${resource.maxName} characters or fewer.`;
-    if (resource.hasDescription && description.length > resource.maxDescription) return 'Description must be 255 characters or fewer.';
-    if (resource.key === 'designation' && !departmentId) return 'Select a department.';
-    if (resource.key === 'jobTitle' && !designationId) return 'Select a designation.';
-    return '';
-  }
-
-  async function submit(event) {
-    event.preventDefault();
-    const validationError = validate();
-    if (validationError) {
-      setFormError(validationError);
+    // No group selected, or a custom group (Master Data) that loads its own
+    // data: reset everything and skip the settings GET.
+    if (!group || group.custom) {
+      setData(null);
+      setOriginalData(null);
+      setLoading(false);
+      setNotFound(false);
+      setForbidden(false);
+      setEditMode(false);
       return;
     }
-    setFormError('');
+    setLoading(true);
+    setNotFound(false);
+    setForbidden(false);
+    setEditMode(false);
+    group.get()
+      .then((res) => {
+        setData(res);
+        setOriginalData(res);
+      })
+      .catch((err) => {
+        if (err?.status === 403) {
+          setForbidden(true);
+        } else if (err?.status === 404) {
+          setNotFound(true);
+        } else {
+          setData(null);
+          showToast(err.message || 'Failed to load settings.', 'error');
+        }
+      })
+      .finally(() => setLoading(false));
+  }, [activeKey]);
+
+  const updateField = (name, value) => setData((prev) => ({ ...prev, [name]: value }));
+
+  const startEdit = () => setEditMode(true);
+
+  const cancelEdit = () => {
+    setData(originalData);
+    setEditMode(false);
+  };
+
+  const save = async (event) => {
+    event.preventDefault();
     setSaving(true);
     try {
-      if (resource.key === 'department') {
-        const payload = { departmentName: trimmedName, description: description.trim() || null };
-        if (isEdit) await resource.api.update(item.id, { ...payload, active });
-        else await resource.api.create(payload);
-      } else if (resource.key === 'designation') {
-        const payload = { designationName: trimmedName, departmentId: Number(departmentId), description: description.trim() || null };
-        if (isEdit) await resource.api.update(item.id, { ...payload, active });
-        else await resource.api.create(payload);
-      } else {
-        const payload = { jobTitle: trimmedName, designationId: Number(designationId) };
-        if (isEdit) await resource.api.update(item.id, { ...payload, active });
-        else await resource.api.create(payload);
+      const payload = { ...data };
+      for (const field of group.fields) {
+        if (field.type === 'time') payload[field.name] = fromTimeInputValue(payload[field.name]);
       }
-      showToast(`${resource.singular} ${isEdit ? 'updated' : 'created'}.`, 'success');
-      onSaved();
+      const saved = await group.save(payload);
+      setData(saved);
+      setOriginalData(saved);
+      setEditMode(false);
+      showToast(`${group.label} settings saved.`, 'success');
     } catch (err) {
-      const message = errMsg(err, 'Something went wrong.');
-      setFormError(message);
-      showToast(message, 'error');
+      const msg = err.message || 'Failed to save settings.';
+      showToast(msg, 'error');
     } finally {
       setSaving(false);
     }
-  }
+  };
 
-  const needsDepartmentSelect = resource.key === 'designation' || resource.key === 'jobTitle';
+  const fieldByName = (name) => group?.fields.find((f) => f.name === name);
 
   return (
-    <div className="modal-overlay" onClick={onClose} role="presentation">
-      <div className="modal-card mdm-modal-card" onClick={(event) => event.stopPropagation()} role="dialog" aria-modal="true">
-        <div className="mdm-modal-head">
-          <h3>{isEdit ? `Edit ${resource.singular}` : `Add ${resource.singular}`}</h3>
-          <button type="button" className="mdm-modal-close" onClick={onClose} aria-label="Close">
-            <X size={16} />
-          </button>
-        </div>
+    <div className="page-stack">
+      <PageHeader
+        eyebrow="Administration"
+        title="Settings"
+        description="Manage attendance, leave, company and master data configuration."
+      />
 
-        <form onSubmit={submit} className="mdm-form">
-          {needsDepartmentSelect && (
-            <label className="mdm-field">
-              Department
-              <select
-                value={departmentId}
-                onChange={(event) => (resource.key === 'jobTitle' ? onDepartmentChange(event.target.value) : setDepartmentId(event.target.value))}
-                disabled={loadingParents}
-                required
-              >
-                <option value="">{loadingParents ? 'Loading…' : 'Select department'}</option>
-                {departments.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
-              </select>
-            </label>
-          )}
-
-          {resource.key === 'jobTitle' && (
-            <label className="mdm-field">
-              Designation
-              <select
-                value={designationId}
-                onChange={(event) => setDesignationId(event.target.value)}
-                disabled={!departmentId || loadingParents}
-                required
-              >
-                <option value="">{!departmentId ? 'Select a department first' : 'Select designation'}</option>
-                {designations.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
-              </select>
-            </label>
-          )}
-
-          <label className="mdm-field">
-            {resource.nameLabel}
-            <input value={name} onChange={(event) => setName(event.target.value)} maxLength={resource.maxName} required autoFocus />
-            {isLikelyDuplicate && <small className="mdm-field-warn">A {resource.singular.toLowerCase()} with this name may already exist.</small>}
-          </label>
-
-          {resource.hasDescription && (
-            <label className="mdm-field">
-              Description
-              <textarea value={description} onChange={(event) => setDescription(event.target.value)} maxLength={resource.maxDescription} rows={3} />
-            </label>
-          )}
-
-          {isEdit && (
-            <div className="mdm-active-row">
-              <div>
-                <strong>Active</strong>
-                <span>Inactive {resource.singular.toLowerCase()}s are hidden from dropdowns everywhere.</span>
-              </div>
+      <div className="settings-shell">
+        <nav className="settings-nav" role="tablist" aria-label="Settings groups">
+          <div className="settings-nav-label">Configuration</div>
+          {visibleGroups.map((g) => {
+            const GIcon = g.icon;
+            const isActive = activeKey === g.key;
+            return (
               <button
+                key={g.key}
                 type="button"
-                role="switch"
-                aria-checked={active}
-                aria-label="Active"
-                className={`switch${active ? ' is-on' : ''}`}
-                onClick={() => setActive((v) => !v)}
+                role="tab"
+                aria-selected={isActive}
+                className={`settings-nav-item accent-${g.accent}${isActive ? ' is-active' : ''}`}
+                onClick={() => setActiveKey(g.key)}
               >
-                <span className="switch-thumb" />
+                <span className="settings-nav-icon">
+                  <GIcon size={18} />
+                </span>
+                <span className="settings-nav-text">
+                  <strong>{g.label}</strong>
+                  <small>{g.description}</small>
+                </span>
+                <ChevronRight size={16} className="settings-nav-chevron" />
               </button>
-            </div>
-          )}
+            );
+          })}
+        </nav>
 
-          {formError && (
-            <div className="mdm-alert">
-              <AlertTriangle size={15} />
-              {formError}
+        <section className={`settings-detail panel${group ? ` accent-${group.accent}` : ''}`}>
+          {!group ? (
+            <div className="settings-empty-state">
+              <span className="settings-empty-icon">
+                <ListChecks size={22} />
+              </span>
+              <h2>Select a configuration section</h2>
+              <p>Choose a section from the left to view and edit its settings.</p>
             </div>
-          )}
+          ) : (
+            <>
+              <div className="settings-detail-banner" aria-hidden="true" />
+              <header className="settings-detail-header">
+                <div className="settings-detail-heading">
+                  <span className="settings-detail-icon">
+                    <Icon size={20} />
+                  </span>
+                  <div>
+                    <h2>{group.label}</h2>
+                    <p>{group.description}</p>
+                  </div>
+                </div>
 
-          <div className="modal-actions">
-            <button type="button" className="btn btn-secondary" onClick={onClose} disabled={saving}>Cancel</button>
-            <button type="submit" className="btn btn-primary" disabled={saving}>
-              {saving && <Loader2 size={16} className="spin" />}
-              {saving ? 'Saving…' : 'Save'}
-            </button>
-          </div>
-        </form>
+                {!group.custom && !loading && !forbidden && !notFound && data && (
+                  <div className="settings-detail-actions">
+                    {!editMode ? (
+                      <button type="button" className="btn btn-primary" onClick={startEdit}>
+                        <Pencil size={16} />
+                        Edit
+                      </button>
+                    ) : (
+                      <>
+                        <button type="button" className="btn btn-secondary" onClick={cancelEdit} disabled={saving}>
+                          <X size={16} />
+                          Cancel
+                        </button>
+                        <button type="submit" form="settings-form" className="btn btn-primary" disabled={saving}>
+                          {saving ? <Loader2 size={16} className="spin" /> : <Save size={16} />}
+                          {saving ? 'Saving…' : 'Save changes'}
+                        </button>
+                      </>
+                    )}
+                  </div>
+                )}
+              </header>
+
+              <div className="settings-detail-body">
+                {group.custom ? (
+                  <CustomPanel />
+                ) : (
+                  <>
+                    {loading && (
+                      <div className="settings-skeleton" aria-live="polite" aria-label={`Loading ${group.label.toLowerCase()} settings`}>
+                        <div className="skel-line skel-title" />
+                        <div className="skel-grid">
+                          <div className="skel-line" />
+                          <div className="skel-line" />
+                          <div className="skel-line" />
+                          <div className="skel-line" />
+                        </div>
+                        <div className="skel-line skel-title" />
+                        <div className="skel-row" />
+                        <div className="skel-row" />
+                      </div>
+                    )}
+
+                    {!loading && forbidden && (
+                      <div className="settings-state">
+                        <ShieldOff size={20} />
+                        <p>You don't have access to {group.label.toLowerCase()} settings.</p>
+                      </div>
+                    )}
+
+                    {!loading && notFound && (
+                      <div className="settings-state">
+                        <Inbox size={20} />
+                        <p>{group.label} settings haven't been initialized yet for this company.</p>
+                      </div>
+                    )}
+
+                    {!loading && !forbidden && !notFound && data && (
+                      <form id="settings-form" onSubmit={save}>
+                        {group.sections.map((section, sIdx) => {
+                          const SectionIcon = section.icon;
+                          const toggleFields = section.fields.map(fieldByName).filter((f) => f.type === 'boolean');
+                          const inputFields = section.fields.map(fieldByName).filter((f) => f.type !== 'boolean');
+
+                          return (
+                            <div
+                              className="settings-section"
+                              key={section.title}
+                              style={{ animationDelay: `${sIdx * 0.06}s` }}
+                            >
+                              <div className="settings-section-title">
+                                <SectionIcon size={15} />
+                                <span>{section.title}</span>
+                              </div>
+
+                              {inputFields.length > 0 && (
+                                <div className="settings-field-grid">
+                                  {inputFields.map((field) => (
+                                    <InputField
+                                      key={field.name}
+                                      field={field}
+                                      value={data[field.name]}
+                                      disabled={!editMode}
+                                      onChange={(val) => updateField(field.name, val)}
+                                    />
+                                  ))}
+                                </div>
+                              )}
+
+                              {toggleFields.length > 0 && (
+                                <div className="toggle-list">
+                                  {toggleFields.map((field) => (
+                                    <ToggleField
+                                      key={field.name}
+                                      field={field}
+                                      checked={!!data[field.name]}
+                                      disabled={!editMode}
+                                      onChange={(val) => updateField(field.name, val)}
+                                    />
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </form>
+                    )}
+
+                    {!loading && !forbidden && !notFound && !data && (
+                      <div className="settings-state">
+                        <Inbox size={20} />
+                        <p>No settings found.</p>
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+            </>
+          )}
+        </section>
       </div>
     </div>
   );

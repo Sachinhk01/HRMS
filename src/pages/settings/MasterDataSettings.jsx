@@ -29,6 +29,7 @@ import './MasterDataSettings.css';
 import { INPUT_LIMITS } from '../../utils/inputLimits';
 
 const PAGE_SIZE = 10;
+const SEARCH_MAX_LENGTH = 100;
 
 // One config per resource drives the whole table + form — see
 // MasterModule_frontendGuide.pdf for the backend contract this mirrors.
@@ -194,7 +195,7 @@ export default function MasterDataSettings() {
       <div className="mdm-toolbar">
         <form className="mdm-search" onSubmit={submitSearch}>
           <Search size={15} />
-          <input maxLength={INPUT_LIMITS.SEARCH}
+          <input
             value={searchInput}
             onChange={(event) => setSearchInput(event.target.value)}
             placeholder={`Search ${resource.label.toLowerCase()}…`}
