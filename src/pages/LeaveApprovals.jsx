@@ -10,10 +10,7 @@ import {
   AlertTriangle,
   CalendarDays,
   FileText,
-  UserRound,
-  Building2,
   CalendarRange,
-  ClipboardList,
   History,
   Check,
   Inbox,
@@ -27,6 +24,7 @@ import { getAllLeaveRequests, getTeamLeaveRequests, managerLeaveAction, exportLe
 import { capitalizeName } from '../utils/formatName';
 import { useToast } from '../context/ToastContext';
 import './LeaveApprovals.css';
+import { INPUT_LIMITS } from '../utils/inputLimits';
 
 const easeOut = [0.16, 1, 0.3, 1];
 const fadeUp = {
@@ -237,7 +235,7 @@ export default function LeaveApprovals() {
         <div className="la-toolbar">
           <label className="la-search">
             <Search size={15} />
-            <input type="text" placeholder="Search employee or leave type..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
+            <input maxLength={INPUT_LIMITS.SEARCH} type="text" placeholder="Search employee or leave type..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
           </label>
           <select className="compact-select" value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)}>
             <option value="ALL">All leave types</option>
@@ -354,14 +352,23 @@ export default function LeaveApprovals() {
       {/* ---------- Detail drawer ---------- */}
       <AnimatePresence>
         {drawerItem && (
-          <>
-            <motion.div className="drawer-overlay" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setDrawerItem(null)} />
+          <motion.div
+            className="drawer-overlay"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setDrawerItem(null)}
+          >
             <motion.aside
               className="detail-drawer"
-              initial={{ x: '100%' }}
-              animate={{ x: 0 }}
-              exit={{ x: '100%' }}
-              transition={{ type: 'spring', stiffness: 360, damping: 38 }}
+              role="dialog"
+              aria-modal="true"
+              aria-label="Leave request details"
+              onClick={(e) => e.stopPropagation()}
+              initial={{ opacity: 0, scale: 0.94, y: 16 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.94, y: 16 }}
+              transition={{ type: 'spring', stiffness: 380, damping: 32 }}
             >
               <div className="drawer-head">
                 <span className="eyebrow">Request Details</span>
@@ -374,17 +381,15 @@ export default function LeaveApprovals() {
                   <span className="emp-avatar lg">{initials(drawerItem.employeeName)}</span>
                   <div>
                     <strong>{capitalizeName(drawerItem.employeeName)}</strong>
-                    <small>{drawerItem.department || 'Department —'}</small>
+                    {drawerItem.department ? <small>{drawerItem.department}</small> : null}
                   </div>
+                  <span className="drawer-emp-status"><StatusBadge>{drawerItem.status}</StatusBadge></span>
                 </div>
 
                 <div className="drawer-grid">
-                  <div className="dg-item"><UserRound size={15} /><span>Employee</span><strong>{capitalizeName(drawerItem.employeeName)}</strong></div>
                   <div className="dg-item"><FileText size={15} /><span>Leave Type</span><strong>{drawerItem.leaveType}</strong></div>
-                  <div className="dg-item"><CalendarRange size={15} /><span>Date Range</span><strong>{drawerItem.startDate} – {drawerItem.endDate}</strong></div>
                   <div className="dg-item"><CalendarDays size={15} /><span>Total Days</span><strong>{drawerItem.totalDays}</strong></div>
-                  <div className="dg-item"><Building2 size={15} /><span>Department</span><strong>{drawerItem.department || '—'}</strong></div>
-                  <div className="dg-item"><ClipboardList size={15} /><span>Status</span><strong><StatusBadge>{drawerItem.status}</StatusBadge></strong></div>
+                  <div className="dg-item dg-wide"><CalendarRange size={15} /><span>Date Range</span><strong>{drawerItem.startDate} – {drawerItem.endDate}</strong></div>
                 </div>
 
                 <div className="drawer-section">
@@ -412,7 +417,7 @@ export default function LeaveApprovals() {
                 </div>
               )}
             </motion.aside>
-          </>
+          </motion.div>
         )}
       </AnimatePresence>
     </div>

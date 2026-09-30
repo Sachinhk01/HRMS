@@ -177,3 +177,8 @@ input:focus, select:focus, textarea:focus {
     transition-duration: .01ms !important;
   }
 }
+
+/* ---------- Character counter / helper text under composer fields ---------- */
+.char-hint { display: block; text-align: right; font-size: 11px; color: #94a3b8; margin-top: 4px; }
+.char-hint.left { text-align: left; margin-top: 0; }
+.char-hint.over { color: #dc2626; }

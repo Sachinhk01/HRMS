@@ -33,6 +33,8 @@ import {
 import { AttendanceSection, DeductionsSection, EarningsSection, EmptyState, PayrollBadge } from "./payrollUi";
 import { useConfirm } from "../../context/ConfirmContext";
 import { useToast } from "../../context/ToastContext";
+import { INPUT_LIMITS } from '../../utils/inputLimits';
+import { MonthPicker } from '../../components/DatePicker';
 
 const EMPTY_EDIT_FORM = {
   totalWorkingDays: "",
@@ -394,10 +396,10 @@ export default function PayrollRunsPanel() {
         {showGenerate && (
           <form className="payroll-form-grid" style={{ marginTop: 16 }} onSubmit={submitGenerate}>
             <label>Payroll month
-              <input type="month" value={genMonth} onChange={(event) => setGenMonth(event.target.value)} required />
+              <MonthPicker id="payroll-generate-month" value={genMonth} onChange={(event) => setGenMonth(event.target.value)} required />
             </label>
             <label>Remarks
-              <input value={genRemarks} onChange={(event) => setGenRemarks(event.target.value)} placeholder="e.g. August 2026 payroll" />
+              <input maxLength={INPUT_LIMITS.SHORT_TEXT} value={genRemarks} onChange={(event) => setGenRemarks(event.target.value)} placeholder="e.g. August 2026 payroll" />
             </label>
             <label className="checkbox-line" style={{ paddingTop: 26 }}>
               <input
@@ -413,7 +415,7 @@ export default function PayrollRunsPanel() {
                 <option value="">Quick select…</option>
                 <option value="ALL">Select all active employees</option>
               </select>
-              <input
+              <input maxLength={INPUT_LIMITS.SEARCH}
                 value={genEmployeeQuery}
                 onChange={(event) => setGenEmployeeQuery(event.target.value)}
                 placeholder="Search employees to include…"
@@ -484,10 +486,9 @@ export default function PayrollRunsPanel() {
         <div className="payroll-toolbar">
           <div className="payroll-search">
             <Search size={17} />
-            <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search number, name, code" />
+            <input maxLength={INPUT_LIMITS.SEARCH} value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search number, name, code" />
           </div>
-          <input
-            type="month"
+          <MonthPicker id="payroll-filter-month"
             className="compact-select"
             value={month}
             onChange={(event) => { setMonth(event.target.value); setStatusFilter("ALL"); }}
@@ -677,7 +678,7 @@ export default function PayrollRunsPanel() {
                 <label>Income tax<input type="number" min="0" max="999999" step="0.01" value={editForm.incomeTax} onChange={(event) => setEditForm({ ...editForm, incomeTax: event.target.value })} /></label>
                 <label>Other deduction<input type="number" min="0" max="999999" step="0.01" value={editForm.otherDeduction} onChange={(event) => setEditForm({ ...editForm, otherDeduction: event.target.value })} /></label>
               </div>
-              <label>Remarks<input value={editForm.remarks} onChange={(event) => setEditForm({ ...editForm, remarks: event.target.value })} /></label>
+              <label>Remarks<input maxLength={INPUT_LIMITS.SHORT_TEXT} value={editForm.remarks} onChange={(event) => setEditForm({ ...editForm, remarks: event.target.value })} /></label>
               <div className="payroll-form-actions">
                 <button type="button" className="btn btn-secondary" onClick={() => setEditing(null)}>Cancel</button>
                 <button type="submit" className="btn btn-primary" disabled={saving}>

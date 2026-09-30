@@ -1,3 +1,4 @@
+import DatePicker from '../components/DatePicker';
 import { useEffect, useMemo, useState } from 'react';
 import {
   Users,
@@ -21,6 +22,7 @@ import { getAttendanceReport } from '../services/attendanceService';
 import { getLeaveReport } from '../services/leaveService';
 import { capitalizeName } from '../utils/formatName';
 import './Reports.css';
+import { INPUT_LIMITS } from '../utils/inputLimits';
 
 function initialsOf(first, last) {
   return `${(first || '').charAt(0)}${(last || '').charAt(0)}`.toUpperCase() || '?';
@@ -290,7 +292,7 @@ export default function Reports() {
         <div className="reports-toolbar">
           <div className="reports-search">
             <Search size={16} />
-            <input
+            <input maxLength={INPUT_LIMITS.SEARCH}
               type="text"
               placeholder="Search by name, email or department…"
               value={search}

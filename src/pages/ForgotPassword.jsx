@@ -1,3 +1,4 @@
+import DatePicker from '../components/DatePicker';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
@@ -7,6 +8,7 @@ import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import './EmployeeLogin.css';
 import './ForgotPassword.css';
+import { INPUT_LIMITS } from '../utils/inputLimits';
 
 const rise = {
   hidden: { opacity: 0, y: 22 },
@@ -70,7 +72,7 @@ export function ForgotPassword() {
                   <span className="hrms-field__label">Email</span>
                   <span className="hrms-field__wrap">
                     <Mail />
-                    <input
+                    <input maxLength={INPUT_LIMITS.EMAIL}
                       type="email"
                       placeholder="name@company.com"
                       autoComplete="email"

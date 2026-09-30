@@ -34,7 +34,7 @@ export function addCandidate(actor, data) {
   const password = data.password || generateTemporaryPassword();
   if (!name || !email || !dob) throw new Error('Name, email and date of birth are required.');
   if (allCandidates().some((item) => item.email === email) || allUsers().some((item) => item.email === email)) {
-    throw new Error('This email already exists.');
+    throw new Error('This email is already registered.');
   }
 
   const now = new Date().toISOString();

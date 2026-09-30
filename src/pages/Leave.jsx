@@ -33,6 +33,8 @@ import {
   getMyLeaveRequests,
 } from '../services/leaveService';
 import './Leave.css';
+import { INPUT_LIMITS } from '../utils/inputLimits';
+import DatePicker from '../components/DatePicker';
 
 /* ---------- Leave-type visual themes (UI only) ---------- */
 const LEAVE_THEMES = {
@@ -397,11 +399,11 @@ export default function Leave() {
 
             <label className="lf-field">
               <span className="lf-label"><CalendarDays size={14} /> From Date</span>
-              <input name="from" type="date" required min={MIN_DATE} max={MAX_DATE} value={formFrom} onChange={(e) => setFormFrom(limitYearTo4(e.target.value))} />
+              <DatePicker id="leave-from" name="from" required min={MIN_DATE} max={MAX_DATE} value={formFrom} onChange={(e) => setFormFrom(limitYearTo4(e.target.value))} />
             </label>
             <label className="lf-field">
               <span className="lf-label"><CalendarDays size={14} /> To Date</span>
-              <input name="to" type="date" required min={formFrom || MIN_DATE} max={MAX_DATE} value={formTo} onChange={(e) => setFormTo(limitYearTo4(e.target.value))} />
+              <DatePicker id="leave-to" name="to" required min={formFrom || MIN_DATE} max={MAX_DATE} value={formTo} onChange={(e) => setFormTo(limitYearTo4(e.target.value))} />
             </label>
 
             <label className="lf-field full-span">
@@ -450,7 +452,7 @@ export default function Leave() {
           <div className="leave-toolbar">
             <label className="leave-search">
               <Search size={15} />
-              <input type="text" placeholder="Search type or date..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
+              <input maxLength={INPUT_LIMITS.SEARCH} type="text" placeholder="Search type or date..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
             </label>
             <select className="compact-select" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
               <option value="ALL">All Statuses</option>

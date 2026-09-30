@@ -7,6 +7,7 @@ import { getEmployees, getProfilePhotoUrl } from '../services/employeeService';
 import { hrmsService } from '../services/hrmsService';
 import { ROLE_MENUS } from '../config';
 import './TopBar.css';
+import { INPUT_LIMITS } from '../utils/inputLimits';
 
 // Roles that can see the Employees page/dropdown, mirrored from
 // ROUTE_ROLES['/employees'] in config.js — kept here so the search box
@@ -210,7 +211,7 @@ export default function TopBar() {
       <div className="searchbox-wrap" ref={searchRef}>
         <label className="searchbox">
           <Search size={17} />
-          <input
+          <input maxLength={INPUT_LIMITS.SEARCH}
             placeholder="Search anything..."
             value={query}
             onChange={(e) => {

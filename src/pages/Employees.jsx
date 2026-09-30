@@ -19,6 +19,8 @@ import {
 import './Employees.css';
 import { capitalizeName } from '../utils/formatName';
 import { listJobTitles } from '../services/masterDataService';
+import { INPUT_LIMITS } from '../utils/inputLimits';
+import DatePicker from '../components/DatePicker';
 
 const DEPT_COLORS = {
   Engineering: '#2563eb', Sales: '#16a34a', HR: '#d97706', Marketing: '#db2777',
@@ -444,7 +446,7 @@ export default function Employees() {
       <motion.div className="emp-toolbar" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, ease: easeOut }}>
         <label className="emp-search">
           <Search size={15} />
-          <input type="text" placeholder="Search name, email or employee code..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
+          <input maxLength={INPUT_LIMITS.SEARCH} type="text" placeholder="Search name, email or employee code..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
         </label>
         <select className="compact-select" value={deptFilter} onChange={(e) => setDeptFilter(e.target.value)}>
           <option value="ALL">All Departments</option>
@@ -637,15 +639,15 @@ export default function Employees() {
                     <div className="emp-form-grid">
                       <label className="form-field">
                         <span>Username</span>
-                        <input type="text" value={form.username} onChange={updateField('username')} placeholder="e.g. anagha.k" required />
+                        <input maxLength={INPUT_LIMITS.USERNAME} type="text" value={form.username} onChange={updateField('username')} placeholder="e.g. anagha.k" required />
                       </label>
                       <label className="form-field">
                         <span>Email</span>
-                        <input type="email" value={form.email} onChange={updateField('email')} placeholder="name@company.com" required />
+                        <input maxLength={INPUT_LIMITS.EMAIL} type="email" value={form.email} onChange={updateField('email')} placeholder="name@company.com" required />
                       </label>
                       <label className="form-field">
                         <span>Temporary Password</span>
-                        <input type="password" value={form.password} onChange={updateField('password')} placeholder="Min. 6 characters" required />
+                        <input maxLength={INPUT_LIMITS.PASSWORD} type="password" value={form.password} onChange={updateField('password')} placeholder="Min. 6 characters" required />
                       </label>
                       <label className="form-field">
                         <span>Role</span>
@@ -661,15 +663,15 @@ export default function Employees() {
                     <div className="emp-form-grid">
                       <label className="form-field">
                         <span>First Name</span>
-                        <input type="text" value={form.firstName} onChange={updateField('firstName')} required />
+                        <input maxLength={INPUT_LIMITS.NAME} type="text" value={form.firstName} onChange={updateField('firstName')} required />
                       </label>
                       <label className="form-field">
                         <span>Last Name</span>
-                        <input type="text" value={form.lastName} onChange={updateField('lastName')} />
+                        <input maxLength={INPUT_LIMITS.NAME} type="text" value={form.lastName} onChange={updateField('lastName')} />
                       </label>
                       <label className="form-field">
                         <span>Phone Number</span>
-                        <input type="tel" value={form.phoneNumber} onChange={updateField('phoneNumber')} placeholder="10-digit mobile" required />
+                        <input maxLength={INPUT_LIMITS.PHONE} type="tel" value={form.phoneNumber} onChange={updateField('phoneNumber')} placeholder="10-digit mobile" required />
                       </label>
                       <label className="form-field">
                         <span>Gender</span>
@@ -680,11 +682,11 @@ export default function Employees() {
                       </label>
                       <label className="form-field">
                         <span>Date of Birth</span>
-                        <input type="date" value={form.dateOfBirth} onChange={updateField('dateOfBirth')} required />
+                        <DatePicker id="employee-dob" value={form.dateOfBirth} onChange={updateField('dateOfBirth')} required />
                       </label>
                       <label className="form-field">
                         <span>Date of Joining</span>
-                        <input type="date" value={form.dateOfJoining} onChange={updateField('dateOfJoining')} required />
+                        <DatePicker id="employee-doj" value={form.dateOfJoining} onChange={updateField('dateOfJoining')} required />
                       </label>
                       <label className="form-field">
                         <span>Employment Type</span>

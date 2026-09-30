@@ -126,15 +126,28 @@ export async function deleteAnnouncement(announcementId) {
   return data.data;
 }
 
-export function createCelebration({ type = 'GENERAL', title, message, eventDate = '', taggedPeople = [], attachments = [] }) {
+// Celebrations/events are stored inside the announcement message, with the
+// type/date/tagged people appended as trailing lines.
+export function buildCelebrationMessage({ type = 'GENERAL', message = '', eventDate = '', taggedPeople = [] }) {
   const taggedNames = taggedPeople.map((person) => person.name).filter(Boolean);
-  const details = [
-    message,
+  return [
+    (message || '').trim(),
     eventDate ? `Celebration date: ${eventDate}` : '',
     taggedNames.length ? `Tagged people: ${taggedNames.join(', ')}` : '',
     `Celebration type: ${type}`,
   ].filter(Boolean).join('\n\n');
-  return postAnnouncement({ title, message: details, uploadType: 'POST', attachments });
+}
+
+// The backend caps the WHOLE stored message at 1000 characters, so the visible
+// message can only use what is left after the appended date/type/tag lines.
+export function getCelebrationMessageLimit({ type = 'GENERAL', eventDate = '', taggedPeople = [] } = {}, max = 1000) {
+  const extras = buildCelebrationMessage({ type, message: '', eventDate, taggedPeople }).length;
+  return Math.max(0, max - extras - 2); // 2 = the "\n\n" separating message from details
+}
+
+export function createCelebration({ type = 'GENERAL', title, message, eventDate = '', taggedPeople = [], attachments = [] }) {
+  const details = buildCelebrationMessage({ type, message, eventDate, taggedPeople });
+  return postAnnouncement({ title: (title || '').trim(), message: details, uploadType: 'POST', attachments });
 }
 
 export function parseNotificationContent(item = {}) {
@@ -186,6 +199,13 @@ export function parseCelebrationMeta(rawMessage = '') {
   };
 }
 
+// True for announcements that were really posted as an Event / celebration
+// (Events page or Celebration Wall composer). Those carry a trailing
+// "Celebration type: ..." line, and must NOT appear on the Announcements page.
+export function isCelebrationOrEventNotification(item = {}) {
+  return item.notificationType === 'ANNOUNCEMENT' && parseCelebrationMeta(item.message || '') !== null;
+}
+
 // Same "what counts as upcoming" logic as the Celebration Wall's sidebar
 // widget: celebration-type notifications (birthdays, work anniversaries,
 // general celebration posts, celebration-meta-tagged announcements) plus
@@ -216,6 +236,7 @@ export function buildUpcomingEvents(notifications = [], holidays = []) {
           message: meta.message,
           eventDate: meta.eventDate,
           createdAt: item.createdAt,
+          attachmentUrls: item.attachmentUrls || [],
         });
       }
       return;
@@ -231,6 +252,7 @@ export function buildUpcomingEvents(notifications = [], holidays = []) {
         message: item.message || '',
         eventDate: item.eventDate || null,
         createdAt: item.createdAt,
+        attachmentUrls: item.attachmentUrls || [],
       });
     }
   });
@@ -245,6 +267,7 @@ export function buildUpcomingEvents(notifications = [], holidays = []) {
         message: holiday.description || '',
         eventDate: holiday.holidayDate,
         createdAt: holiday.holidayDate,
+        attachmentUrls: [],
       });
     }
   });

@@ -1,3 +1,4 @@
+import DatePicker from '../components/DatePicker';
 import { useEffect, useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -9,6 +10,7 @@ import { getEmployees } from '../services/employeeService';
 import { capitalizeName } from '../utils/formatName';
 import { useToast } from '../context/ToastContext';
 import './Performance.css';
+import { INPUT_LIMITS } from '../utils/inputLimits';
 
 const easeOut = [0.16, 1, 0.3, 1];
 const fadeUp = { hidden: { opacity: 0, y: 18 }, show: { opacity: 1, y: 0, transition: { duration: 0.5, ease: easeOut } } };
@@ -166,19 +168,19 @@ export default function Performance() {
 
             <label className="perf-field full-span">
               <span className="perf-label"><MessageSquare size={14} /> Feedback</span>
-              <textarea rows="3" value={feedback} onChange={(e) => setFeedback(e.target.value)} placeholder="Overall feedback..." />
+              <textarea maxLength={INPUT_LIMITS.FEEDBACK} rows="3" value={feedback} onChange={(e) => setFeedback(e.target.value)} placeholder="Overall feedback..." />
             </label>
             <label className="perf-field full-span">
               <span className="perf-label"><TrendingUp size={14} /> Strengths</span>
-              <textarea rows="2" value={strengths} onChange={(e) => setStrengths(e.target.value)} placeholder="Key strengths..." />
+              <textarea maxLength={INPUT_LIMITS.REVIEW_NOTES} rows="2" value={strengths} onChange={(e) => setStrengths(e.target.value)} placeholder="Key strengths..." />
             </label>
             <label className="perf-field full-span">
               <span className="perf-label"><Target size={14} /> Areas for Improvement</span>
-              <textarea rows="2" value={improvements} onChange={(e) => setImprovements(e.target.value)} placeholder="Improvement areas..." />
+              <textarea maxLength={INPUT_LIMITS.REVIEW_NOTES} rows="2" value={improvements} onChange={(e) => setImprovements(e.target.value)} placeholder="Improvement areas..." />
             </label>
             <label className="perf-field full-span">
               <span className="perf-label"><Target size={14} /> Goals</span>
-              <textarea rows="2" value={goals} onChange={(e) => setGoals(e.target.value)} placeholder="Goals for next cycle..." />
+              <textarea maxLength={INPUT_LIMITS.REVIEW_NOTES} rows="2" value={goals} onChange={(e) => setGoals(e.target.value)} placeholder="Goals for next cycle..." />
             </label>
 
             <div className="perf-attach-row full-span">

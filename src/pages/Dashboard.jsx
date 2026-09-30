@@ -44,6 +44,8 @@ import celebrationGroupImg from "../assets/illustrations/celebration-group.png";
 import "./Dashboard.css";
 import BirthdayWidget from "../components/BirthdayWidget";
 import HighlightCards from "../components/HighlightCards";
+import { INPUT_LIMITS } from '../utils/inputLimits';
+import { MonthPicker } from '../components/DatePicker';
 
 // utils/formatName.js was never actually added to the repo on either
 // branch, so build the name capitalization inline instead of importing it.
@@ -660,7 +662,7 @@ useEffect(() => {
               <div className="editor-fields">
                 <label className="ef-field ef-full">
                   <span>Title</span>
-                  <input name="title" defaultValue={magazine?.title || ''} placeholder="e.g. MyHourly Times — August Edition" required />
+                  <input maxLength={INPUT_LIMITS.TITLE} name="title" defaultValue={magazine?.title || ''} placeholder="e.g. MyHourly Times — August Edition" required />
                 </label>
                 <label className="ef-field ef-full">
                   <span>
@@ -725,11 +727,11 @@ useEffect(() => {
                 </label>
                 <label className="ef-field">
                   <span>Month</span>
-                  <input name="month" type="month" defaultValue={employeeOfMonth?.month || ''} required />
+                  <MonthPicker id="eom-month" name="month" defaultValue={employeeOfMonth?.month || ''} required />
                 </label>
                 <label className="ef-field">
                   <span>Photo URL</span>
-                  <input
+                  <input maxLength={INPUT_LIMITS.URL}
                     name="photoUrl"
                     type="url"
                     value={eomPhotoUrl}

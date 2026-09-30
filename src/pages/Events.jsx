@@ -10,6 +10,7 @@ import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import { getNotifications, buildUpcomingEvents, createCelebration } from '../services/notificationService';
 import './Events.css';
+import DatePicker from '../components/DatePicker';
 
 const easeOut = [0.16, 1, 0.3, 1];
 const fadeUp = {
@@ -133,8 +134,7 @@ export default function Events() {
 
             <div className="ev-field">
               <span className="ev-label">Event Date</span>
-              <input
-                type="date"
+              <DatePicker id="event-date"
                 min={todayStr}
                 value={eventForm.eventDate}
                 onChange={(e) => setEventForm((v) => ({ ...v, eventDate: e.target.value }))}

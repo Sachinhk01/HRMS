@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { AlertTriangle, HelpCircle, X } from 'lucide-react';
 import './ConfirmDialog.css';
+import { INPUT_LIMITS } from '../utils/inputLimits';
 
 export default function ConfirmDialog({ dialog, onClose }) {
   const [values, setValues] = useState({});
@@ -83,14 +84,14 @@ export default function ConfirmDialog({ dialog, onClose }) {
                 <label key={field.name} className="confirm-dialog-field">
                   {field.label}
                   {field.multiline ? (
-                    <textarea
+                    <textarea maxLength={INPUT_LIMITS.REASON}
                       value={values[field.name] ?? ''}
                       onChange={(e) => setValues((current) => ({ ...current, [field.name]: e.target.value }))}
                       rows={3}
                       autoFocus={index === 0}
                     />
                   ) : (
-                    <input
+                    <input maxLength={INPUT_LIMITS.SHORT_TEXT}
                       type={field.type || 'text'}
                       value={values[field.name] ?? ''}
                       onChange={(e) => setValues((current) => ({ ...current, [field.name]: e.target.value }))}

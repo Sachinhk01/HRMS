@@ -8,7 +8,8 @@ import Pagination from '../components/Pagination';
 import usePagination, { sortRecent } from '../hooks/usePagination';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
-import { getNotifications, parseNotificationContent, isMagazineNotification, createAnnouncement } from '../services/notificationService';
+import { getNotifications, parseNotificationContent, isMagazineNotification, isCelebrationOrEventNotification, createAnnouncement } from '../services/notificationService';
+import { getFriendlyError, validatePostText, POST_TITLE_MAX, POST_MESSAGE_MAX } from '../utils/postValidation';
 import './Announcements.css';
 
 const easeOut = [0.16, 1, 0.3, 1];
@@ -45,7 +46,7 @@ export default function Announcements() {
       const res = await getNotifications({ page: 0, size: 100 });
       setNotifications(res?.content || []);
     } catch (err) {
-      setError(err.message || 'Failed to load announcements.');
+      setError(getFriendlyError(err, 'Unable to load announcements right now. Please try again in a moment.'));
     } finally {
       setLoading(false);
     }
@@ -57,7 +58,7 @@ export default function Announcements() {
 
   const announcements = useMemo(() => {
     const items = (notifications || [])
-      .filter((n) => n.notificationType === 'ANNOUNCEMENT' && !isMagazineNotification(n))
+      .filter((n) => n.notificationType === 'ANNOUNCEMENT' && !isMagazineNotification(n) && !isCelebrationOrEventNotification(n))
       .map((n) => {
         const parsed = parseNotificationContent(n);
         return {
@@ -77,11 +78,16 @@ export default function Announcements() {
 
   const handleCreateAnnouncement = async (event) => {
     event.preventDefault();
+    const validationError = validatePostText({ title: announcementForm.title, message: announcementForm.message });
+    if (validationError) {
+      showToast(validationError, 'error');
+      return;
+    }
     setCreating(true);
     try {
       await createAnnouncement({
-        title: announcementForm.title,
-        message: announcementForm.message,
+        title: announcementForm.title.trim(),
+        message: announcementForm.message.trim(),
         uploadType: 'POST',
         attachments: announcementFiles,
       });
@@ -91,7 +97,7 @@ export default function Announcements() {
       showToast('Announcement Published Successfully.', 'success');
       await loadData();
     } catch (err) {
-      showToast(err.message || 'Failed To Publish Announcement.', 'error');
+      showToast(getFriendlyError(err, 'Could not publish the announcement. Please try again in a moment.'), 'error');
     } finally {
       setCreating(false);
     }
@@ -131,7 +137,7 @@ export default function Announcements() {
               <span className="ann-label">Title</span>
               <input
                 value={announcementForm.title}
-                maxLength={100}
+                maxLength={POST_TITLE_MAX}
                 onChange={(e) => setAnnouncementForm((v) => ({ ...v, title: e.target.value }))}
                 placeholder="Announcement Title"
                 required
@@ -143,11 +149,14 @@ export default function Announcements() {
               <textarea
                 rows={4}
                 value={announcementForm.message}
-                maxLength={1000}
+                maxLength={POST_MESSAGE_MAX}
                 onChange={(e) => setAnnouncementForm((v) => ({ ...v, message: e.target.value }))}
                 placeholder="Write The Announcement Details..."
                 required
               />
+              <small className={`char-hint ${announcementForm.message.length >= POST_MESSAGE_MAX ? 'over' : ''}`}>
+                {announcementForm.message.length}/{POST_MESSAGE_MAX}
+              </small>
             </div>
 
             <div className="ann-form-actions full-span">

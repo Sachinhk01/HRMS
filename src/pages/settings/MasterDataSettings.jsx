@@ -1,3 +1,4 @@
+import DatePicker from '../components/DatePicker';
 import { useCallback, useEffect, useState } from 'react';
 import {
   Plus,
@@ -25,6 +26,7 @@ import {
 // Reuses .switch / .switch-thumb from the parent Settings page (Settings.css
 // is already loaded whenever this component is mounted).
 import './MasterDataSettings.css';
+import { INPUT_LIMITS } from '../../utils/inputLimits';
 
 const PAGE_SIZE = 10;
 
@@ -192,7 +194,7 @@ export default function MasterDataSettings() {
       <div className="mdm-toolbar">
         <form className="mdm-search" onSubmit={submitSearch}>
           <Search size={15} />
-          <input
+          <input maxLength={INPUT_LIMITS.SEARCH}
             value={searchInput}
             onChange={(event) => setSearchInput(event.target.value)}
             placeholder={`Search ${resource.label.toLowerCase()}…`}

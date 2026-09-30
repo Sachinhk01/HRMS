@@ -43,6 +43,8 @@ import {
   startBreak,
 } from '../services/attendanceService';
 import './Attendance.css';
+import { INPUT_LIMITS } from '../utils/inputLimits';
+import DatePicker, { MonthPicker } from '../components/DatePicker';
 
 const STATUS_LABELS = {
   PRESENT: 'Present',
@@ -892,7 +894,7 @@ if (failures.length) {
               <div className="history-toolbar">
                 <label className="history-search">
                   <Search size={15} />
-                  <input
+                  <input maxLength={INPUT_LIMITS.SEARCH}
                     type="text"
                     placeholder="Search by date..."
                     value={searchQuery}
@@ -920,23 +922,20 @@ if (failures.length) {
                 </select>
 
                 {exportRangeType === 'month' ? (
-                  <input
-                    type="month"
+                  <MonthPicker id="attendance-export-month"
                     className="compact-select"
                     value={exportMonth}
                     onChange={(e) => setExportMonth(e.target.value)}
                   />
                 ) : (
                   <>
-                    <input
-                      type="date"
+                    <DatePicker id="attendance-export-from"
                       className="compact-select"
                       value={exportFromDate}
                       max={exportToDate || undefined}
                       onChange={(e) => setExportFromDate(e.target.value)}
                     />
-                    <input
-                      type="date"
+                    <DatePicker id="attendance-export-to"
                       className="compact-select"
                       value={exportToDate}
                       min={exportFromDate || undefined}

@@ -1,3 +1,4 @@
+import DatePicker from '../components/DatePicker';
 import { useEffect, useState } from 'react';
 import {
   Pencil,
@@ -148,7 +149,7 @@ function InputField({ field, value, disabled, onChange }) {
     <div className="settings-field">
       <label htmlFor={`f-${field.name}`}>
         {field.label}
-        {field.required && <span className="req-dot" aria-hidden="true" />}
+        {field.required && <span className="required-star" aria-hidden="true">*</span>}
       </label>
       {field.type === 'time' ? (
         <input

@@ -1,3 +1,4 @@
+import DatePicker from '../components/DatePicker';
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
@@ -21,6 +22,7 @@ import { useToast } from '../context/ToastContext';
 import { getRememberedEmail, setRememberedEmail } from '../services/authStorage';
 import './EmployeeLogin.css';
 import './HRLogin.css';
+import { INPUT_LIMITS } from '../utils/inputLimits';
 
 const container = {
   hidden: {},
@@ -160,7 +162,7 @@ export function HRLogin() {
                 <span className="hrms-field__label">Email or Username</span>
                 <span className="hrms-field__wrap">
                   <Mail />
-                  <input
+                  <input maxLength={INPUT_LIMITS.EMAIL}
                     type="text"
                     placeholder="Enter your email or username"
                     autoComplete="email"
@@ -175,7 +177,7 @@ export function HRLogin() {
                 <span className="hrms-field__label">Password</span>
                 <span className="hrms-field__wrap">
                   <Lock />
-                  <input
+                  <input maxLength={INPUT_LIMITS.LOGIN_PASSWORD}
                     type={showPassword ? 'text' : 'password'}
                     placeholder="Enter your password"
                     autoComplete="current-password"

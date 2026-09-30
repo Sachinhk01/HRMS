@@ -20,6 +20,8 @@ import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import { form16Service, getForm16EmployeeDropdown } from '../services/form16Service';
 import './Form16.css';
+import { INPUT_LIMITS } from '../utils/inputLimits';
+import DatePicker from '../components/DatePicker';
 
 // Backend occasionally serializes an entity's default Object.toString()
 // (e.g. "com.my_hourly.master.entity.Designation@463364df") into a text
@@ -65,7 +67,7 @@ function safePayload(obj) {
 function Field({ label, value, onChange, type = 'text', full = false, readOnly = false, children, placeholder }) {
   return <label className={`f16-field ${full ? 'full' : ''}`}>
     <span>{label}</span>
-    {children || (readOnly ? <div className="f16-readonly">{value || '—'}</div> : <input type={type} value={value ?? ''} onChange={(e) => onChange?.(e.target.value)} placeholder={placeholder} />)}
+    {children || (readOnly ? <div className="f16-readonly">{value || '—'}</div> : type === 'date' ? <DatePicker id={`f16-${String(label).toLowerCase().replace(/[^a-z0-9]+/g, '-')}`} value={value ?? ''} onChange={(e) => onChange?.(e.target.value)} placeholder={placeholder} /> : <input maxLength={INPUT_LIMITS.SHORT_TEXT} type={type} value={value ?? ''} onChange={(e) => onChange?.(e.target.value)} placeholder={placeholder} />)}
   </label>;
 }
 

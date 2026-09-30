@@ -9,6 +9,8 @@ import autoTable from 'jspdf-autotable';
 import ExportMenu from './ExportMenu';
 import { getEmployeeAttendanceHistory } from '../services/attendanceService';
 import { capitalizeName } from '../utils/formatName';
+import { INPUT_LIMITS } from '../utils/inputLimits';
+import { MonthPicker } from './DatePicker';
 
 const STATUS_LABELS = {
   PRESENT: 'Present',
@@ -223,7 +225,7 @@ export default function EmployeeAttendancePanel({ employeeId, employeeName }) {
       <div className="emp-attn-toolbar">
         <label className="emp-attn-search">
           <Search size={14} />
-          <input type="text" placeholder="Search by date..." value={searchDate} onChange={(e) => setSearchDate(e.target.value)} />
+          <input maxLength={INPUT_LIMITS.SEARCH} type="text" placeholder="Search by date..." value={searchDate} onChange={(e) => setSearchDate(e.target.value)} />
         </label>
         <label className="emp-attn-status-filter">
           <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
@@ -233,8 +235,7 @@ export default function EmployeeAttendancePanel({ employeeId, employeeName }) {
         </label>
         <label className="emp-attn-month">
           <CalendarDays size={14} />
-          <input
-            type="month"
+          <MonthPicker id="employee-attendance-month"
             value={monthValue}
             max={monthOptionValue(new Date())}
             onChange={(e) => setMonthValue(e.target.value)}

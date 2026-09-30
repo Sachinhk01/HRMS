@@ -1,3 +1,4 @@
+import DatePicker from '../components/DatePicker';
 import { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import {
@@ -28,6 +29,7 @@ import {
 } from '../services/regularizationService';
 import './Regularization.css';
 import './RegularizationApprovals.css';
+import { INPUT_LIMITS } from '../utils/inputLimits';
 
 const fadeUp = {
   hidden: { opacity: 0, y: 16 },
@@ -291,7 +293,7 @@ export default function RegularizationApprovals() {
         <div className="reg-filters-row">
           <div className="reg-search">
             <Search size={16} />
-            <input type="text" placeholder="Search by employee or reason…" value={search} onChange={(e) => setSearch(e.target.value)} />
+            <input maxLength={INPUT_LIMITS.SEARCH} type="text" placeholder="Search by employee or reason…" value={search} onChange={(e) => setSearch(e.target.value)} />
           </div>
           <select className="compact-select" value={employeeFilter} onChange={(e) => setEmployeeFilter(e.target.value)}>
             <option value="ALL">All Employees</option>
@@ -346,7 +348,7 @@ export default function RegularizationApprovals() {
                   <tr key={r.id} className="reg-clickable-row" onClick={() => openRequest(r.id)}>
                     <td><strong>{capitalizeName(r.employeeName)}</strong></td>
                     <td>{fmtDate(r.fromDate)} – {fmtDate(r.toDate)}</td>
-                    <td className="reg-reason-cell">{r.reason}</td>
+                    <td className="reg-reason-cell"><div className="reg-reason-text" title={r.reason}>{r.reason}</div></td>
                     <td><StatusBadge tone={meta.tone}>{meta.label}</StatusBadge></td>
                     <td>{tally.pending}</td>
                     <td>{fmtDateTime(r.createdAt)}</td>

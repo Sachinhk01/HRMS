@@ -130,8 +130,12 @@
 
 .main-content {
   flex: 1;
+  min-height: 0;
   padding: 22px clamp(16px, 2.4vw, 34px) 40px;
-  overflow-x: hidden;
+  /* clip (not hidden) so this element never becomes its own scroll container;
+     the page scrolls normally at window level */
+  overflow-x: clip;
+  overflow-y: visible;
 }
 
 /* Off-canvas drawer under 900px */

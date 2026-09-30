@@ -14,6 +14,8 @@ import { useConfirm } from '../context/ConfirmContext';
 import { createCelebration, deleteAnnouncement, getNotifications, updateAnnouncement } from '../services/notificationService';
 import { getEmployeeDropdown } from '../services/employeeService';
 import './CelebrationWall.css';
+import { INPUT_LIMITS } from '../utils/inputLimits';
+import DatePicker from '../components/DatePicker';
 
 // Filter tabs — must contain 'ALL' plus exact backend NotificationType values for calendar events
 const types = ['ALL', 'BIRTHDAY', 'WORK_ANNIVERSARY', 'GENERAL'];
@@ -413,12 +415,12 @@ export default function CelebrationWall() {
           <div className="celebration-composer-head"><div><span className="eyebrow">HR Celebration</span><h2>Add a Celebration</h2></div><button type="button" className="icon-btn" onClick={() => setComposerOpen(false)} aria-label="Close"><X size={18} /></button></div>
           <form className="celebration-form" onSubmit={handleCreateCelebration}>
             <label>Celebration Type<select value={celebrationForm.type} onChange={(e) => setCelebrationForm((value) => ({ ...value, type: e.target.value }))}><option value="GENERAL">General Celebration</option><option value="BIRTHDAY">Birthday</option><option value="WORK_ANNIVERSARY">Work Anniversary</option></select></label>
-            <label>Celebration Date<input type="date" value={celebrationForm.eventDate} onChange={(e) => setCelebrationForm((value) => ({ ...value, eventDate: e.target.value }))} /></label>
+            <label>Celebration Date<DatePicker id="celebration-date" value={celebrationForm.eventDate} onChange={(e) => setCelebrationForm((value) => ({ ...value, eventDate: e.target.value }))} /></label>
             <label className="full-span">Title<input value={celebrationForm.title} maxLength={120} onChange={(e) => setCelebrationForm((value) => ({ ...value, title: e.target.value }))} required /></label>
             <label className="full-span">Message<textarea rows={4} value={celebrationForm.message} maxLength={1000} onChange={(e) => setCelebrationForm((value) => ({ ...value, message: e.target.value }))} required /></label>
             <div className="full-span celebration-tags-field">
               <div className="celebration-tags-title"><span><Users size={17} /> Tag People</span><small>{celebrationForm.taggedPeople.length} selected</small></div>
-              <input className="celebration-tag-search" value={tagSearch} onChange={(e) => setTagSearch(e.target.value)} placeholder="Search employee name or ID" />
+              <input maxLength={INPUT_LIMITS.SEARCH} className="celebration-tag-search" value={tagSearch} onChange={(e) => setTagSearch(e.target.value)} placeholder="Search employee name or ID" />
               <div className="celebration-tag-list">
                 {employees.filter((employee) => `${employee.employeeName} ${employee.employeeCode}`.toLowerCase().includes(tagSearch.toLowerCase())).map((employee) => {
                   const selected = celebrationForm.taggedPeople.some((person) => String(person.id) === String(employee.id));
@@ -607,7 +609,7 @@ export default function CelebrationWall() {
                     {/* Comment composer */}
                     <div className="comment-composer">
                       <span className="comment-avatar">{initials(user.name)}</span>
-                      <input
+                      <input maxLength={INPUT_LIMITS.REASON}
                         value={commentDrafts[post.id] || ''}
                         onChange={(event) => setCommentDrafts((current) => ({ ...current, [post.id]: event.target.value }))}
                         placeholder="Write a comment..."

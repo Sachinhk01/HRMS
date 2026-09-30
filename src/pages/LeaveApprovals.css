@@ -299,33 +299,38 @@
 }
 
 /* ---------- Detail drawer ---------- */
+/* Compact centered card (was a full-height side drawer) */
 .drawer-overlay {
   position: fixed; inset: 0;
   background: rgba(15, 23, 42, .4);
   backdrop-filter: blur(3px);
   z-index: 1150;
+  display: flex; align-items: center; justify-content: center;
+  padding: 20px;
 }
 .detail-drawer {
-  position: fixed; top: 0; right: 0;
-  width: 420px; max-width: 90vw; height: 100%;
+  position: relative;
+  width: 400px; max-width: 100%;
+  max-height: min(600px, 88vh);
   background: #fff;
-  box-shadow: -20px 0 60px rgba(15, 23, 42, .2);
-  z-index: 1200;
+  border-radius: 20px;
+  box-shadow: 0 24px 60px rgba(15, 23, 42, .28);
+  overflow: hidden;
   display: flex; flex-direction: column;
 }
 .drawer-head {
   position: relative;
-  padding: 24px 24px 16px;
+  padding: 18px 20px 14px;
   border-bottom: 1px solid #eef2f7;
 }
 .drawer-head .eyebrow {
   display: block; font-size: 11px; font-weight: 700; color: #64748b;
   text-transform: uppercase; letter-spacing: .05em;
 }
-.drawer-head h2 { margin: 4px 0 0; font-size: 20px; font-weight: 800; color: #0f172a; }
+.drawer-head h2 { margin: 2px 0 0; font-size: 18px; font-weight: 800; color: #0f172a; }
 .drawer-close {
-  position: absolute; top: 20px; right: 20px;
-  width: 34px; height: 34px; border-radius: 10px;
+  position: absolute; top: 14px; right: 16px;
+  width: 32px; height: 32px; border-radius: 10px;
   border: 1px solid #e2e8f0; background: #fff;
   color: #64748b; cursor: pointer;
   display: grid; place-items: center;
@@ -333,30 +338,33 @@
 }
 .drawer-close:hover { background: #f1f5f9; color: #0f172a; }
 
-.drawer-body { flex: 1; overflow-y: auto; padding: 20px 24px; display: flex; flex-direction: column; gap: 20px; }
-.drawer-emp { display: flex; align-items: center; gap: 14px; }
-.drawer-emp strong { display: block; font-size: 16px; font-weight: 800; color: #0f172a; }
+.drawer-body { flex: 1; overflow-y: auto; padding: 16px 20px; display: flex; flex-direction: column; gap: 14px; }
+.drawer-emp { display: flex; align-items: center; gap: 12px; }
+.drawer-emp .emp-avatar.lg { width: 44px; height: 44px; font-size: 15px; flex-shrink: 0; }
+.drawer-emp-status { margin-left: auto; flex-shrink: 0; }
+.drawer-emp strong { display: block; font-size: 15px; font-weight: 800; color: #0f172a; }
 .drawer-emp small { font-size: 12px; color: #64748b; }
 
 .drawer-grid {
-  display: grid; grid-template-columns: 1fr 1fr; gap: 12px;
+  display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
 }
+.dg-wide { grid-column: 1 / -1; }
 .dg-item {
   display: flex; flex-direction: column; gap: 2px;
-  padding: 12px 14px; border-radius: 12px;
+  padding: 10px 14px; border-radius: 12px;
   background: #f8fafc; border: 1px solid #eef2f7;
 }
 .dg-item svg { color: #94a3b8; margin-bottom: 4px; }
 .dg-item span { font-size: 11px; font-weight: 600; color: #94a3b8; }
 .dg-item strong { font-size: 13px; font-weight: 700; color: #0f172a; }
 
-.drawer-section { display: flex; flex-direction: column; gap: 8px; }
+.drawer-section { display: flex; flex-direction: column; gap: 6px; }
 .ds-label {
   display: inline-flex; align-items: center; gap: 6px;
   font-size: 12px; font-weight: 700; color: #475569;
 }
 .ds-label svg { color: #94a3b8; }
-.drawer-section p { margin: 0; font-size: 13px; color: #334155; line-height: 1.5; padding: 12px 14px; background: #f8fafc; border-radius: 12px; border: 1px solid #eef2f7; }
+.drawer-section p { margin: 0; font-size: 13px; color: #334155; line-height: 1.5; padding: 10px 14px; background: #f8fafc; border-radius: 12px; border: 1px solid #eef2f7; }
 
 .timeline { display: flex; flex-direction: column; gap: 14px; padding-left: 4px; }
 .tl-item { display: flex; align-items: flex-start; gap: 12px; position: relative; }
@@ -376,7 +384,7 @@
 .tl-item small { font-size: 11px; color: #94a3b8; text-transform: capitalize; }
 
 .drawer-footer {
-  display: flex; gap: 10px; padding: 16px 24px;
+  display: flex; gap: 10px; padding: 14px 20px;
   border-top: 1px solid #eef2f7;
 }
 .drawer-footer .btn { flex: 1; }
@@ -389,7 +397,7 @@
   .la-overview-grid { grid-template-columns: 1fr; }
   .la-toolbar { flex-direction: column; align-items: stretch; }
   .la-search { min-width: 0; }
-  .drawer-grid { grid-template-columns: 1fr; }
+  .drawer-grid { grid-template-columns: 1fr 1fr; }
   .detail-drawer { width: 100%; }
 }
 

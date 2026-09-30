@@ -10,6 +10,8 @@ import {
   payrollMonthLabel,
 } from "../../services/payrollService";
 import { DeductionsSection, EarningsSection, EmptyState, PayrollBadge } from "./payrollUi";
+import { INPUT_LIMITS } from '../../utils/inputLimits';
+import DatePicker from '../../components/DatePicker';
 
 const EMPTY_FORM = {
   employeeId: "",
@@ -121,7 +123,7 @@ export default function SalaryStructuresPanel() {
         <div className="payroll-toolbar" style={{ marginBottom: 0 }}>
           <div className="payroll-search">
             <Search size={17} />
-            <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search employee or code" />
+            <input maxLength={INPUT_LIMITS.SEARCH} value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search employee or code" />
           </div>
           <label className="checkbox-line">
            
@@ -160,9 +162,9 @@ export default function SalaryStructuresPanel() {
                 ))}
               </select>
             </label>
-            <label>Effective from<input type="date" value={form.effectiveFrom} onChange={(event) => setForm({ ...form, effectiveFrom: event.target.value })} required /></label>
-            <label>Effective to (optional)<input type="date" value={form.effectiveTo} onChange={(event) => setForm({ ...form, effectiveTo: event.target.value })} /></label>
-            <label>Remarks<input value={form.remarks} onChange={(event) => setForm({ ...form, remarks: event.target.value })} placeholder="e.g. Annual revision" /></label>
+            <label>Effective from<DatePicker id="salary-effective-from" value={form.effectiveFrom} onChange={(event) => setForm({ ...form, effectiveFrom: event.target.value })} required /></label>
+            <label>Effective to (optional)<DatePicker id="salary-effective-to" value={form.effectiveTo} onChange={(event) => setForm({ ...form, effectiveTo: event.target.value })} /></label>
+            <label>Remarks<input maxLength={INPUT_LIMITS.SHORT_TEXT} value={form.remarks} onChange={(event) => setForm({ ...form, remarks: event.target.value })} placeholder="e.g. Annual revision" /></label>
             <div className="full-span payroll-form-actions">
               <button type="button" className="btn btn-secondary" onClick={resetForm}>Cancel</button>
               <button type="submit" className="btn btn-primary" disabled={saving}>

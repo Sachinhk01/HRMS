@@ -9,6 +9,8 @@ import { hrmsService } from '../services/hrmsService';
 import { getEmployeeById, getProfilePhotoUrl } from '../services/employeeService';
 import { capitalizeName } from '../utils/formatName';
 import './Profile.css';
+import { INPUT_LIMITS } from '../utils/inputLimits';
+import DatePicker from '../components/DatePicker';
 
 const TABS = ['Personal Info', 'Employment Details', 'Change Password'];
 
@@ -193,11 +195,11 @@ export default function Profile() {
           {activeTab === 'Personal Info' && (
             isOwnProfile ? (
               <form className="form-grid" onSubmit={save}>
-                <label>First Name<input name="firstName" defaultValue={profile.firstName} required /></label>
-                <label>Last Name<input name="lastName" defaultValue={profile.lastName} /></label>
+                <label>First Name<input maxLength={INPUT_LIMITS.NAME} name="firstName" defaultValue={profile.firstName} required /></label>
+                <label>Last Name<input maxLength={INPUT_LIMITS.NAME} name="lastName" defaultValue={profile.lastName} /></label>
                 <label>Email<input value={profile.email} disabled /></label>
-                <label>Phone Number<input name="phoneNumber" defaultValue={profile.phoneNumber} /></label>
-                <label>Date of Birth<input name="dateOfBirth" type="date" defaultValue={profile.dateOfBirth} /></label>
+                <label>Phone Number<input maxLength={INPUT_LIMITS.PHONE} name="phoneNumber" defaultValue={profile.phoneNumber} /></label>
+                <label>Date of Birth<DatePicker id="profile-dob" name="dateOfBirth" defaultValue={profile.dateOfBirth} /></label>
                 <label>
                   Gender
                   <select name="gender" defaultValue={profile.gender || ''}>
@@ -236,7 +238,7 @@ export default function Profile() {
 
           {activeTab === 'Change Password' && isOwnProfile && (
             <form className="form-grid" onSubmit={changePassword}>
-              <label className="full-span">Current Password<input name="oldPassword" type="password" required /></label>
+              <label className="full-span">Current Password<input maxLength={INPUT_LIMITS.LOGIN_PASSWORD} name="oldPassword" type="password" required /></label>
               <label>New Password<input name="newPassword" type="password" required minLength={8} maxLength={20} /></label>
               <label>Confirm New Password<input name="confirmPassword" type="password" required minLength={8} maxLength={20} /></label>
               <button className="btn btn-primary full-span"><KeyRound size={18} />Update Password</button>

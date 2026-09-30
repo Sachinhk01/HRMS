@@ -24,6 +24,8 @@ import {
   REGULARIZABLE_STATUSES,
 } from '../services/regularizationService';
 import './Regularization.css';
+import { INPUT_LIMITS } from '../utils/inputLimits';
+import DatePicker from '../components/DatePicker';
 
 const fadeUp = {
   hidden: { opacity: 0, y: 16 },
@@ -297,11 +299,11 @@ export default function Regularization() {
         <div className="reg-range-row">
           <div className="reg-field">
             <label htmlFor="reg-from">From Date</label>
-            <input id="reg-from" type="date" value={rangeFrom} onChange={(e) => setRangeFrom(e.target.value)} />
+            <DatePicker id="reg-from" value={rangeFrom} onChange={(e) => setRangeFrom(e.target.value)} />
           </div>
           <div className="reg-field">
             <label htmlFor="reg-to">To Date</label>
-            <input id="reg-to" type="date" value={rangeTo} onChange={(e) => setRangeTo(e.target.value)} />
+            <DatePicker id="reg-to" value={rangeTo} onChange={(e) => setRangeTo(e.target.value)} />
           </div>
           <button type="button" className="btn btn-primary" onClick={loadAttendance} disabled={loadingAttendance}>
             <CalendarRange size={16} />
@@ -356,11 +358,13 @@ export default function Regularization() {
               <label htmlFor="reg-reason">Reason</label>
               <textarea
                 id="reg-reason"
+                maxLength={INPUT_LIMITS.REASON}
                 rows={3}
                 placeholder="e.g. Biometric device was not working on these days"
                 value={reason}
                 onChange={(e) => setReason(e.target.value)}
               />
+              <small className="reg-char-count">{reason.length}/{INPUT_LIMITS.REASON}</small>
             </div>
 
             <div className="reg-form-actions">
@@ -385,7 +389,7 @@ export default function Regularization() {
         <div className="reg-filters-row">
           <div className="reg-search">
             <Search size={16} />
-            <input
+            <input maxLength={INPUT_LIMITS.SEARCH}
               type="text"
               placeholder="Search by reason or date…"
               value={search}
@@ -435,7 +439,7 @@ export default function Regularization() {
                 return (
                   <tr key={r.id}>
                     <td>{fmtDate(r.fromDate)} – {fmtDate(r.toDate)}</td>
-                    <td className="reg-reason-cell">{r.reason}</td>
+                    <td className="reg-reason-cell"><div className="reg-reason-text" title={r.reason}>{r.reason}</div></td>
                     <td><StatusBadge tone={meta.tone}>{meta.label}</StatusBadge></td>
                     <td>
                       <span className="reg-tally">

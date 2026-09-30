@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Landmark, Pencil, Plus, Search, Trash2, X } from "lucide-react";
+import { Landmark, Pencil, Plus, Search, Trash2 } from "lucide-react";
 import {
   createPaymentDetails,
   deletePaymentDetails,
@@ -11,6 +11,7 @@ import {
 import { EmptyState } from "./payrollUi";
 import { useConfirm } from "../../context/ConfirmContext";
 import { useToast } from "../../context/ToastContext";
+import { INPUT_LIMITS } from '../../utils/inputLimits';
 
 const EMPTY_FORM = {
   panNumber: "",
@@ -192,7 +193,7 @@ export default function PaymentDetailsPanel() {
         <div className="payroll-toolbar" style={{ marginBottom: 0 }}>
           <div className="payroll-search">
             <Search size={17} />
-            <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search employee…" />
+            <input maxLength={INPUT_LIMITS.SEARCH} value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search employee…" />
           </div>
           <select
             className="compact-select"
@@ -268,21 +269,20 @@ export default function PaymentDetailsPanel() {
               <span className="eyebrow">{details ? "Update details" : "New details"}</span>
               <h2>{details ? `Edit ${details.employeeName}'s details` : `Add payment details · ${selectedEmployee?.employeeName || ""}`}</h2>
             </div>
-            <button type="button" className="payroll-modal-close" onClick={resetForm} aria-label="Close"><X size={18} /></button>
           </div>
           <form className="payroll-form-grid" onSubmit={submit}>
-            <label>Bank name<input value={form.bankName} onChange={(event) => setForm({ ...form, bankName: event.target.value })} maxLength="100" required /></label>
-            <label>Account number<input value={form.accountNumber} onChange={(event) => setForm({ ...form, accountNumber: event.target.value.replace(/\D/g, "") })} inputMode="numeric" minLength="9" maxLength="18" required /></label>
-            <label>IFSC code<input value={form.ifscCode} onChange={(event) => setForm({ ...form, ifscCode: event.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 11) })} placeholder="SBIN0001234" minLength="11" maxLength="11" required /></label>
+            <label>Bank name<input placeholder="Enter bank name" value={form.bankName} onChange={(event) => setForm({ ...form, bankName: event.target.value })} maxLength="100" required /></label>
+            <label>Account number<input placeholder="Enter account number" value={form.accountNumber} onChange={(event) => setForm({ ...form, accountNumber: event.target.value.replace(/\D/g, "") })} inputMode="numeric" minLength="9" maxLength="18" required /></label>
+            <label>IFSC code<input value={form.ifscCode} onChange={(event) => setForm({ ...form, ifscCode: event.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 11) })} placeholder="Enter IFSC code" minLength="11" maxLength="11" required /></label>
             <label>Payment mode
               <select value={form.paymentMode} onChange={(event) => setForm({ ...form, paymentMode: event.target.value })} required>
                 {PAYMENT_MODES.map((mode) => <option key={mode} value={mode}>{MODE_LABELS[mode] || mode}</option>)}
               </select>
             </label>
-            <label>PAN number<input value={form.panNumber} onChange={(event) => setForm({ ...form, panNumber: event.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 10) })} placeholder="ABCDE1234F" maxLength="10" /></label>
-            <label>UAN number<input value={form.uanNumber} onChange={(event) => setForm({ ...form, uanNumber: event.target.value.replace(/\D/g, "").slice(0, 12) })} inputMode="numeric" maxLength="12" /></label>
-            <label>PF number<input value={form.pfNumber} onChange={(event) => setForm({ ...form, pfNumber: event.target.value.toUpperCase().slice(0, 22) })} maxLength="22" /></label>
-            <label>ESI number<input value={form.esiNumber} onChange={(event) => setForm({ ...form, esiNumber: event.target.value.replace(/\D/g, "").slice(0, 17) })} inputMode="numeric" maxLength="17" /></label>
+            <label>PAN number<input value={form.panNumber} onChange={(event) => setForm({ ...form, panNumber: event.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 10) })} placeholder="Enter PAN number" maxLength="10" /></label>
+            <label>UAN number<input placeholder="Enter UAN number" value={form.uanNumber} onChange={(event) => setForm({ ...form, uanNumber: event.target.value.replace(/\D/g, "").slice(0, 12) })} inputMode="numeric" maxLength="12" /></label>
+            <label>PF number<input placeholder="Enter PF number" value={form.pfNumber} onChange={(event) => setForm({ ...form, pfNumber: event.target.value.toUpperCase().slice(0, 22) })} maxLength="22" /></label>
+            <label>ESI number<input placeholder="Enter ESI number" value={form.esiNumber} onChange={(event) => setForm({ ...form, esiNumber: event.target.value.replace(/\D/g, "").slice(0, 17) })} inputMode="numeric" maxLength="17" /></label>
             <div className="full-span payroll-form-actions">
               <button type="button" className="btn btn-secondary" onClick={resetForm}>Cancel</button>
               <button type="submit" className="btn btn-primary" disabled={saving}>

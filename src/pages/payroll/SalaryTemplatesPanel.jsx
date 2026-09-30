@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Layers, Pencil, Plus, Power, Search, X } from "lucide-react";
+import { Layers, Pencil, Plus, Power, Search } from "lucide-react";
 import {
   createSalaryTemplate,
   formatINR,
@@ -7,8 +7,9 @@ import {
   updateSalaryTemplate,
   updateSalaryTemplateStatus,
 } from "../../services/payrollService";
-import { EmptyState, LineItem } from "./payrollUi";
+import { EmptyState } from "./payrollUi";
 import { useConfirm } from "../../context/ConfirmContext";
+import { INPUT_LIMITS } from '../../utils/inputLimits';
 
 const EMPTY_FORM = {
   employeeType: "FULL_TIME",
@@ -38,8 +39,20 @@ const EARNING_FIELDS = [
   "otherAllowance",
 ];
 
+const DEDUCTION_FIELDS = [
+  "pf",
+  "esi",
+  "professionalTax",
+  "incomeTax",
+  "otherDeduction",
+];
+
 function calculateGross(template) {
   return EARNING_FIELDS.reduce((total, field) => total + (Number(template[field]) || 0), 0);
+}
+
+function calculateTotalDeductions(template) {
+  return DEDUCTION_FIELDS.reduce((total, field) => total + (Number(template[field]) || 0), 0);
 }
 
 export default function SalaryTemplatesPanel() {
@@ -165,15 +178,17 @@ export default function SalaryTemplatesPanel() {
         <div className="payroll-toolbar" style={{ marginBottom: 0 }}>
           <div className="payroll-search">
             <Search size={17} />
-            <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search by employee type" />
+            <input maxLength={INPUT_LIMITS.SEARCH} value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search by employee type" />
           </div>
-          <button
-            type="button"
-            className="btn btn-primary"
-            onClick={() => { resetForm(); setShowForm(true); }}
-          >
-            <Plus size={18} /> New Template
-          </button>
+          {!showForm && (
+            <button
+              type="button"
+              className="btn btn-primary"
+              onClick={() => { resetForm(); setShowForm(true); }}
+            >
+              <Plus size={18} /> New Template
+            </button>
+          )}
         </div>
       </section>
 
@@ -184,12 +199,11 @@ export default function SalaryTemplatesPanel() {
               <span className="eyebrow">{editing ? "Update template" : "New template"}</span>
               <h2>{editing ? `Edit ${editing.employeeType} template` : "Create salary template"}</h2>
             </div>
-            <button type="button" className="payroll-modal-close" onClick={resetForm} aria-label="Close"><X size={18} /></button>
           </div>
           <form className="payroll-form-grid" onSubmit={submit}>
                         {!editing && (
               <label>Employee type
-                <input
+                <input maxLength={INPUT_LIMITS.SHORT_TEXT}
                   value={form.employeeType}
                   onChange={(event) => setForm({ ...form, employeeType: event.target.value })}
                   placeholder="e.g. FULL_TIME"
@@ -246,16 +260,12 @@ export default function SalaryTemplatesPanel() {
                 <tr key={item.id}>
                   <td>
                     <strong>{item.employeeType.replace("_", " ")}</strong>
-                    <small className="table-subtext">Template #{item.id}</small>
                   </td>
                   <td>
                     <strong>{formatINR(calculateGross(item))}</strong>
                   </td>
                   <td>
-                    <div className="payroll-line-items">
-                      <LineItem label="Total" value={item.otherDeduction} />
-                    </div>
-                    <small className="table-subtext">PF {formatINR(item.pf)} · PT {formatINR(item.professionalTax)}</small>
+                    <strong>{formatINR(calculateTotalDeductions(item))}</strong>
                   </td>
                   <td>
                     <span className={`payroll-badge st-${item.active ? "ACTIVE" : "INACTIVE"}`}>

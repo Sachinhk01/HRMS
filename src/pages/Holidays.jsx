@@ -15,6 +15,8 @@ import {
 } from '../services/holidayService';
 import './Holidays.css';
 import { CalendarHeart, Flag, Gift, Sparkles } from 'lucide-react';
+import { INPUT_LIMITS } from '../utils/inputLimits';
+import DatePicker from '../components/DatePicker';
 
 const HOLIDAY_TYPE_META = {
   HOLIDAY: { label: 'Company Holiday', icon: CalendarHeart, cls: 'type-company' },
@@ -180,7 +182,7 @@ export default function Holidays() {
           <form id="holiday-form" className="form-grid" onSubmit={submit} noValidate>
             <label>
               Holiday Name
-              <input
+              <input maxLength={INPUT_LIMITS.HOLIDAY_NAME}
                 value={form.holidayName}
                 onChange={(event) => {
                   setForm({ ...form, holidayName: event.target.value });
@@ -192,8 +194,7 @@ export default function Holidays() {
             </label>
             <label>
               Date
-              <input
-                type="date"
+              <DatePicker id="holiday-date"
                 value={form.holidayDate}
                 onChange={(event) => {
                   setForm({ ...form, holidayDate: event.target.value });
@@ -221,7 +222,7 @@ export default function Holidays() {
             </label>
             <label>
               Description
-              <input value={form.description} onChange={(event) => setForm({ ...form, description: event.target.value })} placeholder="Optional Note" />
+              <input maxLength={INPUT_LIMITS.HOLIDAY_NOTE} value={form.description} onChange={(event) => setForm({ ...form, description: event.target.value })} placeholder="Optional Note" />
             </label>
           </form>
         </section>
@@ -229,7 +230,7 @@ export default function Holidays() {
 
       <section className="panel">
         <div className="holiday-list-toolbar">
-          <div className="searchbox holiday-search"><Search size={17} /><input value={query} onChange={(event) => { setQuery(event.target.value); setPage(1); }} placeholder="Search Holidays" /></div>
+          <div className="searchbox holiday-search"><Search size={17} /><input maxLength={INPUT_LIMITS.SEARCH} value={query} onChange={(event) => { setQuery(event.target.value); setPage(1); }} placeholder="Search Holidays" /></div>
           <select className="compact-select" value={year} onChange={(event) => { setYear(event.target.value); setPage(1); }}>{years.map((item) => <option key={item}>{item}</option>)}</select>
         </div>
         <div className="table-wrap">

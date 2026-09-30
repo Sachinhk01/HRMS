@@ -237,3 +237,37 @@
 @media (prefers-reduced-motion: reduce) {
   .page-reveal > * { animation: none; }
 }
+
+/* ---------- Event photo (cover + viewer) ---------- */
+.ev-card-banner.has-photo { height: 180px; background: #0f172a; }
+.ev-card-banner.has-photo::before { display: none; }
+.ev-cover-btn {
+  position: absolute; inset: 0; padding: 0; border: 0;
+  background: transparent; cursor: zoom-in; overflow: hidden;
+}
+.ev-cover-btn img { width: 100%; height: 100%; object-fit: cover; display: block; transition: transform .35s ease; }
+.ev-cover-btn:hover img { transform: scale(1.04); }
+.ev-card-banner.has-photo .ev-date-badge { position: absolute; top: 12px; left: 12px; }
+.ev-photo-count {
+  position: absolute; right: 12px; bottom: 12px;
+  padding: 4px 10px; border-radius: 999px;
+  background: rgba(15, 23, 42, .7); color: #fff;
+  font-size: 11px; font-weight: 700; backdrop-filter: blur(4px);
+}
+.ev-lightbox {
+  position: fixed; inset: 0; z-index: 2000;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(15, 23, 42, .88); padding: 24px;
+}
+.ev-lightbox img { max-width: min(92vw, 1100px); max-height: 88vh; border-radius: 14px; object-fit: contain; box-shadow: 0 24px 60px rgba(0, 0, 0, .4); }
+.ev-lightbox-close, .ev-lightbox-nav {
+  position: absolute; border: 0; cursor: pointer;
+  width: 42px; height: 42px; border-radius: 999px;
+  display: grid; place-items: center;
+  background: rgba(255, 255, 255, .16); color: #fff;
+}
+.ev-lightbox-close:hover, .ev-lightbox-nav:hover { background: rgba(255, 255, 255, .28); }
+.ev-lightbox-close { top: 20px; right: 20px; }
+.ev-lightbox-nav { top: 50%; transform: translateY(-50%); }
+.ev-lightbox-nav.prev { left: 20px; }
+.ev-lightbox-nav.next { right: 20px; }

@@ -168,7 +168,7 @@
   color: #64748b; font-size: 13px;
 }
 .emp-attn-search { flex: 1 1 220px; }
-.emp-attn-search input, .emp-attn-status-filter select, .emp-attn-month input[type="month"] {
+.emp-attn-search input, .emp-attn-status-filter select, .emp-attn-month input[type="month"], .emp-attn-month .dp-input {
   border: none; background: transparent; outline: none; font-size: 13px; color: #1e293b;
 }
 .emp-attn-search input { width: 100%; }
