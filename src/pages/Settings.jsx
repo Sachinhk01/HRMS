@@ -24,6 +24,7 @@ import { hrmsService } from '../services/hrmsService';
 import { useToast } from '../context/ToastContext';
 import { useAuth } from '../context/AuthContext';
 import MasterDataSettings from './settings/MasterDataSettings';
+import LeaveTypesSettings from './settings/LeaveTypesSettings';
 import './Settings.css';
 
 // Each group maps 1:1 to a live SettingController group (GET/PUT /settings/{group}).
@@ -39,6 +40,9 @@ import './Settings.css';
 //
 // A group with `custom: true` (Master Data) does not use get/save/fields/sections.
 // It renders its own `component`, which loads and saves its own data.
+//
+// A group with `extra` renders that component below its settings form (Leave
+// uses it for the Leave Types table). It loads and saves its own data.
 //
 // A group with `roles` is only shown to those roles. Master Data is limited to
 // HR_ADMIN and MANAGER because the backend's @PreAuthorize on the master data
@@ -86,6 +90,7 @@ const GROUPS = [
       { title: 'Leave Allowances', icon: Gauge, fields: ['monthlyGuideline', 'annualPaidLeave'] },
       { title: 'Leave Rules', icon: Repeat2, fields: ['carryForwardAllowed'] },
     ],
+    extra: LeaveTypesSettings,
   },
   {
     key: 'company',
@@ -213,10 +218,13 @@ export default function Settings() {
   const userRole = user?.role || user?.roles?.[0];
   // Only the groups this role is allowed to see (groups without `roles` are for everyone).
   const visibleGroups = GROUPS.filter((g) => !g.roles || g.roles.includes(userRole));
+  // Backend only lets HR_ADMIN and MANAGER create/edit leave types; others see a read-only table.
+  const canManageLeaveTypes = userRole === 'HR_ADMIN' || userRole === 'MANAGER';
 
   const group = visibleGroups.find((g) => g.key === activeKey) || null;
   const Icon = group?.icon;
   const CustomPanel = group?.component;
+  const ExtraPanel = group?.extra;
 
   useEffect(() => {
     // No group selected, or a custom group (Master Data) that loads its own
@@ -455,6 +463,12 @@ export default function Settings() {
                       <div className="settings-state">
                         <Inbox size={20} />
                         <p>No settings found.</p>
+                      </div>
+                    )}
+
+                    {ExtraPanel && (
+                      <div style={{ marginTop: 28, paddingTop: 22, borderTop: '1px dashed #e3e8f1' }}>
+                        <ExtraPanel canManage={canManageLeaveTypes} />
                       </div>
                     )}
                   </>

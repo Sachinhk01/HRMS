@@ -11,6 +11,61 @@ export async function getAllLeaveTypes() {
   return data.data;
 }
 
+export async function getLeaveType(leaveTypeId) {
+  const { data } = await api.get(`/leave-types/${leaveTypeId}`);
+  return data.data;
+}
+
+// POST /leave-types  (HR_ADMIN, MANAGER)
+// name: required, max 50 · description: max 255 · paid: required
+// allocatedDays: required, >= 0 · monthlyGuideline: >= 0 (backend defaults to 2)
+export async function createLeaveType({
+  name,
+  description,
+  paid,
+  allocatedDays,
+  monthlyGuideline,
+  carryForwardAllowed,
+}) {
+  const { data } = await api.post("/leave-types", {
+    name,
+    description,
+    paid,
+    allocatedDays,
+    monthlyGuideline,
+    // Primitive boolean on the backend: if omitted it silently becomes false.
+    carryForwardAllowed: !!carryForwardAllowed,
+  });
+  return data.data;
+}
+
+// PUT /leave-types/{id}  (HR_ADMIN, MANAGER) — full replace, always send every field.
+export async function updateLeaveType(
+  leaveTypeId,
+  { name, description, paid, allocatedDays, monthlyGuideline, carryForwardAllowed }
+) {
+  const { data } = await api.put(`/leave-types/${leaveTypeId}`, {
+    name,
+    description,
+    paid,
+    allocatedDays,
+    monthlyGuideline,
+    carryForwardAllowed: !!carryForwardAllowed,
+  });
+  return data.data;
+}
+
+// PATCH — 400 if the type is already in that state.
+export async function activateLeaveType(leaveTypeId) {
+  const { data } = await api.patch(`/leave-types/${leaveTypeId}/activate`);
+  return data.data;
+}
+
+export async function deactivateLeaveType(leaveTypeId) {
+  const { data } = await api.patch(`/leave-types/${leaveTypeId}/deactivate`);
+  return data.data;
+}
+
 // ---- Leave Requests ----
 export async function applyLeave({ leaveTypeId, startDate, endDate, reason }) {
   const { data } = await api.post("/leave-requests", {
