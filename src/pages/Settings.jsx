@@ -18,10 +18,13 @@ import {
   Repeat2,
   MapPin,
   Globe2,
+  Database,
 } from 'lucide-react';
 import PageHeader from '../components/PageHeader';
 import { hrmsService } from '../services/hrmsService';
 import { useToast } from '../context/ToastContext';
+import { useAuth } from '../context/AuthContext';
+import MasterDataSettings from './settings/MasterDataSettings';
 import './Settings.css';
 
 // Each group maps 1:1 to a live SettingController group (GET/PUT /settings/{group}).
@@ -34,6 +37,13 @@ import './Settings.css';
 // `sections` purely controls layout/grouping within a group's detail panel —
 // every field still lives in `fields` and is looked up by name, so the DTO
 // shape driving get/save is untouched.
+//
+// A group with `custom: true` (Master Data) does not use get/save/fields/sections.
+// It renders its own `component`, which loads and saves its own data.
+//
+// A group with `roles` is only shown to those roles. Master Data is limited to
+// HR_ADMIN and MANAGER because the backend's @PreAuthorize on the master data
+// endpoints does not include SUPER_ADMIN (they get 403).
 const GROUPS = [
   {
     key: 'attendance',
@@ -107,6 +117,16 @@ const GROUPS = [
       { title: 'Address', icon: MapPin, fields: ['addressLine1', 'addressLine2', 'city', 'state', 'country', 'postalCode'] },
       { title: 'Regional Settings', icon: Globe2, fields: ['timeZone', 'currency', 'workingDaysPerWeek'] },
     ],
+  },
+  {
+    key: 'master-data',
+    label: 'Master Data',
+    description: 'Departments, designations & job titles',
+    icon: Database,
+    accent: 'blue',
+    custom: true,
+    component: MasterDataSettings,
+    roles: ['HR_ADMIN', 'MANAGER'],
   },
 ];
 
@@ -189,12 +209,20 @@ export default function Settings() {
   const [notFound, setNotFound] = useState(false);
   const [forbidden, setForbidden] = useState(false);
   const { showToast } = useToast();
+  const { user } = useAuth();
 
-  const group = GROUPS.find((g) => g.key === activeKey) || null;
+  const userRole = user?.role || user?.roles?.[0];
+  // Only the groups this role is allowed to see (groups without `roles` are for everyone).
+  const visibleGroups = GROUPS.filter((g) => !g.roles || g.roles.includes(userRole));
+
+  const group = visibleGroups.find((g) => g.key === activeKey) || null;
   const Icon = group?.icon;
+  const CustomPanel = group?.component;
 
   useEffect(() => {
-    if (!group) {
+    // No group selected, or a custom group (Master Data) that loads its own
+    // data: reset everything and skip the settings GET.
+    if (!group || group.custom) {
       setData(null);
       setOriginalData(null);
       setLoading(false);
@@ -262,13 +290,13 @@ export default function Settings() {
       <PageHeader
         eyebrow="Administration"
         title="Settings"
-        description="Manage attendance, leave and company configuration."
+        description="Manage attendance, leave, company and master data configuration."
       />
 
       <div className="settings-shell">
         <nav className="settings-nav" role="tablist" aria-label="Settings groups">
           <div className="settings-nav-label">Configuration</div>
-          {GROUPS.map((g) => {
+          {visibleGroups.map((g) => {
             const GIcon = g.icon;
             const isActive = activeKey === g.key;
             return (
@@ -300,7 +328,7 @@ export default function Settings() {
                 <ListChecks size={22} />
               </span>
               <h2>Select a configuration section</h2>
-              <p>Choose Attendance, Leave or Company from the left to view and edit its settings.</p>
+              <p>Choose a section from the left to view and edit its settings.</p>
             </div>
           ) : (
             <>
@@ -316,7 +344,7 @@ export default function Settings() {
                   </div>
                 </div>
 
-                {!loading && !forbidden && !notFound && data && (
+                {!group.custom && !loading && !forbidden && !notFound && data && (
                   <div className="settings-detail-actions">
                     {!editMode ? (
                       <button type="button" className="btn btn-primary" onClick={startEdit}>
@@ -340,91 +368,97 @@ export default function Settings() {
               </header>
 
               <div className="settings-detail-body">
-                {loading && (
-                  <div className="settings-skeleton" aria-live="polite" aria-label={`Loading ${group.label.toLowerCase()} settings`}>
-                    <div className="skel-line skel-title" />
-                    <div className="skel-grid">
-                      <div className="skel-line" />
-                      <div className="skel-line" />
-                      <div className="skel-line" />
-                      <div className="skel-line" />
-                    </div>
-                    <div className="skel-line skel-title" />
-                    <div className="skel-row" />
-                    <div className="skel-row" />
-                  </div>
-                )}
-
-                {!loading && forbidden && (
-                  <div className="settings-state">
-                    <ShieldOff size={20} />
-                    <p>You don't have access to {group.label.toLowerCase()} settings.</p>
-                  </div>
-                )}
-
-                {!loading && notFound && (
-                  <div className="settings-state">
-                    <Inbox size={20} />
-                    <p>{group.label} settings haven't been initialized yet for this company.</p>
-                  </div>
-                )}
-
-                {!loading && !forbidden && !notFound && data && (
-                  <form id="settings-form" onSubmit={save}>
-                    {group.sections.map((section, sIdx) => {
-                      const SectionIcon = section.icon;
-                      const toggleFields = section.fields.map(fieldByName).filter((f) => f.type === 'boolean');
-                      const inputFields = section.fields.map(fieldByName).filter((f) => f.type !== 'boolean');
-
-                      return (
-                        <div
-                          className="settings-section"
-                          key={section.title}
-                          style={{ animationDelay: `${sIdx * 0.06}s` }}
-                        >
-                          <div className="settings-section-title">
-                            <SectionIcon size={15} />
-                            <span>{section.title}</span>
-                          </div>
-
-                          {inputFields.length > 0 && (
-                            <div className="settings-field-grid">
-                              {inputFields.map((field) => (
-                                <InputField
-                                  key={field.name}
-                                  field={field}
-                                  value={data[field.name]}
-                                  disabled={!editMode}
-                                  onChange={(val) => updateField(field.name, val)}
-                                />
-                              ))}
-                            </div>
-                          )}
-
-                          {toggleFields.length > 0 && (
-                            <div className="toggle-list">
-                              {toggleFields.map((field) => (
-                                <ToggleField
-                                  key={field.name}
-                                  field={field}
-                                  checked={!!data[field.name]}
-                                  disabled={!editMode}
-                                  onChange={(val) => updateField(field.name, val)}
-                                />
-                              ))}
-                            </div>
-                          )}
+                {group.custom ? (
+                  <CustomPanel />
+                ) : (
+                  <>
+                    {loading && (
+                      <div className="settings-skeleton" aria-live="polite" aria-label={`Loading ${group.label.toLowerCase()} settings`}>
+                        <div className="skel-line skel-title" />
+                        <div className="skel-grid">
+                          <div className="skel-line" />
+                          <div className="skel-line" />
+                          <div className="skel-line" />
+                          <div className="skel-line" />
                         </div>
-                      );
-                    })}
-                  </form>
-                )}
+                        <div className="skel-line skel-title" />
+                        <div className="skel-row" />
+                        <div className="skel-row" />
+                      </div>
+                    )}
 
-                {!loading && !forbidden && !notFound && !data && (
-                  <div className="settings-state">
-                    <Inbox size={20} />
-                    <p>No settings found.</p>
-                  </div>
+                    {!loading && forbidden && (
+                      <div className="settings-state">
+                        <ShieldOff size={20} />
+                        <p>You don't have access to {group.label.toLowerCase()} settings.</p>
+                      </div>
+                    )}
+
+                    {!loading && notFound && (
+                      <div className="settings-state">
+                        <Inbox size={20} />
+                        <p>{group.label} settings haven't been initialized yet for this company.</p>
+                      </div>
+                    )}
+
+                    {!loading && !forbidden && !notFound && data && (
+                      <form id="settings-form" onSubmit={save}>
+                        {group.sections.map((section, sIdx) => {
+                          const SectionIcon = section.icon;
+                          const toggleFields = section.fields.map(fieldByName).filter((f) => f.type === 'boolean');
+                          const inputFields = section.fields.map(fieldByName).filter((f) => f.type !== 'boolean');
+
+                          return (
+                            <div
+                              className="settings-section"
+                              key={section.title}
+                              style={{ animationDelay: `${sIdx * 0.06}s` }}
+                            >
+                              <div className="settings-section-title">
+                                <SectionIcon size={15} />
+                                <span>{section.title}</span>
+                              </div>
+
+                              {inputFields.length > 0 && (
+                                <div className="settings-field-grid">
+                                  {inputFields.map((field) => (
+                                    <InputField
+                                      key={field.name}
+                                      field={field}
+                                      value={data[field.name]}
+                                      disabled={!editMode}
+                                      onChange={(val) => updateField(field.name, val)}
+                                    />
+                                  ))}
+                                </div>
+                              )}
+
+                              {toggleFields.length > 0 && (
+                                <div className="toggle-list">
+                                  {toggleFields.map((field) => (
+                                    <ToggleField
+                                      key={field.name}
+                                      field={field}
+                                      checked={!!data[field.name]}
+                                      disabled={!editMode}
+                                      onChange={(val) => updateField(field.name, val)}
+                                    />
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </form>
+                    )}
+
+                    {!loading && !forbidden && !notFound && !data && (
+                      <div className="settings-state">
+                        <Inbox size={20} />
+                        <p>No settings found.</p>
+                      </div>
+                    )}
+                  </>
                 )}
               </div>
             </>
