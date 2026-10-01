@@ -2,7 +2,7 @@
 
 .hrms-landing {
   position: relative;
-  min-height: 100vh;
+  min-height: calc(100vh / var(--app-zoom));
   background: var(--color-bg);
   overflow-x: clip;
 }

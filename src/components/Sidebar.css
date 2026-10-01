@@ -1,6 +1,6 @@
 .app-shell {
   display: flex;
-  min-height: 100dvh;
+  min-height: calc(100dvh / var(--app-zoom));
   background: var(--bg);
 }
 
@@ -13,7 +13,7 @@
   flex-direction: column;
   position: sticky;
   top: 0;
-  height: 100dvh;
+  height: calc(100dvh / var(--app-zoom));
   z-index: 40;
 }
 

@@ -34,8 +34,8 @@ body { overflow-x: clip; }
 
 @media (min-width: 901px) {
   .role-login-page {
-    height: 100dvh;
-    min-height: 100dvh;
+    height: calc(100dvh / var(--app-zoom));
+    min-height: calc(100dvh / var(--app-zoom));
     overflow: hidden;
     display: flex;
     align-items: stretch;
@@ -94,11 +94,11 @@ body { overflow-x: clip; }
 
 @media (min-width: 901px) {
   .login-page {
-    height: 100dvh;
-    min-height: 100dvh;
+    height: calc(100dvh / var(--app-zoom));
+    min-height: calc(100dvh / var(--app-zoom));
   }
   .login-panel {
-    min-height: 100dvh;
+    min-height: calc(100dvh / var(--app-zoom));
     width: 56%;
     max-width: 620px;
     margin: 0;
@@ -109,7 +109,7 @@ body { overflow-x: clip; }
 
 @media (max-width: 900px) {
   .login-page {
-    min-height: 100dvh;
+    min-height: calc(100dvh / var(--app-zoom));
     overflow-y: auto;
     background-position: 68% center;
   }
