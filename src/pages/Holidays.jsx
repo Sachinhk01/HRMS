@@ -38,6 +38,7 @@ function HolidayTypeBadge({ type }) {
 
 const PAGE_SIZE = 8;
 const EMPTY_FORM = { holidayName: '', holidayDate: '', holidayType: '', description: '' };
+const DEFAULT_FLAGS = { attendanceAllowed: false, recurring: false };
 
 function formatDate(value, options = {}) {
   if (!value) return '—';
@@ -46,7 +47,7 @@ function formatDate(value, options = {}) {
 
 export default function Holidays() {
   const { user } = useAuth();
-  const canManage = ['HR_ADMIN', 'MANAGER'].includes(user.role);
+  const canManage = user.role === 'HR_ADMIN'; // only the HR portal can add / edit / delete
 
   const [holidays, setHolidays] = useState([]);
   const [upcoming, setUpcoming] = useState(null);
@@ -55,6 +56,7 @@ export default function Holidays() {
   const [year, setYear] = useState(String(new Date().getFullYear()));
   const [form, setForm] = useState(EMPTY_FORM);
   const [editingId, setEditingId] = useState(null);
+  const [editingFlags, setEditingFlags] = useState(DEFAULT_FLAGS);
   const [formErrors, setFormErrors] = useState({});
   const { showToast } = useToast();
   const { confirm } = useConfirm();
@@ -69,7 +71,7 @@ export default function Holidays() {
       setHolidays(holidaysResult?.content || []);
       setUpcoming((upcomingResult || [])[0] || null);
     } catch (err) {
-      showToast(err?.response?.data?.message || err.message || 'Failed to load holidays.', 'error');
+      showToast(err.message || 'Failed to load holidays.', 'error');
     } finally {
       setLoading(false);
     }
@@ -94,6 +96,7 @@ export default function Holidays() {
   function resetForm() {
     setForm(EMPTY_FORM);
     setEditingId(null);
+    setEditingFlags(DEFAULT_FLAGS);
     setFormErrors({});
   }
 
@@ -106,13 +109,41 @@ export default function Holidays() {
     return Object.keys(errors).length === 0;
   }
 
+  // The API soft-deletes (active=false) but keeps the row, and holiday_date is UNIQUE.
+  // So a "deleted" holiday still owns its date. Look the date up (active AND inactive)
+  // before saving, so we can reuse the old row instead of hitting "already exists".
+  async function findHolidayOnDate(date) {
+    const result = await getHolidays({ fromDate: date, toDate: date, size: 10 });
+    return (result?.content || []).find((item) => item.holidayDate === date) || null;
+  }
+
   async function submit(event) {
     event.preventDefault();
     if (!validateForm()) return;
     try {
+      const clash = await findHolidayOnDate(form.holidayDate);
+      const dateTakenByAnother = clash && clash.id !== editingId;
+
+      if (dateTakenByAnother && clash.active) {
+        setFormErrors({ holidayDate: `"${clash.holidayName}" is already added on this date` });
+        showToast('A holiday already exists on this date.', 'error');
+        return;
+      }
+
       if (editingId) {
-        await updateHoliday(editingId, { ...form, attendanceAllowed: false, recurring: false, active: true });
+        if (dateTakenByAnother) {
+          // Target date is held by a deleted row: revive it with the new details,
+          // then retire the row we were editing (moving the holiday to the new date).
+          await updateHoliday(clash.id, { ...form, ...editingFlags, active: true });
+          await deleteHoliday(editingId);
+        } else {
+          await updateHoliday(editingId, { ...form, ...editingFlags, active: true });
+        }
         showToast('Holiday updated successfully.', 'success');
+      } else if (dateTakenByAnother) {
+        // Previously deleted holiday on this date: bring it back with the new details.
+        await updateHoliday(clash.id, { ...form, ...DEFAULT_FLAGS, active: true });
+        showToast('Holiday added successfully.', 'success');
       } else {
         await createHoliday(form);
         showToast('Holiday added successfully.', 'success');
@@ -120,12 +151,13 @@ export default function Holidays() {
       resetForm();
       await refresh();
     } catch (actionError) {
-      showToast(actionError?.response?.data?.message || actionError.message || 'Action failed.', 'error');
+      showToast(actionError.message || 'Action failed.', 'error');
     }
   }
 
   function beginEdit(item) {
     setEditingId(item.id);
+    setEditingFlags({ attendanceAllowed: !!item.attendanceAllowed, recurring: !!item.recurring });
     setForm({
       holidayName: item.holidayName,
       holidayDate: item.holidayDate,
@@ -146,10 +178,11 @@ export default function Holidays() {
     if (!ok) return;
     try {
       await deleteHoliday(item.id);
+      if (editingId === item.id) resetForm();
       await refresh();
       showToast('Holiday deleted successfully.', 'success');
     } catch (actionError) {
-      showToast(actionError?.response?.data?.message || actionError.message || 'Failed to delete holiday.', 'error');
+      showToast(actionError.message || 'Failed to delete holiday.', 'error');
     }
   }
 

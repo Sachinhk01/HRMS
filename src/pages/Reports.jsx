@@ -21,7 +21,11 @@ import { getEmployees } from '../services/employeeService';
 import { getAttendanceReport } from '../services/attendanceService';
 import { getLeaveReport } from '../services/leaveService';
 import { capitalizeName } from '../utils/formatName';
+import { todayISO } from '../utils/dateUtils';
+import ReportExplorer from './reports/ReportExplorer';
+import AttendanceMix from './reports/AttendanceMix';
 import './Reports.css';
+import './reports/Reportexplorer.css';
 import { INPUT_LIMITS } from '../utils/inputLimits';
 
 function initialsOf(first, last) {
@@ -74,8 +78,21 @@ function downloadPdf(rows) {
   doc.save(`employee-directory-${new Date().toISOString().slice(0, 10)}.pdf`);
 }
 
+const TABS = [
+  ['overview', 'Overview'],
+  ['attendance', 'Attendance Report'],
+  ['leave', 'Leave Report'],
+];
+
 export default function Reports() {
   const { showToast } = useToast();
+  const [tab, setTab] = useState('overview');
+  // Overview summaries cover the current month only: the backend builds the summary
+  // over the whole filtered set, so an unfiltered (all-time) request is expensive.
+  const { month: currentMonth, year: currentYear } = useMemo(() => {
+    const today = todayISO();
+    return { month: Number(today.slice(5, 7)), year: Number(today.slice(0, 4)) };
+  }, []);
   const [employees, setEmployees] = useState([]);
   const [employeesLoading, setEmployeesLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -110,12 +127,12 @@ export default function Reports() {
       try {
         // size: 1 — we only need `summary`, which is computed over the full
         // filtered set regardless of page size, not the row content.
-        const result = await getLeaveReport({ size: 1 });
+        const result = await getLeaveReport({ size: 1, month: currentMonth, year: currentYear });
         if (!cancelled) setLeaveSummary(result?.summary || null);
       } catch {
         if (!cancelled) {
           setLeaveSummary(null);
-          showToast('Failed to load leave report. HR/Manager access is required.', 'error');
+          showToast('Failed to load leave report. HR / Manager access is required.', 'error');
         }
       } finally {
         if (!cancelled) setLoadingLeaves(false);
@@ -130,7 +147,7 @@ export default function Reports() {
     async function loadAttendance() {
       setLoadingAttendance(true);
       try {
-        const result = await getAttendanceReport({ size: 1 });
+        const result = await getAttendanceReport({ size: 1, month: currentMonth, year: currentYear });
         if (!cancelled) setAttendanceSummary(result?.summary || null);
       } catch {
         if (!cancelled) {
@@ -206,12 +223,12 @@ export default function Reports() {
     {
       icon: Clock3,
       tone: 'teal',
-      label: 'Attendance',
-      value: loadingAttendance ? '…' : `${attendanceSummary?.attendancePercentage ?? 0}%`,
-      desc: loadingAttendance ? '' : `${attendanceSummary?.totalRecords ?? 0} Records`,
+      label: 'Present-Day Share',
+      value: loadingAttendance ? '…' : `${Number(attendanceSummary?.attendancePercentage ?? 0).toFixed(1)}%`,
+      desc: loadingAttendance ? '' : `${attendanceSummary?.totalRecords ?? 0} Records · This Month`,
     },
-    { icon: CalendarDays, tone: 'pink', label: 'Leave Requests', value: loadingLeaves ? '…' : totalLeaves, desc: 'All Time' },
-    { icon: Hourglass, tone: 'orange', label: 'Pending Approvals', value: loadingLeaves ? '…' : pendingLeaveCount, desc: 'Awaiting Review' },
+    { icon: CalendarDays, tone: 'pink', label: 'Leave Requests', value: loadingLeaves ? '…' : totalLeaves, desc: 'This Month' },
+    { icon: Hourglass, tone: 'orange', label: 'Pending Approvals', value: loadingLeaves ? '…' : pendingLeaveCount, desc: 'Awaiting Review · This Month' },
   ];
 
   return (
@@ -219,9 +236,28 @@ export default function Reports() {
       <PageHeader
         eyebrow="HR Analytics"
         title="Reports"
-        description="Live Summaries Pulled From The Backend."
+        description="Attendance And Leave Insights For The Current Month, Straight From The Backend."
       />
 
+      <div className="rx-tabs" role="tablist" aria-label="Report sections">
+        {TABS.map(([key, label]) => (
+          <button
+            key={key}
+            type="button"
+            role="tab"
+            aria-selected={tab === key}
+            className={tab === key ? 'active' : ''}
+            onClick={() => setTab(key)}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {tab === 'attendance' && <ReportExplorer kind="attendance" />}
+      {tab === 'leave' && <ReportExplorer kind="leave" />}
+
+      {tab === 'overview' && (<>
       <div className="reports-kpi-grid">
         {kpis.map((kpi) => (
           <div key={kpi.label} className={`reports-kpi-card tone-${kpi.tone}`}>
@@ -242,8 +278,9 @@ export default function Reports() {
             <div className="chart-placeholder bars">
               {departmentCounts.map(([name, count]) => (
                 <div className="bar-col" key={name}>
-                  <div className="bar-fill" style={{ height: `${(count / maxDeptCount) * 100}%` }} />
-                  <small>{name}</small>
+                  <span className="bar-value">{count}</span>
+                  <div className="bar-fill" style={{ height: `${(count / maxDeptCount) * 85}%` }} />
+                  <small title={name}>{name}</small>
                 </div>
               ))}
             </div>
@@ -256,10 +293,12 @@ export default function Reports() {
         </div>
 
         <div className="panel chart-card">
-          <div className="chart-head"><PieChart size={17} /><h3>Leave Requests by Status</h3></div>
+          <div className="chart-head"><PieChart size={17} /><h3>Leave Status · This Month</h3></div>
           {totalLeaves ? (
             <div className="donut-wrap">
-              <div className="donut" style={{ borderRadius: '50%', background: donutGradient }} />
+              <div className="donut" style={{ background: donutGradient }}>
+                <div className="donut-hole"><strong>{totalLeaves}</strong><small>Requests</small></div>
+              </div>
               <div className="donut-legend">
                 {Object.entries(leaveStatusCounts)
                   .filter(([, count]) => count > 0)
@@ -280,10 +319,17 @@ export default function Reports() {
         </div>
       </div>
 
+      {attendanceSummary?.totalRecords > 0 && (
+        <section className="panel">
+          <div className="chart-head"><Clock3 size={17} /><h3>Attendance Mix · This Month</h3></div>
+          <AttendanceMix summary={attendanceSummary} />
+        </section>
+      )}
+
       <section className="panel">
         <div className="panel-title">
           <div>
-            <span className="eyebrow">Directory</span>
+            <span className="eyebrow">Directory (Browser Export)</span>
             <h2>Employee Directory</h2>
           </div>
           <div className="panel-title-icon"><Users size={19} /></div>
@@ -362,6 +408,7 @@ export default function Reports() {
           )}
         </div>
       </section>
+      </>)}
     </div>
   );
 }

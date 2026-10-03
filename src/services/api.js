@@ -14,8 +14,19 @@ api.interceptors.request.use((config) => {
 
 api.interceptors.response.use(
   (response) => response,
-  (error) => {
-    const message = error.response?.data?.message || error.message || 'Something went wrong.';
+  async (error) => {
+    // Excel/PDF downloads use responseType 'blob', so a failed download carries the
+    // ApiError JSON inside a Blob. Read it so the user sees the real message.
+    let serverMessage = error.response?.data?.message;
+    const body = error.response?.data;
+    if (!serverMessage && typeof Blob !== 'undefined' && body instanceof Blob) {
+      try {
+        serverMessage = JSON.parse(await body.text()).message;
+      } catch {
+        /* body was not JSON — fall back to the generic message */
+      }
+    }
+    const message = serverMessage || error.message || 'Something went wrong.';
 
     // If the server says we're not authenticated, clear stale credentials and
     // send the user back to the login page so they get a fresh JWT.

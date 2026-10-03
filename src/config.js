@@ -44,6 +44,7 @@ export const ROLE_MENUS = {
     ['/celebrations', 'Celebration Wall'],
     ['/performance', 'Performance'],
     ['/employees', 'Employees'],
+    ['/reports', 'Reports'],
     ['/payroll', 'My Salary'],
     ['/form16', 'Form 16'],
     ['/profile', 'Profile'],
@@ -57,7 +58,6 @@ export const ROLE_MENUS = {
     ['/celebrations', 'Celebration Wall'],
     ['/announcements', 'Announcements'],
     ['/events', 'Events'],
-    ['/reports', 'Reports'],
     ['/leave', 'Leave'],
     ['/leave-approvals', 'Leave Approvals'],
     ['/performance', 'Performance'],
@@ -137,9 +137,10 @@ export const ROUTE_ROLES = {
     'MANAGER'
   ],
 
+  // Backend: hasAnyRole('HR_ADMIN','MANAGER') — any other role gets a 403.
   '/reports': [
     'HR_ADMIN',
-    'SUPER_ADMIN',
+    'MANAGER',
   ],
 
   '/leave-approvals': [
