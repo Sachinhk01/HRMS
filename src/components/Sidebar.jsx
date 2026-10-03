@@ -76,13 +76,14 @@ export default function Sidebar({ open, onClose }) {
         </div>
 
         <nav className="sidebar-nav" aria-label="Main navigation">
-          {items.map(([path, label]) => {
+          {items.map(([path, label], index) => {
             const Icon = icons[path] || LayoutDashboard;
 
             return (
               <NavLink
                 key={path}
                 to={path}
+                style={{ '--i': index }}
                 onClick={onClose}
                 className={({ isActive }) =>
                   isActive ? 'nav-link active' : 'nav-link'

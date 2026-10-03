@@ -3,10 +3,10 @@ import {
   Users, UserCheck, UserX, Clock3, CalendarDays, Percent, CheckCircle2, Hourglass,
   XCircle, Ban, Timer, ArrowUp, ArrowDown, ChevronsUpDown, AlertTriangle, Info, Search, RotateCcw,
 } from 'lucide-react';
-import DatePicker, { MonthPicker } from '../DatePicker';
-import ExportMenu from '../ExportMenu';
+import DatePicker, { MonthPicker } from '../../components/DatePicker';
+import ExportMenu from '../../components/ExportMenu';
 import AttendanceMix from './AttendanceMix';
-import Pagination from '../Pagination';
+import Pagination from '../../components/Pagination';
 import { useToast } from '../../context/ToastContext';
 import { daysInMonth, formatDate, makeISO, pad } from '../../utils/dateUtils';
 import { INPUT_LIMITS } from '../../utils/inputLimits';

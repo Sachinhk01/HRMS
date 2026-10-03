@@ -46,6 +46,8 @@ import BirthdayWidget from "../components/BirthdayWidget";
 import HighlightCards from "../components/HighlightCards";
 import { INPUT_LIMITS } from '../utils/inputLimits';
 import { MonthPicker } from '../components/DatePicker';
+import "./Dashboard.css";
+import "./DashboardPolish.css";
 
 // utils/formatName.js was never actually added to the repo on either
 // branch, so build the name capitalization inline instead of importing it.
