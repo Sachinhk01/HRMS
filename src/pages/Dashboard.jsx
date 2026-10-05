@@ -48,6 +48,11 @@ import { INPUT_LIMITS } from '../utils/inputLimits';
 import { MonthPicker } from '../components/DatePicker';
 import "./Dashboard.css";
 import "./DashboardPolish.css";
+import HeroBanner from "../components/HeroBanner";
+import "./DashboardCards.css";
+import { motion } from "framer-motion";
+import { fadeUp, staggerGrid } from "../components/Motion";
+import "./DashboardEditors.css";
 
 // utils/formatName.js was never actually added to the repo on either
 // branch, so build the name capitalization inline instead of importing it.
@@ -68,8 +73,6 @@ const actionImages = {
   'Celebration Wall': celebrationCakeImg,
   'Events': celebrationGroupImg,
 };
-
-const WELCOME_BANNER_PHOTO = "https://images.unsplash.com/photo-1758873269276-9518d0cb4a0b?fm=jpg&q=80&w=1920&auto=format&fit=crop";
 
 function formatHolidayDate(value) {
   if (!value) return '';
@@ -589,13 +592,13 @@ useEffect(() => {
 
   return (
     <div className="page-stack dashboard-page page-reveal">
-      <section className="welcome-banner" style={{ '--welcome-photo': `url(${WELCOME_BANNER_PHOTO})` }}>
+      <HeroBanner>
         <div className="welcome-banner-text">
           <span className="eyebrow">{greeting}</span>
           <h1>Welcome Back, {capitalizeName(user.name?.split(' ')[0])}!</h1>
           <p>{role === 'EMPLOYEE' ? "Let's Make Today Productive." : role === 'HR_ADMIN' ? 'Manage People, Engagement And HR Operations.' : 'Review Team Attendance, Leave And Performance.'}</p>
         </div>
-      </section>
+      </HeroBanner>
 
       <div className="summary-grid">{cards.map(([Icon, label, value, meta, tone, path]) => <SummaryCard key={label} icon={Icon} label={label} value={value} meta={meta} tone={tone} onClick={() => nav(path)} />)}</div>
 
@@ -779,23 +782,32 @@ useEffect(() => {
           <h2>Quick Actions</h2>
         </div>
 
-        <div className="quick-actions-grid">
+        <motion.div
+          className="quick-actions-grid"
+          variants={staggerGrid}
+          initial="hidden"
+          whileInView="show"
+          viewport={{ once: true, amount: 0.2 }}
+        >
           {links.map(({ label, path, icon: Icon }) => {
             const image = actionImages[label];
             return (
-              <button
+              <motion.button
                 key={label}
                 className="quick-action-card"
+                variants={fadeUp}
+                whileHover={{ y: -6 }}
+                whileTap={{ scale: 0.97 }}
                 onClick={() => nav(path)}
               >
                 <div className="quick-action-icon">
                   {image ? <img src={image} alt={label} /> : <Icon size={30} />}
                 </div>
                 <span>{label}</span>
-              </button>
+              </motion.button>
             );
           })}
-        </div>
+        </motion.div>
       </section>
     </div>
   );

@@ -6,9 +6,9 @@
 
 /* ---------- Hero banner ---------- */
 .welcome-banner {
-  min-height: 280px;
+  min-height: 340px;
   padding: 40px 44px;
-  background: #0b1d4a;
+  background: #0f172a;
   background-image: none;
   isolation: isolate;
 }
@@ -23,17 +23,14 @@
   background-position: center 25%;
   animation: heroZoom 22s ease-in-out infinite alternate;
 }
-/* brand-tinted overlay: readable text on the left, photo shows on the right */
-.welcome-banner::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  z-index: -1;
-  pointer-events: none;
-  background:
-    radial-gradient(600px 260px at 12% 100%, rgba(59, 130, 246, .35), transparent 70%),
-    linear-gradient(100deg, rgba(7, 22, 77, .90) 0%, rgba(14, 50, 120, .62) 50%, rgba(7, 22, 77, .10) 100%);
+/* neutral dark overlay: darkest behind the text, almost clear on the photo.
+   Tweak the three numbers below to taste (higher = darker). */
+.welcome-banner {
+  --hero-tint-left: .72;
+  --hero-tint-mid: .38;
+  --hero-tint-right: .05;
 }
+.welcome-banner::after { content: none; }
 /* a banner shouldn't jump on hover */
 .welcome-banner:hover {
   transform: none;
@@ -196,7 +193,7 @@
 @media (max-width: 720px) {
   .welcome-banner { min-height: 220px; padding: 28px 20px; }
   .welcome-banner::after {
-    background: linear-gradient(180deg, rgba(7, 22, 77, .78), rgba(7, 22, 77, .55));
+    background: linear-gradient(180deg, rgba(15, 23, 42, .65), rgba(15, 23, 42, .4));
   }
   .welcome-banner-text p { margin-inline: auto; }
 }

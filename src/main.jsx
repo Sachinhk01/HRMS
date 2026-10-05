@@ -1,6 +1,7 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
+import { MotionConfig } from 'framer-motion';
 import App from './App';
 import { AuthProvider } from './context/AuthContext';
 import { NotificationProvider } from './context/NotificationContext';
@@ -21,7 +22,9 @@ ReactDOM.createRoot(document.getElementById('root')).render(
         <NotificationProvider>
           <ToastProvider>
             <ConfirmProvider>
-              <App />
+              <MotionConfig reducedMotion="user">
+                <App />
+              </MotionConfig>
             </ConfirmProvider>
           </ToastProvider>
         </NotificationProvider>

@@ -1,6 +1,8 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
 import { Cake, ChevronLeft, ChevronRight, PartyPopper, CalendarDays } from 'lucide-react';
 import { capitalizeName } from '../utils/formatName';
+import { EASE_OUT } from './Motion';
 
 function getInitials(name = '') {
   return name.split(' ').map((p) => p[0]).join('').slice(0, 2).toUpperCase();
@@ -32,14 +34,22 @@ function formatUpcomingDate(dateOfBirth) {
   return next.toLocaleDateString([], { day: '2-digit', month: 'short' });
 }
 
+// Slide-change motion: the whole panel slides out one way and the next one in.
+const trackVariants = {
+  enter: (dir) => ({ opacity: 0, x: dir * 40 }),
+  center: { opacity: 1, x: 0, transition: { duration: 0.35, ease: EASE_OUT, staggerChildren: 0.06, delayChildren: 0.08 } },
+  exit: (dir) => ({ opacity: 0, x: dir * -40, transition: { duration: 0.2 } }),
+};
+const personVariants = {
+  enter: { opacity: 0, y: 16 },
+  center: { opacity: 1, y: 0, transition: { duration: 0.4, ease: EASE_OUT } },
+};
+
 const SLIDE_TODAY = 0;
 const SLIDE_UPCOMING = 1;
 
 export default function BirthdayWidget({ employees = [], onViewAll }) {
-  const [slide, setSlide] = useState(SLIDE_TODAY);
-  const [animDir, setAnimDir] = useState(null); // 'left' | 'right'
-  const [isAnimating, setIsAnimating] = useState(false);
-  const timerRef = useRef(null);
+  const [[slide, dir], setPage] = useState([SLIDE_TODAY, 1]);
 
   const getDob = (e) => e?.dateOfBirth || e?.dob || e?.createdAt;
 
@@ -56,27 +66,20 @@ export default function BirthdayWidget({ employees = [], onViewAll }) {
     })
     .slice(0, 10);
 
-  // Auto-advance every 6 s
-  useEffect(() => {
-    timerRef.current = setInterval(() => goTo(1), 6000);
-    return () => clearInterval(timerRef.current);
-  }, [slide]);
-
   function goTo(direction) {
-    if (isAnimating) return;
-    setAnimDir(direction > 0 ? 'left' : 'right');
-    setIsAnimating(true);
-    setTimeout(() => {
-      setSlide((s) => (s + direction + 2) % 2);
-      setAnimDir(null);
-      setIsAnimating(false);
-    }, 340);
+    setPage(([s]) => [(s + direction + 2) % 2, direction]);
   }
 
   function jumpTo(idx) {
-    if (idx === slide || isAnimating) return;
-    goTo(idx > slide ? 1 : -1);
+    if (idx === slide) return;
+    setPage([idx, idx > slide ? 1 : -1]);
   }
+
+  // Auto-advance every 6 s (restarts whenever the slide changes)
+  useEffect(() => {
+    const timer = setInterval(() => goTo(1), 6000);
+    return () => clearInterval(timer);
+  }, [slide]);
 
   const slides = [
     {
@@ -153,6 +156,7 @@ export default function BirthdayWidget({ employees = [], onViewAll }) {
           >
             <s.icon size={15} />
             {s.label}
+            {slide === i && <motion.span layoutId="cw-tab-underline" className="cw-tab-underline" style={{ background: s.accent }} />}
             {s.badge > 0 && (
               <span className="cw-tab-badge" style={{ background: s.chipBg, color: s.chipColor }}>{s.badge}</span>
             )}
@@ -161,41 +165,45 @@ export default function BirthdayWidget({ employees = [], onViewAll }) {
       </div>
 
       {/* Slider track */}
-      <div className={`cw-track${animDir ? ` cw-exit-${animDir}` : ''}`}>
-        {current.items.length === 0 ? (
-          <div className="cw-empty">
-            <span className="cw-empty-icon">{current.emptyIcon}</span>
-            <span>{current.empty}</span>
-          </div>
-        ) : (
-          <div className="cw-cards">
-            {current.items.map((emp) => {
-              const dob = getDob(emp);
-              const days = getDaysUntilBirthday(dob);
-              const isToday = days === 0 || isBirthdayToday(dob);
-              const photoUrl = emp.profilePhotoUrl || emp.photoUrl || emp.avatarUrl;
-              return (
-                <div className="cw-person-card" key={emp.id}>
-                  {photoUrl ? (
-                    <img className="cw-person-avatar cw-person-avatar--photo" src={photoUrl} alt={emp.name} />
-                  ) : (
-                    <div className="cw-person-avatar" style={{ background: isToday ? 'linear-gradient(135deg,#f59e0b,#f97316)' : 'linear-gradient(135deg,#3b82f6,#6366f1)' }}>
-                      {getInitials(emp.name)}
-                    </div>
-                  )}
-                  <div className="cw-person-copy">
-                    <div className="cw-person-toprow">
-                      <strong>{capitalizeName(emp.name)}</strong>
-                      <span className="cw-confetti">{isToday ? '🎂' : '🎉'}</span>
-                    </div>
-                    <span className="cw-person-type">Birthday</span>
-                    <span className="cw-person-date">{isToday ? 'Today' : `${formatUpcomingDate(dob)} · ${days}d`}</span>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
+      <div className="cw-track">
+        <AnimatePresence mode="wait" initial={false} custom={dir}>
+          <motion.div key={slide} custom={dir} variants={trackVariants} initial="enter" animate="center" exit="exit">
+            {current.items.length === 0 ? (
+              <div className="cw-empty">
+                <span className="cw-empty-icon">{current.emptyIcon}</span>
+                <span>{current.empty}</span>
+              </div>
+            ) : (
+              <div className="cw-cards">
+                {current.items.map((emp) => {
+                  const dob = getDob(emp);
+                  const days = getDaysUntilBirthday(dob);
+                  const isToday = days === 0 || isBirthdayToday(dob);
+                  const photoUrl = emp.profilePhotoUrl || emp.photoUrl || emp.avatarUrl;
+                  return (
+                    <motion.div className="cw-person-card" key={emp.id} variants={personVariants} whileHover={{ y: -3 }}>
+                      {photoUrl ? (
+                        <img className="cw-person-avatar cw-person-avatar--photo" src={photoUrl} alt={emp.name} />
+                      ) : (
+                        <div className="cw-person-avatar" style={{ background: isToday ? 'linear-gradient(135deg,#f59e0b,#f97316)' : 'linear-gradient(135deg,#3b82f6,#6366f1)' }}>
+                          {getInitials(emp.name)}
+                        </div>
+                      )}
+                      <div className="cw-person-copy">
+                        <div className="cw-person-toprow">
+                          <strong>{capitalizeName(emp.name)}</strong>
+                          <span className="cw-confetti">{isToday ? '🎂' : '🎉'}</span>
+                        </div>
+                        <span className="cw-person-type">Birthday</span>
+                        <span className="cw-person-date">{isToday ? 'Today' : `${formatUpcomingDate(dob)} · ${days}d`}</span>
+                      </div>
+                    </motion.div>
+                  );
+                })}
+              </div>
+            )}
+          </motion.div>
+        </AnimatePresence>
       </div>
 
       {/* Progress bar */}

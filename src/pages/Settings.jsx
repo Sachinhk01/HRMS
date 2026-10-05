@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import {
   Pencil,
   Save,
@@ -6,7 +7,6 @@ import {
   Clock,
   CalendarDays,
   Building2,
-  ChevronRight,
   ShieldOff,
   Inbox,
   Loader2,
@@ -18,6 +18,7 @@ import {
   MapPin,
   Globe2,
   Database,
+  AlertTriangle,
 } from 'lucide-react';
 import PageHeader from '../components/PageHeader';
 import { hrmsService } from '../services/hrmsService';
@@ -34,15 +35,19 @@ import './Settings.css';
 // endpoints are commented out — so there are no groups for them here. Re-add a
 // group only after those endpoints are actually uncommented in SettingController.
 //
-// `sections` purely controls layout/grouping within a group's detail panel —
-// every field still lives in `fields` and is looked up by name, so the DTO
-// shape driving get/save is untouched.
+// `sections` controls the cards on the page. Each section is one card that is
+// read-only until its pencil is clicked; the edit dialog only shows that
+// section's fields. Every field still lives in `fields` and is looked up by
+// name, and a save still PUTs the whole group, so the DTO shape is untouched.
+//
+// Field extras (display only): `unit` shows a suffix ("min", "days"),
+// `wide` makes the field span both columns in the edit dialog.
 //
 // A group with `custom: true` (Master Data) does not use get/save/fields/sections.
 // It renders its own `component`, which loads and saves its own data.
 //
-// A group with `extra` renders that component below its settings form (Leave
-// uses it for the Leave Types table). It loads and saves its own data.
+// A group with `extra` renders that component below its cards (Leave uses it
+// for the Leave Types table). It loads and saves its own data.
 //
 // A group with `roles` is only shown to those roles. Master Data is limited to
 // HR_ADMIN and MANAGER because the backend's @PreAuthorize on the master data
@@ -59,18 +64,18 @@ const GROUPS = [
     fields: [
       { name: 'officeStartTime', label: 'Office Start Time', type: 'time', required: true },
       { name: 'officeEndTime', label: 'Office End Time', type: 'time', required: true },
-      { name: 'gracePeriodMinutes', label: 'Grace Period (minutes)', type: 'number', min: 0, required: true },
-      { name: 'minimumWorkingMinutes', label: 'Minimum Working Minutes', type: 'number', min: 0, required: true },
-      { name: 'halfDayWorkingMinutes', label: 'Half-Day Working Minutes', type: 'number', min: 0, required: true },
-      { name: 'checkoutCutoffMinutes', label: 'Checkout Cutoff (minutes)', type: 'number', min: 0, required: true },
+      { name: 'gracePeriodMinutes', label: 'Grace Period (minutes)', type: 'number', min: 0, required: true, unit: 'min' },
+      { name: 'minimumWorkingMinutes', label: 'Minimum Working Minutes', type: 'number', min: 0, required: true, unit: 'min' },
+      { name: 'halfDayWorkingMinutes', label: 'Half-Day Working Minutes', type: 'number', min: 0, required: true, unit: 'min' },
+      { name: 'checkoutCutoffMinutes', label: 'Checkout Cutoff (minutes)', type: 'number', min: 0, required: true, unit: 'min' },
       { name: 'overtimeEnabled', label: 'Overtime Enabled', type: 'boolean', hint: 'Let employees log hours worked beyond office end time.' },
       { name: 'weekendAttendanceAllowed', label: 'Weekend Attendance Allowed', type: 'boolean', hint: 'Allow check-ins to be recorded on Saturdays & Sundays.' },
       { name: 'holidayAttendanceAllowed', label: 'Holiday Attendance Allowed', type: 'boolean', hint: 'Allow check-ins to be recorded on company holidays.' },
     ],
     sections: [
-      { title: 'Working Hours', icon: Timer, fields: ['officeStartTime', 'officeEndTime', 'gracePeriodMinutes'] },
-      { title: 'Working Time Thresholds', icon: Gauge, fields: ['minimumWorkingMinutes', 'halfDayWorkingMinutes', 'checkoutCutoffMinutes'] },
-      { title: 'Attendance Rules', icon: ListChecks, fields: ['overtimeEnabled', 'weekendAttendanceAllowed', 'holidayAttendanceAllowed'] },
+      { title: 'Working Hours', subtitle: 'Office timings and grace period', icon: Timer, fields: ['officeStartTime', 'officeEndTime', 'gracePeriodMinutes'] },
+      { title: 'Working Time Thresholds', subtitle: 'Minimum, half-day and checkout limits', icon: Gauge, fields: ['minimumWorkingMinutes', 'halfDayWorkingMinutes', 'checkoutCutoffMinutes'] },
+      { title: 'Attendance Rules', subtitle: 'Overtime, weekends and holidays', icon: ListChecks, fields: ['overtimeEnabled', 'weekendAttendanceAllowed', 'holidayAttendanceAllowed'] },
     ],
   },
   {
@@ -82,13 +87,13 @@ const GROUPS = [
     get: hrmsService.getLeaveSettings,
     save: hrmsService.updateLeaveSettings,
     fields: [
-      { name: 'monthlyGuideline', label: 'Monthly Guideline (days)', type: 'number', min: 0, required: true },
-      { name: 'annualPaidLeave', label: 'Annual Paid Leave (days)', type: 'number', min: 0, required: true },
+      { name: 'monthlyGuideline', label: 'Monthly Guideline (days)', type: 'number', min: 0, required: true, unit: 'days' },
+      { name: 'annualPaidLeave', label: 'Annual Paid Leave (days)', type: 'number', min: 0, required: true, unit: 'days' },
       { name: 'carryForwardAllowed', label: 'Carry Forward Allowed', type: 'boolean', hint: 'Let unused leave roll over into the next year.' },
     ],
     sections: [
-      { title: 'Leave Allowances', icon: Gauge, fields: ['monthlyGuideline', 'annualPaidLeave'] },
-      { title: 'Leave Rules', icon: Repeat2, fields: ['carryForwardAllowed'] },
+      { title: 'Leave Allowances', subtitle: 'Monthly and annual leave quotas', icon: Gauge, fields: ['monthlyGuideline', 'annualPaidLeave'] },
+      { title: 'Leave Rules', subtitle: 'Carry-forward policy', icon: Repeat2, fields: ['carryForwardAllowed'] },
     ],
     extra: LeaveTypesSettings,
   },
@@ -101,25 +106,25 @@ const GROUPS = [
     get: hrmsService.getCompanySettings,
     save: hrmsService.updateCompanySettings,
     fields: [
-      { name: 'companyName', label: 'Company Name', type: 'text', required: true, maxLength: 150 },
+      { name: 'companyName', label: 'Company Name', type: 'text', required: true, maxLength: 150, wide: true },
       { name: 'companyCode', label: 'Company Code', type: 'text', required: true, maxLength: 30 },
       { name: 'email', label: 'Company Email', type: 'email', required: true, maxLength: 150 },
       { name: 'phoneNumber', label: 'Phone Number', type: 'text', pattern: '^[0-9]{10,15}$', title: '10 to 15 digits, numbers only' },
       { name: 'website', label: 'Website', type: 'text', maxLength: 150 },
-      { name: 'addressLine1', label: 'Address Line 1', type: 'text', maxLength: 255 },
-      { name: 'addressLine2', label: 'Address Line 2', type: 'text', maxLength: 255 },
+      { name: 'addressLine1', label: 'Address Line 1', type: 'text', maxLength: 255, wide: true },
+      { name: 'addressLine2', label: 'Address Line 2', type: 'text', maxLength: 255, wide: true },
       { name: 'city', label: 'City', type: 'text', maxLength: 100 },
       { name: 'state', label: 'State', type: 'text', maxLength: 100 },
       { name: 'country', label: 'Country', type: 'text', maxLength: 100 },
       { name: 'postalCode', label: 'Postal Code', type: 'text', maxLength: 20 },
       { name: 'timeZone', label: 'Time Zone', type: 'text', required: true },
       { name: 'currency', label: 'Currency', type: 'text', required: true, maxLength: 10 },
-      { name: 'workingDaysPerWeek', label: 'Working Days per Week', type: 'number', min: 1, max: 7 },
+      { name: 'workingDaysPerWeek', label: 'Working Days per Week', type: 'number', min: 1, max: 7, unit: 'days / week' },
     ],
     sections: [
-      { title: 'Company Identity', icon: Building2, fields: ['companyName', 'companyCode', 'email', 'phoneNumber', 'website'] },
-      { title: 'Address', icon: MapPin, fields: ['addressLine1', 'addressLine2', 'city', 'state', 'country', 'postalCode'] },
-      { title: 'Regional Settings', icon: Globe2, fields: ['timeZone', 'currency', 'workingDaysPerWeek'] },
+      { title: 'Company Identity', subtitle: 'Name, code and contact details', icon: Building2, fields: ['companyName', 'companyCode', 'email', 'phoneNumber', 'website'] },
+      { title: 'Address', subtitle: 'Company address', icon: MapPin, fields: ['addressLine1', 'addressLine2', 'city', 'state', 'country', 'postalCode'] },
+      { title: 'Regional Settings', subtitle: 'Time zone, currency and working week', icon: Globe2, fields: ['timeZone', 'currency', 'workingDaysPerWeek'] },
     ],
   },
   {
@@ -142,6 +147,54 @@ function toTimeInputValue(value) {
 function fromTimeInputValue(value) {
   if (!value) return null;
   return value.length === 5 ? `${value}:00` : value;
+}
+
+// ---------- Display helpers (read-only cards) ----------
+function formatTime12(value) {
+  if (!value) return '';
+  const [h, m] = String(value).slice(0, 5).split(':').map(Number);
+  if (Number.isNaN(h) || Number.isNaN(m)) return String(value);
+  const hour = h % 12 || 12;
+  return `${String(hour).padStart(2, '0')}:${String(m).padStart(2, '0')} ${h >= 12 ? 'PM' : 'AM'}`;
+}
+
+function minutesToHuman(total) {
+  const n = Number(total);
+  if (!Number.isFinite(n) || n < 60) return '';
+  const h = Math.floor(n / 60);
+  const m = n % 60;
+  return m ? `${h} h ${m} m` : `${h} h`;
+}
+
+// "Grace Period (minutes)" -> "Grace Period": the unit is shown with the value instead.
+const shortLabel = (label) => label.replace(/\s*\([^)]*\)\s*$/, '');
+
+function displayValue(field, value) {
+  if (value === null || value === undefined || value === '') return { empty: true };
+  if (field.type === 'time') return { main: formatTime12(value) };
+  if (field.type === 'number') {
+    if (field.unit === 'min') return { main: `${value} min`, sub: minutesToHuman(value) };
+    if (field.unit) {
+      const unit = field.unit.replace(/^days/, Number(value) === 1 ? 'day' : 'days');
+      return { main: `${value} ${unit}` };
+    }
+  }
+  return { main: String(value) };
+}
+
+// ---------- Edit-dialog draft helpers ----------
+// Number inputs are edited as strings so a field can be cleared while typing;
+// they are converted back to numbers on save.
+function buildDraft(fields, data) {
+  const draft = {};
+  for (const field of fields) {
+    const value = data[field.name];
+    if (field.type === 'time') draft[field.name] = toTimeInputValue(value);
+    else if (field.type === 'number') draft[field.name] = value === null || value === undefined ? '' : String(value);
+    else if (field.type === 'boolean') draft[field.name] = !!value;
+    else draft[field.name] = value ?? '';
+  }
+  return draft;
 }
 
 function ToggleField({ field, checked, disabled, onChange }) {
@@ -168,50 +221,232 @@ function ToggleField({ field, checked, disabled, onChange }) {
   );
 }
 
-function InputField({ field, value, disabled, onChange }) {
+function EditField({ field, value, onChange }) {
+  const id = `f-${field.name}`;
+  const hint = field.unit === 'min' ? minutesToHuman(value) : '';
+
   return (
-    <div className="settings-field">
-      <label htmlFor={`f-${field.name}`}>
+    <div className={`settings-field${field.wide ? ' is-wide' : ''}`}>
+      <label htmlFor={id}>
         {field.label}
-        {field.required && <span className="req-dot" aria-hidden="true" />}
       </label>
-      {field.type === 'time' ? (
+      <div className="sx-input-wrap">
         <input
-          id={`f-${field.name}`}
-          type="time"
-          value={toTimeInputValue(value)}
-          required={field.required}
-          disabled={disabled}
-          onChange={(e) => onChange(e.target.value)}
-        />
-      ) : (
-        <input
-          id={`f-${field.name}`}
+          id={id}
           type={field.type}
-          value={value ?? ''}
+          value={value}
           min={field.min}
           max={field.max}
           maxLength={field.maxLength}
           pattern={field.pattern}
           title={field.title}
           required={field.required}
-          disabled={disabled}
-          onChange={(e) => onChange(field.type === 'number' ? Number(e.target.value) : e.target.value)}
+          className={field.unit ? 'has-suffix' : undefined}
+          onChange={(e) => onChange(e.target.value)}
+          // scrolling over a focused number box must scroll the page, not change the value
+          onWheel={field.type === 'number' ? (e) => e.currentTarget.blur() : undefined}
         />
-      )}
+        {field.unit && <span className="sx-suffix">{field.unit}</span>}
+      </div>
+      {hint && <small className="sx-hint">= {hint}</small>}
     </div>
+  );
+}
+
+// ---------- One read-only card (one section) ----------
+function SectionCard({ section, fields, data, index, flash, onEdit }) {
+  const SectionIcon = section.icon;
+  const inputs = fields.filter((f) => f.type !== 'boolean');
+  const flags = fields.filter((f) => f.type === 'boolean');
+
+  return (
+    <article
+      className={`sx-card${flash ? ' is-flash' : ''}`}
+      style={{ animationDelay: `${index * 0.07}s` }}
+    >
+      <header className="sx-card-head">
+        <span className="sx-card-icon"><SectionIcon size={18} /></span>
+        <div className="sx-card-title">
+          <h3>{section.title}</h3>
+          {section.subtitle && <p>{section.subtitle}</p>}
+        </div>
+        <button
+          type="button"
+          className="sx-edit"
+          onClick={onEdit}
+          aria-label={`Edit ${section.title}`}
+        >
+          <Pencil size={14} />
+          Edit
+        </button>
+      </header>
+
+      {inputs.length > 0 && (
+        <dl className="sx-info-grid">
+          {inputs.map((field) => {
+            const shown = displayValue(field, data[field.name]);
+            return (
+              <div className="sx-info" key={field.name}>
+                <dt>{shortLabel(field.label)}</dt>
+                <dd className={shown.empty ? 'is-empty' : undefined}>
+                  {shown.empty ? 'Not set' : shown.main}
+                  {shown.sub && <small>{shown.sub}</small>}
+                </dd>
+              </div>
+            );
+          })}
+        </dl>
+      )}
+
+      {flags.length > 0 && (
+        <ul className="sx-flags">
+          {flags.map((field) => {
+            const on = !!data[field.name];
+            return (
+              <li key={field.name}>
+                <div>
+                  <strong>{field.label}</strong>
+                  {field.hint && <span>{field.hint}</span>}
+                </div>
+                <span className={`sx-chip ${on ? 'is-on' : 'is-off'}`}>
+                  {on ? <Check size={12} strokeWidth={3} /> : <X size={12} strokeWidth={3} />}
+                  {on ? 'Enabled' : 'Disabled'}
+                </span>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </article>
+  );
+}
+
+// ---------- Edit dialog (one section at a time) ----------
+function EditDialog({ group, editing, onDraftChange, saving, error, onClose, onSubmit }) {
+  const { section, draft, initial } = editing;
+  const dialogRef = useRef(null);
+  const SectionIcon = section.icon;
+  const fields = section.fields.map((name) => group.fields.find((f) => f.name === name));
+  const inputs = fields.filter((f) => f.type !== 'boolean');
+  const flags = fields.filter((f) => f.type === 'boolean');
+  const dirty = JSON.stringify(draft) !== JSON.stringify(initial);
+
+  useEffect(() => {
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    dialogRef.current?.querySelector('input:not([disabled]), button.switch')?.focus();
+    return () => { document.body.style.overflow = previousOverflow; };
+  }, []);
+
+  const handleKeyDown = (event) => {
+    if (event.key === 'Escape') {
+      event.stopPropagation();
+      if (!saving) onClose();
+      return;
+    }
+    if (event.key !== 'Tab') return;
+    // keep keyboard focus inside the dialog
+    const nodes = dialogRef.current?.querySelectorAll('button:not([disabled]), input:not([disabled])');
+    if (!nodes?.length) return;
+    const first = nodes[0];
+    const last = nodes[nodes.length - 1];
+    if (event.shiftKey && document.activeElement === first) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault();
+      first.focus();
+    }
+  };
+
+  return createPortal(
+    <div
+      className={`sx-overlay accent-${group.accent}`}
+      role="presentation"
+      onKeyDown={handleKeyDown}
+      onMouseDown={(event) => {
+        // a click on the dim background closes it, but never throws away typed changes
+        if (event.target === event.currentTarget && !dirty && !saving) onClose();
+      }}
+    >
+      <div ref={dialogRef} className="sx-dialog" role="dialog" aria-modal="true" aria-labelledby="sx-dialog-title">
+        <header className="sx-dialog-head">
+          <span className="sx-dialog-icon"><SectionIcon size={20} /></span>
+          <div>
+            <h3 id="sx-dialog-title">Edit {section.title}</h3>
+            <p>{group.label} settings</p>
+          </div>
+          <button type="button" className="sx-close" onClick={onClose} disabled={saving} aria-label="Close">
+            <X size={18} />
+          </button>
+        </header>
+
+        <form onSubmit={onSubmit} className="sx-dialog-form">
+          <div className="sx-dialog-body">
+            {inputs.length > 0 && (
+              <div className="sx-form-grid">
+                {inputs.map((field) => (
+                  <EditField
+                    key={field.name}
+                    field={field}
+                    value={draft[field.name]}
+                    onChange={(value) => onDraftChange(field.name, value)}
+                  />
+                ))}
+              </div>
+            )}
+
+            {flags.length > 0 && (
+              <div className="toggle-list">
+                {flags.map((field) => (
+                  <ToggleField
+                    key={field.name}
+                    field={field}
+                    checked={!!draft[field.name]}
+                    onChange={(value) => onDraftChange(field.name, value)}
+                  />
+                ))}
+              </div>
+            )}
+
+            {error && (
+              <div className="sx-error" role="alert">
+                <AlertTriangle size={16} />
+                <span>{error}</span>
+              </div>
+            )}
+          </div>
+
+          <footer className="sx-dialog-foot">
+            <span className={`sx-dirty${dirty ? ' is-visible' : ''}`}>Unsaved changes</span>
+            <div className="sx-dialog-actions">
+              <button type="button" className="btn btn-secondary" onClick={onClose} disabled={saving}>
+                Cancel
+              </button>
+              <button type="submit" className="btn btn-primary" disabled={saving || !dirty}>
+                {saving ? <Loader2 size={16} className="spin" /> : <Save size={16} />}
+                {saving ? 'Saving…' : 'Save changes'}
+              </button>
+            </div>
+          </footer>
+        </form>
+      </div>
+    </div>,
+    document.body
   );
 }
 
 export default function Settings() {
   const [activeKey, setActiveKey] = useState(null);
   const [data, setData] = useState(null);
-  const [originalData, setOriginalData] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [editMode, setEditMode] = useState(false);
   const [notFound, setNotFound] = useState(false);
   const [forbidden, setForbidden] = useState(false);
+  const [editing, setEditing] = useState(null); // { section, draft, initial }
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState('');
+  const [savedSection, setSavedSection] = useState('');
+  const returnFocusRef = useRef(null);
   const { showToast } = useToast();
   const { user } = useAuth();
 
@@ -221,33 +456,34 @@ export default function Settings() {
   // Backend only lets HR_ADMIN and MANAGER create/edit leave types; others see a read-only table.
   const canManageLeaveTypes = userRole === 'HR_ADMIN' || userRole === 'MANAGER';
 
-  const group = visibleGroups.find((g) => g.key === activeKey) || null;
+  // Opens on the first section instead of an empty panel.
+  const group = visibleGroups.find((g) => g.key === (activeKey ?? visibleGroups[0]?.key)) || null;
+  const groupKey = group?.key;
   const Icon = group?.icon;
   const CustomPanel = group?.component;
   const ExtraPanel = group?.extra;
 
   useEffect(() => {
-    // No group selected, or a custom group (Master Data) that loads its own
-    // data: reset everything and skip the settings GET.
+    setEditing(null);
+    setSaveError('');
+    setSavedSection('');
+    // A custom group (Master Data) loads its own data: reset and skip the settings GET.
     if (!group || group.custom) {
       setData(null);
-      setOriginalData(null);
       setLoading(false);
       setNotFound(false);
       setForbidden(false);
-      setEditMode(false);
-      return;
+      return undefined;
     }
+
+    let cancelled = false;
     setLoading(true);
     setNotFound(false);
     setForbidden(false);
-    setEditMode(false);
     group.get()
-      .then((res) => {
-        setData(res);
-        setOriginalData(res);
-      })
+      .then((res) => { if (!cancelled) setData(res); })
       .catch((err) => {
+        if (cancelled) return;
         if (err?.status === 403) {
           setForbidden(true);
         } else if (err?.status === 404) {
@@ -257,227 +493,225 @@ export default function Settings() {
           showToast(err.message || 'Failed to load settings.', 'error');
         }
       })
-      .finally(() => setLoading(false));
-  }, [activeKey]);
+      .finally(() => { if (!cancelled) setLoading(false); });
 
-  const updateField = (name, value) => setData((prev) => ({ ...prev, [name]: value }));
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [groupKey]);
 
-  const startEdit = () => setEditMode(true);
+  // The "just saved" highlight on a card fades after a moment.
+  useEffect(() => {
+    if (!savedSection) return undefined;
+    const timer = setTimeout(() => setSavedSection(''), 1800);
+    return () => clearTimeout(timer);
+  }, [savedSection]);
 
-  const cancelEdit = () => {
-    setData(originalData);
-    setEditMode(false);
+  const fieldByName = (name) => group?.fields.find((f) => f.name === name);
+
+  const openEdit = (section, event) => {
+    returnFocusRef.current = event.currentTarget;
+    const draft = buildDraft(section.fields.map(fieldByName), data);
+    setSaveError('');
+    setEditing({ section, draft, initial: draft });
   };
+
+  const closeEdit = () => {
+    if (saving) return;
+    setEditing(null);
+    setSaveError('');
+    requestAnimationFrame(() => returnFocusRef.current?.focus());
+  };
+
+  const changeDraft = (name, value) =>
+    setEditing((prev) => (prev ? { ...prev, draft: { ...prev.draft, [name]: value } } : prev));
 
   const save = async (event) => {
     event.preventDefault();
+    if (!editing) return;
+    const { section, draft } = editing;
+
+    // Start from the full group so the PUT still carries every field.
+    const payload = { ...data };
+    for (const name of section.fields) {
+      const field = fieldByName(name);
+      const raw = draft[name];
+      if (field.type === 'time') payload[name] = fromTimeInputValue(raw);
+      else if (field.type === 'number') payload[name] = raw === '' ? null : Number(raw);
+      else if (field.type === 'boolean') payload[name] = !!raw;
+      else payload[name] = raw;
+    }
+
     setSaving(true);
+    setSaveError('');
     try {
-      const payload = { ...data };
-      for (const field of group.fields) {
-        if (field.type === 'time') payload[field.name] = fromTimeInputValue(payload[field.name]);
-      }
       const saved = await group.save(payload);
-      setData(saved);
-      setOriginalData(saved);
-      setEditMode(false);
-      showToast(`${group.label} settings saved.`, 'success');
+      setData(saved || payload);
+      setEditing(null);
+      setSavedSection(section.title);
+      showToast(`${section.title} saved.`, 'success');
+      requestAnimationFrame(() => returnFocusRef.current?.focus());
     } catch (err) {
-      const msg = err.message || 'Failed to save settings.';
-      showToast(msg, 'error');
+      const message = err.message || 'Failed to save settings.';
+      setSaveError(message);
+      showToast(message, 'error');
     } finally {
       setSaving(false);
     }
   };
 
-  const fieldByName = (name) => group?.fields.find((f) => f.name === name);
+  const selectTab = (key) => setActiveKey(key);
+
+  // Left/Right arrows move between the tabs.
+  const handleTabKeyDown = (event) => {
+    if (event.key !== 'ArrowRight' && event.key !== 'ArrowLeft') return;
+    event.preventDefault();
+    const current = visibleGroups.findIndex((g) => g.key === group?.key);
+    const step = event.key === 'ArrowRight' ? 1 : -1;
+    const next = visibleGroups[(current + step + visibleGroups.length) % visibleGroups.length];
+    selectTab(next.key);
+    document.getElementById(`settings-tab-${next.key}`)?.focus();
+  };
+
+  const tabs = (
+    <nav className="settings-tabs" role="tablist" aria-label="Settings groups" onKeyDown={handleTabKeyDown}>
+      {visibleGroups.map((g) => {
+        const GIcon = g.icon;
+        const isActive = group?.key === g.key;
+        return (
+          <button
+            key={g.key}
+            id={`settings-tab-${g.key}`}
+            type="button"
+            role="tab"
+            aria-selected={isActive}
+            aria-controls="settings-panel"
+            tabIndex={isActive ? 0 : -1}
+            className={`settings-tab accent-${g.accent}${isActive ? ' is-active' : ''}`}
+            onClick={() => selectTab(g.key)}
+          >
+            <GIcon size={16} />
+            <span>{g.label}</span>
+          </button>
+        );
+      })}
+    </nav>
+  );
 
   return (
-    <div className="page-stack">
+    <div className="page-stack settings-page">
       <PageHeader
         eyebrow="Administration"
         title="Settings"
         description="Manage attendance, leave, company and master data configuration."
+        action={tabs}
       />
 
       <div className="settings-shell">
-        <nav className="settings-nav" role="tablist" aria-label="Settings groups">
-          <div className="settings-nav-label">Configuration</div>
-          {visibleGroups.map((g) => {
-            const GIcon = g.icon;
-            const isActive = activeKey === g.key;
-            return (
-              <button
-                key={g.key}
-                type="button"
-                role="tab"
-                aria-selected={isActive}
-                className={`settings-nav-item accent-${g.accent}${isActive ? ' is-active' : ''}`}
-                onClick={() => setActiveKey(g.key)}
-              >
-                <span className="settings-nav-icon">
-                  <GIcon size={18} />
-                </span>
-                <span className="settings-nav-text">
-                  <strong>{g.label}</strong>
-                  <small>{g.description}</small>
-                </span>
-                <ChevronRight size={16} className="settings-nav-chevron" />
-              </button>
-            );
-          })}
-        </nav>
-
-        <section className={`settings-detail panel${group ? ` accent-${group.accent}` : ''}`}>
+        <section
+          id="settings-panel"
+          role="tabpanel"
+          aria-labelledby={group ? `settings-tab-${group.key}` : undefined}
+          className={`settings-detail${group ? ` accent-${group.accent}` : ''}`}
+        >
           {!group ? (
-            <div className="settings-empty-state">
+            <div className="sx-card sx-empty">
               <span className="settings-empty-icon">
                 <ListChecks size={22} />
               </span>
-              <h2>Select a configuration section</h2>
-              <p>Choose a section from the left to view and edit its settings.</p>
+              <h2>Nothing to configure</h2>
+              <p>There are no settings available for your role.</p>
             </div>
           ) : (
             <>
-              <div className="settings-detail-banner" aria-hidden="true" />
-              <header className="settings-detail-header">
-                <div className="settings-detail-heading">
-                  <span className="settings-detail-icon">
-                    <Icon size={20} />
-                  </span>
-                  <div>
-                    <h2>{group.label}</h2>
-                    <p>{group.description}</p>
-                  </div>
+              <header className="sx-hero" key={group.key}>
+                <span className="sx-hero-icon">
+                  <Icon size={24} />
+                </span>
+                <div>
+                  <h2>{group.label}</h2>
+                  <p>{group.description}</p>
                 </div>
-
-                {!group.custom && !loading && !forbidden && !notFound && data && (
-                  <div className="settings-detail-actions">
-                    {!editMode ? (
-                      <button type="button" className="btn btn-primary" onClick={startEdit}>
-                        <Pencil size={16} />
-                        Edit
-                      </button>
-                    ) : (
-                      <>
-                        <button type="button" className="btn btn-secondary" onClick={cancelEdit} disabled={saving}>
-                          <X size={16} />
-                          Cancel
-                        </button>
-                        <button type="submit" form="settings-form" className="btn btn-primary" disabled={saving}>
-                          {saving ? <Loader2 size={16} className="spin" /> : <Save size={16} />}
-                          {saving ? 'Saving…' : 'Save changes'}
-                        </button>
-                      </>
-                    )}
-                  </div>
-                )}
+                <Icon size={110} strokeWidth={1.2} className="sx-hero-watermark" aria-hidden="true" />
               </header>
 
-              <div className="settings-detail-body">
-                {group.custom ? (
+              {group.custom ? (
+                <div className="sx-card sx-card--plain">
                   <CustomPanel />
-                ) : (
-                  <>
-                    {loading && (
-                      <div className="settings-skeleton" aria-live="polite" aria-label={`Loading ${group.label.toLowerCase()} settings`}>
-                        <div className="skel-line skel-title" />
-                        <div className="skel-grid">
-                          <div className="skel-line" />
-                          <div className="skel-line" />
-                          <div className="skel-line" />
-                          <div className="skel-line" />
+                </div>
+              ) : (
+                <div className="sx-stack">
+                  {loading && (
+                    <div className="sx-stack" aria-live="polite" aria-label={`Loading ${group.label.toLowerCase()} settings`}>
+                      {[0, 1].map((n) => (
+                        <div className="sx-card sx-card--plain settings-skeleton" key={n}>
+                          <div className="skel-line skel-title" />
+                          <div className="skel-grid">
+                            <div className="skel-line" />
+                            <div className="skel-line" />
+                            <div className="skel-line" />
+                            <div className="skel-line" />
+                          </div>
                         </div>
-                        <div className="skel-line skel-title" />
-                        <div className="skel-row" />
-                        <div className="skel-row" />
-                      </div>
-                    )}
+                      ))}
+                    </div>
+                  )}
 
-                    {!loading && forbidden && (
-                      <div className="settings-state">
-                        <ShieldOff size={20} />
-                        <p>You don't have access to {group.label.toLowerCase()} settings.</p>
-                      </div>
-                    )}
+                  {!loading && forbidden && (
+                    <div className="settings-state">
+                      <ShieldOff size={20} />
+                      <p>You don't have access to {group.label.toLowerCase()} settings.</p>
+                    </div>
+                  )}
 
-                    {!loading && notFound && (
-                      <div className="settings-state">
-                        <Inbox size={20} />
-                        <p>{group.label} settings haven't been initialized yet for this company.</p>
-                      </div>
-                    )}
+                  {!loading && notFound && (
+                    <div className="settings-state">
+                      <Inbox size={20} />
+                      <p>{group.label} settings haven't been initialized yet for this company.</p>
+                    </div>
+                  )}
 
-                    {!loading && !forbidden && !notFound && data && (
-                      <form id="settings-form" onSubmit={save}>
-                        {group.sections.map((section, sIdx) => {
-                          const SectionIcon = section.icon;
-                          const toggleFields = section.fields.map(fieldByName).filter((f) => f.type === 'boolean');
-                          const inputFields = section.fields.map(fieldByName).filter((f) => f.type !== 'boolean');
+                  {!loading && !forbidden && !notFound && data && group.sections.map((section, index) => (
+                    <SectionCard
+                      key={`${group.key}-${section.title}`}
+                      section={section}
+                      fields={section.fields.map(fieldByName)}
+                      data={data}
+                      index={index}
+                      flash={savedSection === section.title}
+                      onEdit={(event) => openEdit(section, event)}
+                    />
+                  ))}
 
-                          return (
-                            <div
-                              className="settings-section"
-                              key={section.title}
-                              style={{ animationDelay: `${sIdx * 0.06}s` }}
-                            >
-                              <div className="settings-section-title">
-                                <SectionIcon size={15} />
-                                <span>{section.title}</span>
-                              </div>
+                  {!loading && !forbidden && !notFound && !data && (
+                    <div className="settings-state">
+                      <Inbox size={20} />
+                      <p>No settings found.</p>
+                    </div>
+                  )}
 
-                              {inputFields.length > 0 && (
-                                <div className="settings-field-grid">
-                                  {inputFields.map((field) => (
-                                    <InputField
-                                      key={field.name}
-                                      field={field}
-                                      value={data[field.name]}
-                                      disabled={!editMode}
-                                      onChange={(val) => updateField(field.name, val)}
-                                    />
-                                  ))}
-                                </div>
-                              )}
-
-                              {toggleFields.length > 0 && (
-                                <div className="toggle-list">
-                                  {toggleFields.map((field) => (
-                                    <ToggleField
-                                      key={field.name}
-                                      field={field}
-                                      checked={!!data[field.name]}
-                                      disabled={!editMode}
-                                      onChange={(val) => updateField(field.name, val)}
-                                    />
-                                  ))}
-                                </div>
-                              )}
-                            </div>
-                          );
-                        })}
-                      </form>
-                    )}
-
-                    {!loading && !forbidden && !notFound && !data && (
-                      <div className="settings-state">
-                        <Inbox size={20} />
-                        <p>No settings found.</p>
-                      </div>
-                    )}
-
-                    {ExtraPanel && (
-                      <div style={{ marginTop: 28, paddingTop: 22, borderTop: '1px dashed #e3e8f1' }}>
-                        <ExtraPanel canManage={canManageLeaveTypes} />
-                      </div>
-                    )}
-                  </>
-                )}
-              </div>
+                  {ExtraPanel && (
+                    <div className="sx-card sx-card--plain">
+                      <ExtraPanel canManage={canManageLeaveTypes} />
+                    </div>
+                  )}
+                </div>
+              )}
             </>
           )}
         </section>
       </div>
+
+      {editing && group && (
+        <EditDialog
+          group={group}
+          editing={editing}
+          onDraftChange={changeDraft}
+          saving={saving}
+          error={saveError}
+          onClose={closeEdit}
+          onSubmit={save}
+        />
+      )}
     </div>
   );
 }

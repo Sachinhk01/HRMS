@@ -1,0 +1,90 @@
+/* Hero photo slideshow. Sits on top of the existing .welcome-banner styles. */
+.welcome-banner.hero-slides {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+}
+
+/* The single-photo layer from DashboardPolish.css is replaced by the slides. */
+.welcome-banner.hero-slides::before {
+  content: none;
+  animation: none;
+}
+
+/* Stronger overlay than DashboardPolish.css so text stays readable on the
+   brighter office photos; the right side still lets the photo show. */
+.welcome-banner.hero-slides::after {
+  background:
+    radial-gradient(600px 260px at 12% 100%, rgba(59, 130, 246, .35), transparent 70%),
+    linear-gradient(100deg, rgba(7, 22, 77, .92) 0%, rgba(14, 50, 120, .74) 48%, rgba(7, 22, 77, .28) 100%);
+}
+
+.hero-slides-layers {
+  position: absolute;
+  inset: 0;
+  z-index: -2;
+  overflow: hidden;
+}
+
+.hero-slide {
+  position: absolute;
+  inset: 0;
+  background-size: cover;
+  background-position: center 30%;
+  opacity: 0;
+  transform: scale(1);
+  /* when leaving: fade out, then reset the zoom without animating it */
+  transition: opacity 1.2s ease, transform 0s linear 1.2s;
+  will-change: opacity, transform;
+}
+.hero-slide.is-active {
+  opacity: 1;
+  transform: scale(1.07);
+  /* slow Ken Burns zoom while visible */
+  transition: opacity 1.2s ease, transform 9s linear;
+}
+
+/* dots */
+.hero-dots {
+  position: absolute;
+  right: 28px;
+  bottom: 20px;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: rgba(7, 22, 77, .35);
+  border: 1px solid rgba(255, 255, 255, .18);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+}
+.hero-dot {
+  width: 8px;
+  height: 8px;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, .5);
+  transition: width .3s ease, background .3s ease;
+}
+.hero-dot:hover { background: rgba(255, 255, 255, .85); }
+.hero-dot.is-active { width: 22px; background: #fff; }
+.hero-dot:focus-visible { outline: 2px solid #fff; outline-offset: 3px; }
+
+@media (max-width: 900px) {
+  /* text is centered across the full width here, so darken evenly */
+  .welcome-banner.hero-slides::after {
+    background:
+      linear-gradient(180deg, rgba(7, 22, 77, .78) 0%, rgba(14, 50, 120, .68) 100%);
+  }
+  .welcome-banner.hero-slides { padding-bottom: 48px; }
+  .hero-dots { right: 50%; transform: translateX(50%); bottom: 14px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-slide,
+  .hero-slide.is-active { transition: opacity .3s ease; transform: none; }
+  .hero-dot { transition: none; }
+}

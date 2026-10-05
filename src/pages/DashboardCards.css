@@ -1,0 +1,165 @@
+/* ============================================================
+   Dashboard lower sections: Quick Actions, Holiday banner,
+   and Celebration widget motion hooks.
+   Loaded after Dashboard.css / DashboardPolish.css.
+   framer-motion owns the TRANSFORM on cards (reveal + hover lift),
+   so CSS here never sets transform/transition-transform on them.
+   To undo: delete this file and its import.
+   ============================================================ */
+
+/* ---------- Quick Actions ---------- */
+.quick-actions-panel:hover {
+  transform: none;
+  box-shadow: 0 6px 18px rgba(30, 55, 90, .05);
+}
+
+.quick-action-card {
+  --tone: var(--blue);
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  padding: 28px 20px 24px;
+  transition: box-shadow .3s ease, border-color .3s ease;
+}
+.quick-action-card:nth-child(5n + 1) { --tone: var(--blue); }
+.quick-action-card:nth-child(5n + 2) { --tone: var(--green); }
+.quick-action-card:nth-child(5n + 3) { --tone: var(--orange); }
+.quick-action-card:nth-child(5n + 4) { --tone: var(--pink); }
+.quick-action-card:nth-child(5n + 5) { --tone: var(--teal); }
+
+.quick-action-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: radial-gradient(120% 90% at 50% 0%, color-mix(in srgb, var(--tone) 16%, transparent), transparent 70%);
+  opacity: .55;
+  transition: opacity .3s ease;
+}
+.quick-action-card::after {
+  content: '\2192';
+  position: absolute;
+  top: 12px;
+  right: 14px;
+  width: 26px;
+  height: 26px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--tone);
+  color: #fff;
+  font-size: 14px;
+  line-height: 1;
+  opacity: 0;
+  transform: translateX(-8px);
+  transition: opacity .25s ease, transform .25s ease;
+}
+.quick-action-card:hover,
+.quick-action-card:focus-visible {
+  border-color: color-mix(in srgb, var(--tone) 35%, var(--line));
+  box-shadow: 0 20px 38px color-mix(in srgb, var(--tone) 20%, transparent);
+}
+.quick-action-card:hover::before,
+.quick-action-card:focus-visible::before { opacity: 1; }
+.quick-action-card:hover::after,
+.quick-action-card:focus-visible::after { opacity: 1; transform: translateX(0); }
+.quick-action-card:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--tone) 40%, transparent);
+  outline-offset: 2px;
+}
+
+.quick-action-icon {
+  background: color-mix(in srgb, var(--tone) 12%, #fff);
+  color: var(--tone);
+  transition: transform .4s cubic-bezier(.34, 1.56, .64, 1), background .3s ease;
+}
+.quick-action-card:hover .quick-action-icon,
+.quick-action-card:focus-visible .quick-action-icon {
+  transform: scale(1.08) rotate(-3deg);
+  background: color-mix(in srgb, var(--tone) 18%, #fff);
+}
+.quick-action-card span { transition: color .25s ease; }
+.quick-action-card:hover span,
+.quick-action-card:focus-visible span { color: var(--tone); }
+
+/* ---------- Holiday banner ---------- */
+.dashboard-holiday-banner {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  padding: 24px 26px;
+  background:
+    radial-gradient(420px 200px at 100% 0%, rgba(25, 103, 210, .16), transparent 70%),
+    radial-gradient(360px 180px at 0% 100%, rgba(20, 184, 166, .14), transparent 70%),
+    linear-gradient(120deg, #f2f7ff 0%, #e9f1ff 55%, #eaf7fb 100%);
+}
+.dashboard-holiday-banner::before {
+  content: '';
+  position: absolute;
+  right: -60px;
+  top: -70px;
+  width: 220px;
+  height: 220px;
+  border-radius: 50%;
+  border: 28px solid rgba(25, 103, 210, .06);
+  z-index: -1;
+  pointer-events: none;
+  transition: transform .8s cubic-bezier(.16, 1, .3, 1);
+}
+.dashboard-holiday-banner:hover::before { transform: scale(1.15) rotate(20deg); }
+.dashboard-holiday-banner:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 16px 32px rgba(25, 103, 210, .14);
+}
+.dashboard-holiday-banner:focus-visible {
+  outline: 3px solid rgba(25, 103, 210, .4);
+  outline-offset: 2px;
+}
+.dashboard-holiday-banner .feature-icon {
+  background: linear-gradient(135deg, var(--blue), color-mix(in srgb, var(--blue) 60%, #6ea8ff));
+  color: #fff;
+  box-shadow: 0 10px 20px rgba(25, 103, 210, .28);
+  animation: holidayFloat 4s ease-in-out infinite;
+}
+.dashboard-holiday-banner h2 { font-size: 20px; letter-spacing: -.01em; }
+.dashboard-holiday-chip { transition: transform .2s ease, box-shadow .2s ease, background .2s ease; }
+.dashboard-holiday-chip:hover {
+  transform: translateY(-2px);
+  background: #fff;
+  box-shadow: 0 6px 14px rgba(25, 103, 210, .12);
+}
+@keyframes holidayFloat {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-4px); }
+}
+
+/* ---------- Celebration widget (Birthday) ---------- */
+/* framer-motion now animates the slides, so switch off the old CSS slide-in */
+.cw-cards { animation: none; }
+.cw-person-card { transition: box-shadow .2s ease; }
+.cw-person-card:hover { transform: none; }
+
+/* shared underline that glides between the two tabs */
+.cw-tab { position: relative; }
+.cw-tab-underline {
+  position: absolute;
+  left: 14px;
+  right: 14px;
+  bottom: -1px;
+  height: 3px;
+  border-radius: 3px 3px 0 0;
+}
+.cw-tab:focus-visible { outline: 3px solid rgba(25, 103, 210, .4); outline-offset: 2px; }
+
+/* ---------- Reduced motion ---------- */
+@media (prefers-reduced-motion: reduce) {
+  .quick-action-card,
+  .quick-action-card::before,
+  .quick-action-card::after,
+  .quick-action-icon,
+  .dashboard-holiday-banner::before,
+  .dashboard-holiday-chip { transition: none; }
+  .quick-action-card:hover .quick-action-icon,
+  .quick-action-card:focus-visible .quick-action-icon { transform: none; }
+  .dashboard-holiday-banner .feature-icon { animation: none; }
+}

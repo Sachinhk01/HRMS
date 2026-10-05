@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import Sidebar from '../components/Sidebar';
 import TopBar from '../components/TopBar';
+import '../styles/ResponsiveShell.css';
 
 export default function AppLayout() {
   const [open, setOpen] = useState(false);

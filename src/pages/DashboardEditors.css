@@ -1,0 +1,42 @@
+/* Manager Tools forms: calmer cards, clear focus, nicer small-screen layout.
+   Loaded after DashboardCards.css. To undo: delete this file and its import. */
+
+/* forms shouldn't jump around while you type */
+.editor-card:hover { transform: none; }
+.editor-card { transition: box-shadow .25s ease, border-color .25s ease; }
+.editor-card:focus-within {
+  box-shadow: 0 14px 30px rgba(25, 103, 210, .12);
+}
+
+.ef-field input,
+.ef-field select,
+.ef-field textarea {
+  transition: border-color .2s ease, box-shadow .2s ease, background .2s ease;
+}
+.ef-field input:focus-visible,
+.ef-field select:focus-visible,
+.ef-field textarea:focus-visible {
+  outline: none;
+  border-color: var(--blue);
+  box-shadow: 0 0 0 3px rgba(25, 103, 210, .18);
+}
+
+/* "Live This Month" badge gets a gentle pulse */
+.highlights-editor-badge { animation: editorBadgePulse 2.6s ease-in-out infinite; }
+@keyframes editorBadgePulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(25, 103, 210, .28); }
+  50%      { box-shadow: 0 0 0 6px rgba(25, 103, 210, 0); }
+}
+
+.editor-card .btn:active { transform: scale(.98); }
+
+@media (max-width: 720px) {
+  .highlights-editor { padding: 18px; }
+  .editor-fields { grid-template-columns: 1fr; }
+  .ef-field.ef-full { grid-column: auto; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .highlights-editor-badge { animation: none; }
+  .editor-card, .ef-field input, .ef-field select, .ef-field textarea { transition: none; }
+}

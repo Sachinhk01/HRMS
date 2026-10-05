@@ -359,8 +359,16 @@ export default function CelebrationWall() {
       await updateAnnouncement(item.announcementId, { title: result.title.trim(), message: result.message.trim() });
       showToast('Post updated successfully.', 'success');
       await loadData();
-    } catch (err) {
-      showToast(err?.response?.data?.message || err.message || 'Failed to Update Post.', 'error');
+        } catch (err) {
+      // The backend has no edit endpoint (PUT returns 404), so say so plainly.
+      const status = err?.response?.status;
+      const isMissingEndpoint = status === 404 || /NoResourceFoundException/i.test(err?.message || err?.response?.data?.message || '');
+      showToast(
+        isMissingEndpoint
+          ? 'Editing posts is not available yet. You can delete the post and publish it again.'
+          : err?.response?.data?.message || err.message || 'Failed to Update Post.',
+        isMissingEndpoint ? 'info' : 'error'
+      );
     }
   };
 

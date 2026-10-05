@@ -30,13 +30,13 @@ export function isMagazineNotification(item = {}) {
   return item.notificationType === 'ANNOUNCEMENT' && hasPdfAttachment(item);
 }
 
-// Maps a backend Announcement (uploadType=MAGAZINE) to the shape
+// Maps a backend announcement / ANNOUNCEMENT notification to the shape
 // HighlightCards/Dashboard expect. `month` is derived from the real
 // createdAt timestamp rather than being a manually-typed field, since the
 // backend doesn't store one.
 export function mapAnnouncementToMagazine(announcement) {
   if (!announcement) return null;
-  const documentUrl = announcement.attachmentUrls?.[0] || '';
+  const documentUrl = (announcement.attachmentUrls || []).find(isPdfUrl) || announcement.attachmentUrls?.[0] || '';
   const month = announcement.createdAt
     ? new Date(announcement.createdAt).toLocaleDateString([], { month: 'long', year: 'numeric' })
     : '';
@@ -51,30 +51,29 @@ export function mapAnnouncementToMagazine(announcement) {
   };
 }
 
-// NOTE ON THIS FUNCTION: there is no dedicated "latest magazine" endpoint on
-// the backend (that's what was causing the magazine to vanish — it was
-// calling a URL that 404s, so the catch-block cleared it back to null on
-// every load, for every role). Since we can't add a backend endpoint right
-// now, this instead reuses the existing, already-working
-// GET /notifications/announcement/today endpoint, which really does query
-// the shared database and is already open to EMPLOYEE/MANAGER/HR_ADMIN/
-// SUPER_ADMIN — so a published magazine now genuinely shows up for everyone,
-// not just the browser that published it.
+// There is no dedicated "latest magazine" endpoint on the backend, and
+// GET /notifications/announcement/today only returns announcements created
+// today (so the magazine vanished after the publish day).
 //
-// The trade-off: that endpoint only returns announcements created *today*.
-// So the magazine will correctly show for every role on the day it's
-// published, but will stop appearing once the calendar day rolls over,
-// until a new one is published. Removing that limitation needs a real
-// backend "latest magazine" endpoint — this is the best fix possible
-// without touching backend code.
+// Instead, read the logged-in user's notifications. Every announcement is
+// broadcast to every employee as an ANNOUNCEMENT notification, and the
+// response includes attachmentUrls. The newest announcement that carries a
+// PDF attachment is the current magazine.
+//
+// Trade-offs:
+// - That response has no uploadType, so a magazine is recognised by its PDF
+//   attachment (plain announcements and celebrations don't attach PDFs).
+// - Only the newest 100 notifications are scanned. A magazine older than
+//   that (a very busy month) will drop off until a new one is published.
+// - The PDF link itself is a 15-minute presigned URL stored by the backend,
+//   so the card shows, but opening the PDF fails after that window until the
+//   backend stores a permanent key / presigns on read.
 export async function getLatestMagazine() {
-  const { data } = await api.get('/notifications/announcement/today');
-  const todaysAnnouncements = data.data || [];
-  // Already ordered by createdAt desc from the backend, so the first
-  // MAGAZINE-type entry is the most recently published one.
-  const latestMagazine = todaysAnnouncements.find(
-    (announcement) => announcement.uploadType === 'MAGAZINE'
-  );
+  const result = await getNotifications({ page: 0, size: 100 });
+  const items = result?.content || [];
+  const latestMagazine = items
+    .filter((item) => isMagazineNotification(item))
+    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))[0];
   return mapAnnouncementToMagazine(latestMagazine);
 }
 
