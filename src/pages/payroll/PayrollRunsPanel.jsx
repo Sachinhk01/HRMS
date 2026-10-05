@@ -55,6 +55,36 @@ const EMPTY_EDIT_FORM = {
   remarks: "",
 };
 
+const EDIT_SECTIONS = [
+  ["Attendance", [
+    ["totalWorkingDays", "Total working days", "1", "1"],
+    ["workedDays", "Worked days", "1", "0"],
+    ["lopDays", "LOP days", "1", "0"],
+  ]],
+  ["Earnings", [
+    ["basicSalary", "Basic salary"],
+    ["hra", "HRA"],
+    ["specialAllowance", "Special allowance"],
+    ["medicalAllowance", "Medical allowance"],
+    ["travelAllowance", "Travel allowance"],
+    ["bonus", "Bonus"],
+    ["otherAllowance", "Other allowance"],
+  ]],
+  ["Deductions", [
+    ["pf", "PF"],
+    ["esi", "ESI"],
+    ["professionalTax", "Professional tax"],
+    ["incomeTax", "Income tax"],
+    ["otherDeduction", "Other deduction"],
+  ]],
+];
+
+const NUMERIC_KEYS = [
+  "totalWorkingDays", "workedDays", "lopDays",
+  "basicSalary", "hra", "specialAllowance", "medicalAllowance", "travelAllowance", "bonus", "otherAllowance",
+  "pf", "esi", "professionalTax", "incomeTax", "otherDeduction",
+];
+
 const num = (value) => (value === "" || value === null || value === undefined ? undefined : Number(value));
 
 export default function PayrollRunsPanel() {
@@ -84,6 +114,8 @@ export default function PayrollRunsPanel() {
   const [detail, setDetail] = useState(null);
   const [editing, setEditing] = useState(null);
   const [editForm, setEditForm] = useState(EMPTY_EDIT_FORM);
+  const [editMode, setEditMode] = useState("draft"); // "draft" | "regenerate"
+  const [editError, setEditError] = useState("");
   const [saving, setSaving] = useState(false);
 
   const refresh = useCallback(async (targetMonth = month) => {
@@ -163,6 +195,20 @@ export default function PayrollRunsPanel() {
     };
   }, [payrolls, monthlyPayrolls]);
 
+  // Live preview of the payslip totals while editing (mirrors backend maths).
+  const editPreview = useMemo(() => {
+    const n = (value) => Number(value || 0);
+    const round2 = (value) => Math.round(value * 100) / 100;
+    const gross = n(editForm.basicSalary) + n(editForm.hra) + n(editForm.specialAllowance)
+      + n(editForm.medicalAllowance) + n(editForm.travelAllowance) + n(editForm.bonus) + n(editForm.otherAllowance);
+    const totalDays = n(editForm.totalWorkingDays);
+    const lopDays = n(editForm.lopDays);
+    const lopAmount = lopDays > 0 && totalDays > 0 ? round2(round2(gross / totalDays) * lopDays) : 0;
+    const deductions = n(editForm.pf) + n(editForm.esi) + n(editForm.professionalTax)
+      + n(editForm.incomeTax) + n(editForm.otherDeduction) + lopAmount;
+    return { gross, lopAmount, deductions, net: gross - deductions };
+  }, [editForm]);
+
   const availableEmployees = useMemo(() => loadingEligibleEmployees
     ? []
     : employees.filter((item) => !generatedEmployeeIds.has(String(item.id))),
@@ -223,6 +269,8 @@ export default function PayrollRunsPanel() {
   }
 
   function beginEdit(item) {
+    setEditMode(item.status === "DRAFT" ? "draft" : "regenerate");
+    setEditError("");
     setEditing(item);
     setEditForm({
       totalWorkingDays: item.totalWorkingDays ?? "",
@@ -244,36 +292,101 @@ export default function PayrollRunsPanel() {
     });
   }
 
+  function closeEdit() {
+    setEditing(null);
+    setEditError("");
+  }
+
+  // True when the record returned by the server already reflects the edited values.
+  function matchesPayload(record, payload) {
+    return NUMERIC_KEYS.every((key) => {
+      if (payload[key] === undefined) return true;
+      return Number(record?.[key] ?? 0) === Number(payload[key]);
+    });
+  }
+
   async function submitEdit(event) {
     event.preventDefault();
+    setEditError("");
     setError("");
     setMessage("");
+
+    const n = (value) => Number(value || 0);
+    if (n(editForm.workedDays) + n(editForm.lopDays) > n(editForm.totalWorkingDays)) {
+      setEditError("Worked days + LOP days cannot exceed total working days.");
+      return;
+    }
+    if (editPreview.gross <= 0) {
+      setEditError("Gross salary must be greater than 0.");
+      return;
+    }
+    if (editPreview.net < 0) {
+      setEditError("Total deductions cannot exceed gross salary.");
+      return;
+    }
+
+    const payload = {
+      totalWorkingDays: num(editForm.totalWorkingDays),
+      workedDays: num(editForm.workedDays),
+      lopDays: num(editForm.lopDays),
+      basicSalary: num(editForm.basicSalary),
+      hra: num(editForm.hra),
+      specialAllowance: num(editForm.specialAllowance),
+      medicalAllowance: num(editForm.medicalAllowance),
+      travelAllowance: num(editForm.travelAllowance),
+      bonus: num(editForm.bonus),
+      otherAllowance: num(editForm.otherAllowance),
+      pf: num(editForm.pf),
+      esi: num(editForm.esi),
+      professionalTax: num(editForm.professionalTax),
+      incomeTax: num(editForm.incomeTax),
+      otherDeduction: num(editForm.otherDeduction),
+      remarks: editForm.remarks || undefined,
+    };
+
+    if (editMode === "regenerate") {
+      const ok = await confirm({
+        title: "Save as new version",
+        message: `${editing.payrollNumber} will be superseded and a new version will be created with your changes.`,
+        confirmText: "Save & Regenerate",
+      });
+      if (!ok) return;
+    }
+
     setSaving(true);
     try {
-      const payload = {
-        totalWorkingDays: num(editForm.totalWorkingDays),
-        workedDays: num(editForm.workedDays),
-        lopDays: num(editForm.lopDays),
-        basicSalary: num(editForm.basicSalary),
-        hra: num(editForm.hra),
-        specialAllowance: num(editForm.specialAllowance),
-        medicalAllowance: num(editForm.medicalAllowance),
-        travelAllowance: num(editForm.travelAllowance),
-        bonus: num(editForm.bonus),
-        otherAllowance: num(editForm.otherAllowance),
-        pf: num(editForm.pf),
-        esi: num(editForm.esi),
-        professionalTax: num(editForm.professionalTax),
-        incomeTax: num(editForm.incomeTax),
-        otherDeduction: num(editForm.otherDeduction),
-        remarks: editForm.remarks || undefined,
-      };
-      const updated = await updateDraftPayroll(editing.id, payload);
-      showToast(`Draft ${updated.payrollNumber} updated successfully.`, "success");
-      setEditing(null);
+      if (editMode === "draft") {
+        const updated = await updateDraftPayroll(editing.id, payload);
+        showToast(`Draft ${updated.payrollNumber} updated successfully.`, "success");
+      } else {
+        let updated = await regeneratePayroll(editing.id, payload);
+        let applied = matchesPayload(updated, payload);
+
+        // Some backends ignore the regenerate body. If the new version does not
+        // carry the edited values, try to apply them to the new version directly.
+        if (!applied && updated?.id) {
+          try {
+            updated = await updateDraftPayroll(updated.id, payload);
+            applied = matchesPayload(updated, payload);
+          } catch {
+            applied = false;
+          }
+        }
+
+        if (applied) {
+          showToast(`New version ${updated.payrollNumber} (v${updated.version}) created with your changes.`, "success");
+        } else {
+          showToast(
+            `New version ${updated.payrollNumber} (v${updated.version}) was created, but the server did not apply your edits. Please contact the backend team.`,
+            "error"
+          );
+        }
+      }
+      closeEdit();
+      setDetail(null);
       await refresh();
     } catch (err) {
-      setError(err.message || "Failed to update draft.");
+      setEditError(err.message || "Failed to save changes.");
     } finally {
       setSaving(false);
     }
@@ -346,6 +459,8 @@ export default function PayrollRunsPanel() {
   const canDownload = (item) => ["APPROVED", "PAID"].includes(item.status);
   // PAID/SUPERSEDED/CANCELLED payrolls must not be regenerated.
   const canRegenerate = (item) => ["DRAFT", "GENERATED", "APPROVED"].includes(item.status);
+  // Drafts are edited in place; generated/approved payslips are edited as a new version.
+  const canEdit = (item) => ["DRAFT", "GENERATED", "APPROVED"].includes(item.status);
 
   return (
     <div className="payroll-stack">
@@ -552,8 +667,14 @@ export default function PayrollRunsPanel() {
                   <td>
                     <div className="payroll-actions">
                       <button type="button" title="View details" onClick={() => openDetail(item)}><Eye size={16} /></button>
-                      {item.status === "DRAFT" && (
-                        <button type="button" title="Edit draft" onClick={() => beginEdit(item)}><Pencil size={16} /></button>
+                      {canEdit(item) && (
+                        <button
+                          type="button"
+                          title={item.status === "DRAFT" ? "Edit draft" : "Edit payslip (saves as new version)"}
+                          onClick={() => beginEdit(item)}
+                        >
+                          <Pencil size={16} />
+                        </button>
                       )}
                       {item.status === "DRAFT" && (
                         <button type="button" className="danger" title="Cancel" onClick={() => runStatusAction(item, "CANCELLED")}><XCircle size={16} /></button>
@@ -578,9 +699,6 @@ export default function PayrollRunsPanel() {
                       )}
                       {item.status === "APPROVED" && (
                         <button type="button" title="Mark as paid" onClick={() => runStatusAction(item, "PAID")}><Banknote size={16} /></button>
-                      )}
-                      {["DRAFT", "GENERATED"].includes(item.status) && (
-                        <button type="button" className="danger" title="Cancel" onClick={() => runStatusAction(item, "CANCELLED")}><XCircle size={16} /></button>
                       )}
                       {canRegenerate(item) && (
                         <button type="button" title="Regenerate (new version)" onClick={() => handleRegenerate(item)}><RotateCcw size={16} /></button>
@@ -645,44 +763,64 @@ export default function PayrollRunsPanel() {
         document.body
       )}
 
-      {/* Edit draft modal */}
+      {/* Edit modal (draft = edit in place, generated/approved = save as new version) */}
       {editing && createPortal(
-        <div className="payroll-overlay" onClick={() => setEditing(null)}>
+        <div className="payroll-overlay" onClick={closeEdit}>
           <form className="payroll-modal" onClick={(event) => event.stopPropagation()} onSubmit={submitEdit}>
             <div className="payroll-modal-head">
               <div>
-                <h2>Edit draft · {editing.payrollNumber}</h2>
-                <p>{editing.employeeName} — adjust attendance or amounts before approval.</p>
+                <h2>{editMode === "draft" ? "Edit draft" : "Edit payslip"} · {editing.payrollNumber}</h2>
+                <p>
+                  {editing.employeeName} ({editing.employeeCode}) —{" "}
+                  {editMode === "draft"
+                    ? "adjust attendance or amounts before approval."
+                    : "changes are saved as a new version and the current one is superseded."}
+                </p>
               </div>
-              <button type="button" className="payroll-modal-close" onClick={() => setEditing(null)} aria-label="Close"><X size={18} /></button>
+              <button type="button" className="payroll-modal-close" onClick={closeEdit} aria-label="Close"><X size={18} /></button>
             </div>
             <div className="payroll-modal-body">
+              {editError && <div className="form-alert">{editError}</div>}
+
+              {EDIT_SECTIONS.map(([heading, fields]) => (
+                <div key={heading}>
+                  <h3 style={{ fontSize: 13, margin: "4px 0 8px" }}>{heading}</h3>
+                  <div className="payroll-detail-grid">
+                    {fields.map(([key, label, step, min]) => (
+                      <label key={key}>{label}
+                        <input
+                          type="number"
+                          min={min || "0"}
+                          max="999999"
+                          step={step || "0.01"}
+                          value={editForm[key]}
+                          onChange={(event) => setEditForm((form) => ({ ...form, [key]: event.target.value }))}
+                        />
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              ))}
+
+              <label>Remarks
+                <input
+                  maxLength={INPUT_LIMITS.SHORT_TEXT}
+                  value={editForm.remarks}
+                  onChange={(event) => setEditForm((form) => ({ ...form, remarks: event.target.value }))}
+                />
+              </label>
+
               <div className="payroll-detail-grid">
-                <label>Total working days<input type="number" min="1" max="999999" value={editForm.totalWorkingDays} onChange={(event) => setEditForm({ ...editForm, totalWorkingDays: event.target.value })} /></label>
-                <label>Worked days<input type="number" min="0" max="999999" value={editForm.workedDays} onChange={(event) => setEditForm({ ...editForm, workedDays: event.target.value })} /></label>
-                <label>LOP days<input type="number" min="0" max="999999" value={editForm.lopDays} onChange={(event) => setEditForm({ ...editForm, lopDays: event.target.value })} /></label>
+                <div className="pay-detail-item"><span>Gross</span><strong>{formatINR(editPreview.gross)}</strong></div>
+                <div className="pay-detail-item"><span>LOP amount</span><strong>{formatINR(editPreview.lopAmount)}</strong></div>
+                <div className="pay-detail-item"><span>Total deductions</span><strong>{formatINR(editPreview.deductions)}</strong></div>
+                <div className="pay-detail-item"><span>Net payable</span><strong>{formatINR(editPreview.net)}</strong></div>
               </div>
-              <div className="payroll-detail-grid">
-                <label>Basic salary<input type="number" min="0" max="999999" step="0.01" value={editForm.basicSalary} onChange={(event) => setEditForm({ ...editForm, basicSalary: event.target.value })} /></label>
-                <label>HRA<input type="number" min="0" max="999999" step="0.01" value={editForm.hra} onChange={(event) => setEditForm({ ...editForm, hra: event.target.value })} /></label>
-                <label>Special allowance<input type="number" min="0" max="999999" step="0.01" value={editForm.specialAllowance} onChange={(event) => setEditForm({ ...editForm, specialAllowance: event.target.value })} /></label>
-                <label>Medical allowance<input type="number" min="0" max="999999" step="0.01" value={editForm.medicalAllowance} onChange={(event) => setEditForm({ ...editForm, medicalAllowance: event.target.value })} /></label>
-                <label>Travel allowance<input type="number" min="0" max="999999" step="0.01" value={editForm.travelAllowance} onChange={(event) => setEditForm({ ...editForm, travelAllowance: event.target.value })} /></label>
-                <label>Bonus<input type="number" min="0" max="999999" step="0.01" value={editForm.bonus} onChange={(event) => setEditForm({ ...editForm, bonus: event.target.value })} /></label>
-                <label>Other allowance<input type="number" min="0" max="999999" step="0.01" value={editForm.otherAllowance} onChange={(event) => setEditForm({ ...editForm, otherAllowance: event.target.value })} /></label>
-              </div>
-              <div className="payroll-detail-grid">
-                <label>PF<input type="number" min="0" max="999999" step="0.01" value={editForm.pf} onChange={(event) => setEditForm({ ...editForm, pf: event.target.value })} /></label>
-                <label>ESI<input type="number" min="0" max="999999" step="0.01" value={editForm.esi} onChange={(event) => setEditForm({ ...editForm, esi: event.target.value })} /></label>
-                <label>Professional tax<input type="number" min="0" max="999999" step="0.01" value={editForm.professionalTax} onChange={(event) => setEditForm({ ...editForm, professionalTax: event.target.value })} /></label>
-                <label>Income tax<input type="number" min="0" max="999999" step="0.01" value={editForm.incomeTax} onChange={(event) => setEditForm({ ...editForm, incomeTax: event.target.value })} /></label>
-                <label>Other deduction<input type="number" min="0" max="999999" step="0.01" value={editForm.otherDeduction} onChange={(event) => setEditForm({ ...editForm, otherDeduction: event.target.value })} /></label>
-              </div>
-              <label>Remarks<input maxLength={INPUT_LIMITS.SHORT_TEXT} value={editForm.remarks} onChange={(event) => setEditForm({ ...editForm, remarks: event.target.value })} /></label>
+
               <div className="payroll-form-actions">
-                <button type="button" className="btn btn-secondary" onClick={() => setEditing(null)}>Cancel</button>
+                <button type="button" className="btn btn-secondary" onClick={closeEdit}>Cancel</button>
                 <button type="submit" className="btn btn-primary" disabled={saving}>
-                  {saving ? "Saving…" : "Save Draft"}
+                  {saving ? "Saving…" : editMode === "draft" ? "Save Draft" : "Save & Regenerate"}
                 </button>
               </div>
             </div>

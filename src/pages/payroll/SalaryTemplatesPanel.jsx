@@ -27,6 +27,8 @@ const EMPTY_FORM = {
   otherDeduction: "",
 };
 
+const numOrZero = (value) => (value === "" || value === null || value === undefined ? 0 : Number(value));
+
 const num = (value) => (value === "" || value === null || value === undefined ? undefined : Number(value));
 
 const EARNING_FIELDS = [
@@ -114,18 +116,18 @@ export default function SalaryTemplatesPanel() {
     const earnings = {
       basicSalary: num(form.basicSalary),
       hra: num(form.hra),
-      specialAllowance: num(form.specialAllowance),
-      medicalAllowance: num(form.medicalAllowance),
-      travelAllowance: num(form.travelAllowance),
-      bonus: num(form.bonus),
-      otherAllowance: num(form.otherAllowance),
+      specialAllowance: numOrZero(form.specialAllowance),
+      medicalAllowance: numOrZero(form.medicalAllowance),
+      travelAllowance: numOrZero(form.travelAllowance),
+      bonus: numOrZero(form.bonus),
+      otherAllowance: numOrZero(form.otherAllowance),
     };
     const deductions = {
-      pf: num(form.pf),
+      pf: numOrZero(form.pf),
       esi: num(form.esi),
-      professionalTax: num(form.professionalTax),
-      incomeTax: num(form.incomeTax),
-      otherDeduction: num(form.otherDeduction),
+      professionalTax: numOrZero(form.professionalTax),
+      incomeTax: numOrZero(form.incomeTax),
+      otherDeduction: numOrZero(form.otherDeduction),
     };
     return { ...earnings, ...deductions };
   }
@@ -213,16 +215,16 @@ export default function SalaryTemplatesPanel() {
             )}
             <label>Basic salary<input type="number" min="0" max="999999" step="0.01" value={form.basicSalary} onChange={(event) => setForm({ ...form, basicSalary: event.target.value })} required /></label>
             <label>HRA<input type="number" min="0" max="999999" step="0.01" value={form.hra} onChange={(event) => setForm({ ...form, hra: event.target.value })} required /></label>
-            <label>Special allowance<input type="number" min="0" max="999999" step="0.01" value={form.specialAllowance} onChange={(event) => setForm({ ...form, specialAllowance: event.target.value })} required /></label>
-            <label>Medical allowance<input type="number" min="0" max="999999" step="0.01" value={form.medicalAllowance} onChange={(event) => setForm({ ...form, medicalAllowance: event.target.value })} required /></label>
-            <label>Travel allowance<input type="number" min="0" max="999999" step="0.01" value={form.travelAllowance} onChange={(event) => setForm({ ...form, travelAllowance: event.target.value })} required /></label>
-            <label>Bonus<input type="number" min="0" max="999999" step="0.01" value={form.bonus} onChange={(event) => setForm({ ...form, bonus: event.target.value })} required /></label>
-            <label>Other allowance<input type="number" min="0" max="999999" step="0.01" value={form.otherAllowance} onChange={(event) => setForm({ ...form, otherAllowance: event.target.value })} required /></label>
-            <label>PF<input type="number" min="0" max="999999" step="0.01" value={form.pf} onChange={(event) => setForm({ ...form, pf: event.target.value })} required /></label>
+            <label>Special allowance<input type="number" min="0" max="999999" step="0.01" value={form.specialAllowance} onChange={(event) => setForm({ ...form, specialAllowance: event.target.value })} /></label>
+            <label>Medical allowance<input type="number" min="0" max="999999" step="0.01" value={form.medicalAllowance} onChange={(event) => setForm({ ...form, medicalAllowance: event.target.value })} /></label>
+            <label>Travel allowance<input type="number" min="0" max="999999" step="0.01" value={form.travelAllowance} onChange={(event) => setForm({ ...form, travelAllowance: event.target.value })} /></label>
+            <label>Bonus<input type="number" min="0" max="999999" step="0.01" value={form.bonus} onChange={(event) => setForm({ ...form, bonus: event.target.value })} /></label>
+            <label>Other allowance<input type="number" min="0" max="999999" step="0.01" value={form.otherAllowance} onChange={(event) => setForm({ ...form, otherAllowance: event.target.value })} /></label>
+            <label>PF<input type="number" min="0" max="999999" step="0.01" value={form.pf} onChange={(event) => setForm({ ...form, pf: event.target.value })} /></label>
             <label>ESI<input type="number" min="0" max="999999" step="0.01" value={form.esi} onChange={(event) => setForm({ ...form, esi: event.target.value })} required /></label>
-            <label>Professional tax<input type="number" min="0" max="999999" step="0.01" value={form.professionalTax} onChange={(event) => setForm({ ...form, professionalTax: event.target.value })} required /></label>
-            <label>Income tax<input type="number" min="0" max="999999" step="0.01" value={form.incomeTax} onChange={(event) => setForm({ ...form, incomeTax: event.target.value })} required /></label>
-            <label>Other deduction<input type="number" min="0" max="999999" step="0.01" value={form.otherDeduction} onChange={(event) => setForm({ ...form, otherDeduction: event.target.value })} required /></label>
+            <label>Professional tax<input type="number" min="0" max="999999" step="0.01" value={form.professionalTax} onChange={(event) => setForm({ ...form, professionalTax: event.target.value })} /></label>
+            <label>Income tax<input type="number" min="0" max="999999" step="0.01" value={form.incomeTax} onChange={(event) => setForm({ ...form, incomeTax: event.target.value })} /></label>
+            <label>Other deduction<input type="number" min="0" max="999999" step="0.01" value={form.otherDeduction} onChange={(event) => setForm({ ...form, otherDeduction: event.target.value })} /></label>
             <div className="full-span payroll-form-actions">
               <button type="button" className="btn btn-secondary" onClick={resetForm}>Cancel</button>
               <button type="submit" className="btn btn-primary" disabled={saving}>

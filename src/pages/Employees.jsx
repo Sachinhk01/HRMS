@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Search, LayoutGrid, List, Phone, Mail, Eye, X,
@@ -541,6 +542,7 @@ export default function Employees() {
       <Pagination page={page} totalItems={filtered.length} pageSize={pageSize} onPageChange={setPage} />
 
       {/* ---------- Profile preview modal (centered card) ---------- */}
+      {createPortal(
       <AnimatePresence>
         {drawerEmp && (
           <motion.div className="emp-modal-overlay" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setDrawerEmp(null)}>
@@ -604,7 +606,12 @@ export default function Employees() {
                 )}
 
                 {drawerTab === 'attendance' && (
-                  <EmployeeAttendancePanel employeeId={drawerEmp.id} employeeName={drawerEmp.name} />
+                  <EmployeeAttendancePanel
+                    employeeId={drawerEmp.id}
+                    employeeName={`${drawerEmp.firstName || ''} ${drawerEmp.lastName || ''}`.trim()}
+                    employeeCode={drawerEmp.employeeCode}
+                    jobTitle={drawerEmp.jobTitle || drawerEmp.designationName}
+                  />
                 )}
               </div>
 
@@ -612,8 +619,10 @@ export default function Employees() {
           </motion.div>
         )}
       </AnimatePresence>
+      , document.body)}
 
       {/* ---------- Add Employee modal ---------- */}
+      {createPortal(
       <AnimatePresence>
         {showAdd && (
           <motion.div className="emp-modal-overlay" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
@@ -767,6 +776,7 @@ export default function Employees() {
           </motion.div>
         )}
       </AnimatePresence>
+      , document.body)}
     </div>
   );
 }

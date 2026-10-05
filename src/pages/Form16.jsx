@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
 import {
   CheckCircle2,
   Download,
   Edit3,
   FileText,
   Loader2,
+  Maximize2,
   Plus,
   Power,
   PowerOff,
@@ -12,6 +14,7 @@ import {
   Save,
   ShieldCheck,
   Trash2,
+  X,
 } from 'lucide-react';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -30,6 +33,8 @@ const JAVA_TOSTRING_PATTERN = /^[\w.$]+@[0-9a-fA-F]+$/;
 const displayText = (v) => (v && typeof v === 'string' && JAVA_TOSTRING_PATTERN.test(v.trim()) ? '' : v);
 const num = (v) => (v === '' || v == null ? 0 : Number(v));
 const money = (v) => new Intl.NumberFormat('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(num(v));
+// Sums a field (e.g. 'AmountPaidCredited') across Q1-Q4 of the quarter API response.
+const quarterTotal = (quarter, suffix) => [1, 2, 3, 4].reduce((sum, q) => sum + num(quarter?.[`q${q}${suffix}`]), 0);
 const today = () => new Date().toISOString().slice(0, 10);
 const currentAssessmentYear = () => {
   const d = new Date();
@@ -67,7 +72,7 @@ function safePayload(obj) {
 function Field({ label, value, onChange, type = 'text', full = false, readOnly = false, children, placeholder }) {
   return <label className={`f16-field ${full ? 'full' : ''}`}>
     <span>{label}</span>
-    {children || (readOnly ? <div className="f16-readonly">{value || '—'}</div> : type === 'date' ? <DatePicker id={`f16-${String(label).toLowerCase().replace(/[^a-z0-9]+/g, '-')}`} value={value ?? ''} onChange={(e) => onChange?.(e.target.value)} placeholder={placeholder} /> : <input maxLength={INPUT_LIMITS.SHORT_TEXT} type={type} value={value ?? ''} onChange={(e) => onChange?.(e.target.value)} placeholder={placeholder} />)}
+    {children || (readOnly ? <div className="f16-readonly">{value || '—'}</div> : type === 'date' ? <DatePicker id={`f16-${String(label).toLowerCase().replace(/[^a-z0-9]+/g, '-')}`} value={value ?? ''} onChange={(e) => onChange?.(e.target.value)} placeholder={placeholder} /> : <input maxLength={INPUT_LIMITS.SHORT_TEXT} type={type} value={value ?? ''} onChange={(e) => onChange?.(e.target.value)} onWheel={type === 'number' ? (e) => e.currentTarget.blur() : undefined} placeholder={placeholder} />)}
   </label>;
 }
 
@@ -107,7 +112,7 @@ function FormPreview({ base, quarter, challans, salary, exemption, section16, ch
       <div><b>Assessment Year</b><br/>{base.assessmentYear || '—'}</div><div><b>Period From</b><br/>{base.employmentFrom || '—'}</div><div><b>Period To</b><br/>{base.employmentTo || '—'}</div>
     </div>
     <div className="f16-section-title">Summary of amount paid/credited and tax deducted at source</div>
-    <table className="f16-preview-table"><thead><tr><th>Quarter</th><th>Receipt No.</th><th>Amount paid</th><th>Tax deducted</th><th>Tax deposited</th></tr></thead><tbody>{qRows.map((r) => <tr key={r[0]}>{r.map((c,i)=><td key={i}>{c}</td>)}</tr>)}</tbody></table>
+    <table className="f16-preview-table"><thead><tr><th>Quarter</th><th>Receipt No.</th><th>Amount paid</th><th>Tax deducted</th><th>Tax deposited</th></tr></thead><tbody>{qRows.map((r) => <tr key={r[0]}>{r.map((c,i)=><td key={i}>{c}</td>)}</tr>)}<tr className="f16-total-row"><td>Total</td><td>—</td><td>{money(quarterTotal(quarter, 'AmountPaidCredited'))}</td><td>{money(quarterTotal(quarter, 'TaxDeducted'))}</td><td>{money(quarterTotal(quarter, 'TaxDepositedRemitted'))}</td></tr></tbody></table>
     <div className="f16-section-title">PART B — Details of Salary Paid and Tax Deducted</div>
     <table className="f16-preview-table"><tbody>
       <tr><td>1(a) Salary under section 17(1)</td><td>{money(salary?.salaryUnderSection17_1)}</td></tr>
@@ -164,6 +169,21 @@ export default function Form16() {
   // company details, quarters, salary etc. never showed up.
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
+  // Full-page (full-screen) preview of the Form 16 certificate
+  const [showFull, setShowFull] = useState(false);
+
+  // Close full-page preview with Esc and lock background scroll while it is open
+  useEffect(() => {
+    if (!showFull) return undefined;
+    const onKey = (e) => { if (e.key === 'Escape') setShowFull(false); };
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    window.addEventListener('keydown', onKey);
+    return () => {
+      window.removeEventListener('keydown', onKey);
+      document.body.style.overflow = prevOverflow;
+    };
+  }, [showFull]);
 
   useEffect(() => {
     if (!canView) return;
@@ -251,7 +271,7 @@ export default function Form16() {
     watermark(); doc.setTextColor(30); doc.setFont('helvetica', 'bold'); doc.setFontSize(15); doc.text('FORM NO. 16', W/2, 42, {align:'center'}); doc.setFontSize(11); doc.text('PART A & PART B', W/2, 60, {align:'center'}); doc.setFont('helvetica','normal'); doc.setFontSize(7.5); doc.text('Certificate under Section 203 of the Income-tax Act, 1961 for tax deducted at source on salary', W/2, 74, {align:'center'});
     autoTable(doc,{startY:88,theme:'grid',styles:{fontSize:7,cellPadding:4},body:[['Employer',`${base.employerName||'—'}\n${base.employerAddress||''}`,'Employee',`${base.employeeName||'—'}\n${base.employeeAddress||''}`],['Deductor PAN',base.deductorPan||'—','Employee PAN',base.employeePan||'—'],['Deductor TAN',base.deductorTan||'—','Assessment Year',base.assessmentYear||'—'],['Employment Period',`${base.employmentFrom||'—'} to ${base.employmentTo||'—'}`,'Certificate No.',base.certificateNo||'—']]});
     let y=doc.lastAutoTable.finalY+12; doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.text('Summary of amount paid/credited and tax deducted at source',40,y); y+=6;
-    autoTable(doc,{startY:y,theme:'grid',styles:{fontSize:7},head:[['Quarter','Receipt No.','Amount Paid','Tax Deducted','Tax Deposited']],body:[1,2,3,4].map(q=>[`Q${q}`,quarter?.[`q${q}ReceiptNumber`]||'—',money(quarter?.[`q${q}AmountPaidCredited`]),money(quarter?.[`q${q}TaxDeducted`]),money(quarter?.[`q${q}TaxDepositedRemitted`])])});
+    autoTable(doc,{startY:y,theme:'grid',styles:{fontSize:7},head:[['Quarter','Receipt No.','Amount Paid','Tax Deducted','Tax Deposited']],body:[1,2,3,4].map(q=>[`Q${q}`,quarter?.[`q${q}ReceiptNumber`]||'—',money(quarter?.[`q${q}AmountPaidCredited`]),money(quarter?.[`q${q}TaxDeducted`]),money(quarter?.[`q${q}TaxDepositedRemitted`])]).concat([['Total','—',money(quarterTotal(quarter,'AmountPaidCredited')),money(quarterTotal(quarter,'TaxDeducted')),money(quarterTotal(quarter,'TaxDepositedRemitted'))]]),didParseCell:(d)=>{ if(d.section==='body' && d.row.index===4){ d.cell.styles.fontStyle='bold'; d.cell.styles.fillColor=[245,247,250]; } }});
     y=doc.lastAutoTable.finalY+12; doc.setFontSize(9); doc.text('PART B — Salary and Tax Computation',40,y); y+=6;
     autoTable(doc,{startY:y,theme:'grid',styles:{fontSize:7},body:[['Salary u/s 17(1)',money(salary?.salaryUnderSection17_1)],['Perquisites u/s 17(2)',money(salary?.perquisitesUnderSection17_2)],['Gross Salary',money(salary?.grossSalary)],['Total Exemption u/s 10',money(exemption?.totalExemption)],['Total Deductions u/s 16',money(section16?.totalDeductionsSection16)],['Gross Total Income',money(section16?.grossTotalIncome)],['Chapter VI-A Deduction',money(chapter?.totalChapterVIA)],['Total Taxable Income',money(chapter?.totalTaxableIncome)],['Tax on Total Income',money(lastFields?.taxOnTotalIncome)],['Net Tax Payable',money(lastFields?.netTaxPayable)]]});
     if (verification) { y=doc.lastAutoTable.finalY+12; autoTable(doc,{startY:y,theme:'grid',styles:{fontSize:7},body:[['Verification Place',verification.place||'—','Date',verification.date||'—'],['Designation',verification.designation||'—','Full Name',verification.fullName||'—'],['Signature',verification.signature||'—','','']]}); }
@@ -299,7 +319,30 @@ export default function Form16() {
         {base && tab==='tax' && <SectionEditor title="Final tax computation" fields={lastFieldsDef} value={lastDraft} setValue={setLastDraft} exists={!!lastFields} saving={saving} note="Tax payable and net tax payable are calculated by backend endpoints." readOnly={!canManage} onSave={()=>saveSection({existing:lastFields,draft:lastDraft,create:form16Service.createLastFields,update:form16Service.updateLastFields,setter:setLastFields,draftSetter:setLastDraft})}/>} 
         {base && tab==='verification' && <SectionEditor title="Verification" value={verificationDraft} setValue={setVerificationDraft} exists={!!verification} saving={saving} readOnly={!canManage} onSave={()=>saveSection({existing:verification,draft:verificationDraft,create:form16Service.createVerification,update:form16Service.updateVerification,setter:setVerification,draftSetter:setVerificationDraft})}>{<><div className="f16-form-grid"><Field label="Place" value={verificationDraft.place} readOnly={!canManage} onChange={v=>setVerificationDraft(s=>({...s,place:v}))}/><Field label="Designation" value={verificationDraft.designation} readOnly={!canManage} onChange={v=>setVerificationDraft(s=>({...s,designation:v}))}/><Field label="Full name" value={verificationDraft.fullName} readOnly={!canManage} onChange={v=>setVerificationDraft(s=>({...s,fullName:v}))}/><Field label="Signature / signatory text" value={verificationDraft.signature} readOnly={!canManage} onChange={v=>setVerificationDraft(s=>({...s,signature:v}))}/></div>{canManage && <div className="f16-savebar"><button className="btn btn-primary" onClick={()=>saveSection({existing:verification,draft:verificationDraft,create:form16Service.createVerification,update:form16Service.updateVerification,setter:setVerification,draftSetter:setVerificationDraft})}><ShieldCheck size={16}/>{verification?'Save Verification':'Create Verification'}</button></div>}</>}</SectionEditor>}
       </section>
-      <aside className="form16-preview-wrap"><section className="f16-panel"><div className="f16-panel-head"><h3>Form 16 Preview</h3>{base && <span className={`f16-status ${base.active?'active':'inactive'}`}>{base.active?'ACTIVE':'INACTIVE'}</span>}</div>{loading?<div className="f16-loader"><Loader2 className="spin"/> Loading Form 16...</div>:<FormPreview base={base} quarter={quarter} challans={challans} salary={salary} exemption={exemption} section16={section16} chapter={chapter} lastFields={lastFields} verification={verification}/>}</section></aside>
+      <aside className="form16-preview-wrap"><section className="f16-panel"><div className="f16-panel-head"><h3>Form 16 Preview</h3><div className="f16-panel-head-actions">{base && <span className={`f16-status ${base.active?'active':'inactive'}`}>{base.active?'ACTIVE':'INACTIVE'}</span>}<button type="button" className="f16-viewfull-btn" onClick={()=>setShowFull(true)} disabled={!base} title="View full page"><Maximize2 size={14}/>View Full Page</button></div></div>{loading?<div className="f16-loader"><Loader2 className="spin"/> Loading Form 16...</div>:<FormPreview base={base} quarter={quarter} challans={challans} salary={salary} exemption={exemption} section16={section16} chapter={chapter} lastFields={lastFields} verification={verification}/>}</section></aside>
     </div>
+
+    {showFull && createPortal(
+      <div className="f16-fullview" role="dialog" aria-modal="true" aria-label="Form 16 full page preview" onClick={()=>setShowFull(false)}>
+        <div className="f16-fullview-card" onClick={(e)=>e.stopPropagation()}>
+          <div className="f16-fullview-head">
+            <div className="f16-fullview-title">
+              <h3>Form 16 Preview</h3>
+              {base && <span className={`f16-status ${base.active?'active':'inactive'}`}>{base.active?'ACTIVE':'INACTIVE'}</span>}
+            </div>
+            <div className="f16-fullview-actions">
+              <button className="btn btn-secondary" onClick={exportPdf} disabled={!base}><Download size={16}/>Download PDF</button>
+              <button className="f16-fullview-close" onClick={()=>setShowFull(false)} aria-label="Close preview"><X size={18}/></button>
+            </div>
+          </div>
+          <div className="f16-fullview-body">
+            {loading
+              ? <div className="f16-loader"><Loader2 className="spin"/> Loading Form 16...</div>
+              : <FormPreview base={base} quarter={quarter} challans={challans} salary={salary} exemption={exemption} section16={section16} chapter={chapter} lastFields={lastFields} verification={verification}/>}
+          </div>
+        </div>
+      </div>,
+      document.body
+    )}
   </div>;
 }

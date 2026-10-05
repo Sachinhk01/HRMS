@@ -109,7 +109,7 @@ function computeSummary(rows) {
 // Shown inside the Employees "View" drawer's Attendance tab. Fetches a
 // single employee's attendance for the selected month via the admin-scoped
 // endpoint (Manager/HR_ADMIN/SUPER_ADMIN only — see attendanceService.js).
-export default function EmployeeAttendancePanel({ employeeId, employeeName }) {
+export default function EmployeeAttendancePanel({ employeeId, employeeName, employeeCode, jobTitle }) {
   const [monthValue, setMonthValue] = useState(() => monthOptionValue(new Date()));
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -180,12 +180,19 @@ export default function EmployeeAttendancePanel({ employeeId, employeeName }) {
   }
 
   function fileLabel() {
-    return (employeeName ? employeeName.replace(/\s+/g, '_') : employeeId) || 'employee';
+    return (employeeCode || (employeeName ? employeeName.replace(/\s+/g, '_') : employeeId)) || 'employee';
   }
 
   function handleExportExcel() {
-    const worksheet = XLSX.utils.json_to_sheet(buildExportRows());
-    worksheet['!cols'] = [{ wch: 12 }, { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 14 }];
+    const worksheet = XLSX.utils.aoa_to_sheet([
+      ['Employee Name', capitalizeName(employeeName) || '—'],
+      ['Employee ID', employeeCode || '—'],
+      ['Job Title', jobTitle || '—'],
+      ['Month', monthValue],
+      [],
+    ]);
+    XLSX.utils.sheet_add_json(worksheet, buildExportRows(), { origin: 'A6' });
+    worksheet['!cols'] = [{ wch: 16 }, { wch: 22 }, { wch: 12 }, { wch: 10 }, { wch: 10 }, { wch: 14 }];
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, 'Attendance');
     XLSX.writeFile(workbook, `attendance_${fileLabel()}_${monthValue}.xlsx`);
@@ -193,16 +200,29 @@ export default function EmployeeAttendancePanel({ employeeId, employeeName }) {
 
   function handleExportPdf() {
     const doc = new jsPDF();
-    doc.setFontSize(11);
-    doc.setTextColor(90, 98, 117);
-    doc.text(capitalizeName(employeeName) || String(employeeId), 14, 14);
     doc.setTextColor(0, 0, 0);
-    doc.setFontSize(14);
-    doc.text('Attendance Report', 14, 22);
+    doc.setFontSize(16);
+    doc.text('Attendance Report', 14, 16);
     doc.setFontSize(10);
-    doc.text(`Month: ${monthValue}`, 14, 28);
+    doc.text(`Month: ${monthValue}`, 14, 23);
+
+    // Employee details block: name, employee ID (code) and job title.
+    const details = [
+      ['Employee Name', capitalizeName(employeeName) || '—'],
+      ['Employee ID', employeeCode || '—'],
+      ['Job Title', jobTitle || '—'],
+    ];
+    doc.setFontSize(10);
+    details.forEach(([label, value], i) => {
+      const y = 32 + i * 6;
+      doc.setFont(undefined, 'bold');
+      doc.text(`${label}:`, 14, y);
+      doc.setFont(undefined, 'normal');
+      doc.text(String(value), 48, y);
+    });
+
     autoTable(doc, {
-      startY: 34,
+      startY: 54,
       head: [['Date', 'Check In', 'Check Out', 'Worked', 'Break', 'Status']],
       body: buildExportRows().map((row) => [row.Date, row['Check In'], row['Check Out'], row.Worked, row.Break, row.Status]),
       styles: { fontSize: 9 },
