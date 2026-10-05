@@ -19,6 +19,7 @@ import {
   Globe2,
   Database,
   AlertTriangle,
+  Tag,
 } from 'lucide-react';
 import PageHeader from '../components/PageHeader';
 import { hrmsService } from '../services/hrmsService';
@@ -43,15 +44,19 @@ import './Settings.css';
 // Field extras (display only): `unit` shows a suffix ("min", "days"),
 // `wide` makes the field span both columns in the edit dialog.
 //
-// A group with `custom: true` (Master Data) does not use get/save/fields/sections.
-// It renders its own `component`, which loads and saves its own data.
-//
-// A group with `extra` renders that component below its cards (Leave uses it
-// for the Leave Types table). It loads and saves its own data.
+// A group with `custom: true` does not use get/save/fields/sections; it renders
+// its own `component`, which loads and saves its own data.
 //
 // A group with `roles` is only shown to those roles. Master Data is limited to
 // HR_ADMIN and MANAGER because the backend's @PreAuthorize on the master data
 // endpoints does not include SUPER_ADMIN (they get 403).
+function LeaveTypesTab() {
+  const { user } = useAuth();
+  const role = user?.role || user?.roles?.[0];
+  const canManage = role === 'HR_ADMIN' || role === 'MANAGER';
+  return <LeaveTypesSettings canManage={canManage} />;
+}
+
 const GROUPS = [
   {
     key: 'attendance',
@@ -95,7 +100,15 @@ const GROUPS = [
       { title: 'Leave Allowances', subtitle: 'Monthly and annual leave quotas', icon: Gauge, fields: ['monthlyGuideline', 'annualPaidLeave'] },
       { title: 'Leave Rules', subtitle: 'Carry-forward policy', icon: Repeat2, fields: ['carryForwardAllowed'] },
     ],
-    extra: LeaveTypesSettings,
+  },
+  {
+    key: 'leave-types',
+    label: 'Leave Types',
+    description: 'Define leave types and how many days employees get per year',
+    icon: Tag,
+    accent: 'violet',
+    custom: true,
+    component: LeaveTypesTab,
   },
   {
     key: 'company',
@@ -445,15 +458,11 @@ export default function Settings() {
   const userRole = user?.role || user?.roles?.[0];
   // Only the groups this role is allowed to see (groups without `roles` are for everyone).
   const visibleGroups = GROUPS.filter((g) => !g.roles || g.roles.includes(userRole));
-  // Backend only lets HR_ADMIN and MANAGER create/edit leave types; others see a read-only table.
-  const canManageLeaveTypes = userRole === 'HR_ADMIN' || userRole === 'MANAGER';
-
   // Opens on the first section instead of an empty panel.
   const group = visibleGroups.find((g) => g.key === (activeKey ?? visibleGroups[0]?.key)) || null;
   const groupKey = group?.key;
   const Icon = group?.icon;
   const CustomPanel = group?.component;
-  const ExtraPanel = group?.extra;
 
   useEffect(() => {
     setEditing(null);
@@ -594,7 +603,7 @@ export default function Settings() {
       <PageHeader
         eyebrow="Administration"
         title="Settings"
-        description="Manage attendance, leave, company and master data configuration."
+        description="Manage attendance, leave, leave types, company and master data configuration."
         action={tabs}
       />
 
@@ -678,12 +687,6 @@ export default function Settings() {
                     <div className="settings-state">
                       <Inbox size={20} />
                       <p>No settings found.</p>
-                    </div>
-                  )}
-
-                  {ExtraPanel && (
-                    <div className="sx-card sx-card--plain">
-                      <ExtraPanel canManage={canManageLeaveTypes} />
                     </div>
                   )}
                 </div>
