@@ -158,14 +158,6 @@ function formatTime12(value) {
   return `${String(hour).padStart(2, '0')}:${String(m).padStart(2, '0')} ${h >= 12 ? 'PM' : 'AM'}`;
 }
 
-function minutesToHuman(total) {
-  const n = Number(total);
-  if (!Number.isFinite(n) || n < 60) return '';
-  const h = Math.floor(n / 60);
-  const m = n % 60;
-  return m ? `${h} h ${m} m` : `${h} h`;
-}
-
 // "Grace Period (minutes)" -> "Grace Period": the unit is shown with the value instead.
 const shortLabel = (label) => label.replace(/\s*\([^)]*\)\s*$/, '');
 
@@ -173,7 +165,7 @@ function displayValue(field, value) {
   if (value === null || value === undefined || value === '') return { empty: true };
   if (field.type === 'time') return { main: formatTime12(value) };
   if (field.type === 'number') {
-    if (field.unit === 'min') return { main: `${value} min`, sub: minutesToHuman(value) };
+    if (field.unit === 'min') return { main: `${value} min` };
     if (field.unit) {
       const unit = field.unit.replace(/^days/, Number(value) === 1 ? 'day' : 'days');
       return { main: `${value} ${unit}` };

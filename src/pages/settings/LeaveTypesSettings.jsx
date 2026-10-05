@@ -70,15 +70,24 @@ export default function LeaveTypesSettings({ canManage = false }) {
 
   async function toggleStatus(item) {
     if (busyId) return;
-    if (item.active) {
-      const ok = await confirm({
-        title: 'Deactivate leave type',
-        message: `Deactivate "${item.name}"? It will no longer appear when employees apply for leave, until you activate it again.`,
-        confirmText: 'Deactivate',
-        danger: true,
-      });
-      if (!ok) return;
-    }
+
+    const ok = await confirm(
+      item.active
+        ? {
+            title: 'Deactivate leave type',
+            message: `Deactivate "${item.name}"? It will no longer appear when employees apply for leave, until you activate it again.`,
+            confirmText: 'Deactivate',
+            danger: true,
+          }
+        : {
+            title: 'Activate leave type',
+            message: `Activate "${item.name}"? It will appear again when employees apply for leave.`,
+            confirmText: 'Activate',
+            danger: false,
+          }
+    );
+    if (!ok) return;
+
     setBusyId(item.id);
     try {
       if (item.active) await deactivateLeaveType(item.id);
@@ -111,15 +120,22 @@ export default function LeaveTypesSettings({ canManage = false }) {
             : `Total: ${totalDays} day${totalDays === 1 ? '' : 's'}/year across ${activeTypes.length} active leave type${activeTypes.length === 1 ? '' : 's'}`}
         </span>
         {canManage && (
-                    <button
-                        type="button"
-                        className="btn btn-primary"
-                        style={{ padding: '6px 12px', fontSize: 12.5, minHeight: 0, gap: 6, borderRadius: 10 }}
-                        onClick={() => setModal({ mode: 'create' })}
-                    >
-                        <Plus size={14} />
-                        Add Leave Type
-                    </button>
+                   <button
+                type="button"
+                className="btn btn-primary"
+                style={{
+                  padding: '6px 12px',
+                  fontSize: 12.5,
+                  minHeight: 0,
+                  gap: 6,
+                  borderRadius: 10,
+                  marginBottom: 16,
+                }}
+                onClick={() => setModal({ mode: 'create' })}
+              >
+                <Plus size={14} />
+                Add Leave Type
+              </button>
                     )}
       </div>
 
@@ -286,7 +302,7 @@ function LeaveTypeFormModal({ mode, item, types, onClose, onSaved }) {
 
         <form onSubmit={submit} className="mdm-form">
           <label className="mdm-field">
-            Leave Type Name
+            
             <input
               value={name}
               onChange={(event) => setName(event.target.value)}
@@ -298,15 +314,18 @@ function LeaveTypeFormModal({ mode, item, types, onClose, onSaved }) {
             {isDuplicate && <small className="mdm-field-warn">A leave type with this name already exists.</small>}
           </label>
 
-          <label className="mdm-field">
-            Description
-            <textarea
-              value={description}
-              onChange={(event) => setDescription(event.target.value)}
-              maxLength={DESC_MAX}
-              rows={2}
-            />
-          </label>
+              <label className="mdm-field">
+                Description
+                <textarea
+                  value={description}
+                  onChange={(event) => setDescription(event.target.value)}
+                  maxLength={DESC_MAX}
+                  rows={2}
+                />
+                <small style={{ textAlign: 'right', fontSize: 11.5, opacity: 0.7 }}>
+                  {description.length}/{DESC_MAX}
+                </small>
+              </label>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             <label className="mdm-field">
