@@ -233,8 +233,11 @@ export default function PayrollRunsPanel() {
   }
 
   function selectAllEmployees(event) {
-    if (event.target.value === "ALL") {
+    const action = event.target.value;
+    if (action === "ALL") {
       setSelectedIds(availableEmployees.map((item) => item.id));
+    } else if (action === "NONE") {
+      setSelectedIds([]);
     }
   }
 
@@ -526,9 +529,10 @@ export default function PayrollRunsPanel() {
             </label>
             <div className="full-span">
               <label>Employees</label>
-              <select defaultValue="" onChange={selectAllEmployees}>
+              <select value="" onChange={selectAllEmployees}>
                 <option value="">Quick select…</option>
                 <option value="ALL">Select all active employees</option>
+                <option value="NONE" disabled={selectedIds.length === 0}>Deselect all</option>
               </select>
               <input maxLength={INPUT_LIMITS.SEARCH}
                 value={genEmployeeQuery}
