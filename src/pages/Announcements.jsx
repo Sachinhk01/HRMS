@@ -3,7 +3,6 @@ import { motion } from 'framer-motion';
 import {
   Megaphone, Plus, X, Send,
 } from 'lucide-react';
-import PageHeader from '../components/PageHeader';
 import Pagination from '../components/Pagination';
 import usePagination, { sortRecent } from '../hooks/usePagination';
 import { useAuth } from '../context/AuthContext';
@@ -105,19 +104,6 @@ export default function Announcements() {
 
   return (
     <div className="page-stack announcements-page page-reveal">
-      <PageHeader
-        eyebrow="Company Updates"
-        title="Announcements"
-        description="Official Company Announcements, Policy Updates, And Broadcast Messages From HR."
-        action={
-          canCreateAnnouncement && !composerOpen ? (
-            <button type="button" className="btn btn-gradient" onClick={() => setComposerOpen(true)}>
-              <Plus size={18} /> Add Announcement
-            </button>
-          ) : null
-        }
-      />
-
       {/* ---------- HR-only composer ---------- */}
       {canCreateAnnouncement && composerOpen && (
         <section className="panel ann-composer">
@@ -182,17 +168,48 @@ export default function Announcements() {
           <span className="eyebrow">Company Updates</span>
           <h1>Company Announcements</h1>
           <p>Stay Informed With The Latest Company Updates.</p>
+          {canCreateAnnouncement && !composerOpen && (
+            <button type="button" className="ann-hero-btn" onClick={() => setComposerOpen(true)}>
+              <Plus size={18} /> Add Announcement
+            </button>
+          )}
         </div>
         <div className="ann-hero-illustration" aria-hidden="true">
           <svg viewBox="0 0 320 200" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <circle cx="250" cy="55" r="56" fill="#dbeafe" opacity="0.5" />
-            <circle cx="60" cy="155" r="40" fill="#bfdbfe" opacity="0.4" />
-            <rect x="120" y="70" width="90" height="70" rx="16" fill="#fff" stroke="#bfdbfe" strokeWidth="2" />
-            <path d="M140 100 h40 l25 -18 v56 l-25 -18 h-40 z" fill="#dbeafe" stroke="#2563eb" strokeWidth="2" strokeLinejoin="round" />
-            <rect x="130" y="108" width="14" height="22" rx="4" fill="#2563eb" />
-            <path d="M210 90 q14 10 0 20" stroke="#2563eb" strokeWidth="2" fill="none" strokeLinecap="round" />
-            <path d="M220 82 q24 18 0 36" stroke="#60a5fa" strokeWidth="2" fill="none" strokeLinecap="round" />
-            <path d="M180 60 l4 8 l8 1 l-6 6 l2 8 l-8 -4 l-8 4 l2 -8 l-6 -6 l8 -1 z" fill="#fbbf24" />
+            <defs>
+              <linearGradient id="anCone" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0" stopColor="#ffffff" />
+                <stop offset="1" stopColor="#ffe4f2" />
+              </linearGradient>
+            </defs>
+
+            <circle cx="262" cy="52" r="46" fill="#fff" opacity="0.14" />
+            <circle cx="56" cy="156" r="36" fill="#fff" opacity="0.12" />
+
+            <rect className="an-conf" style={{ '--i': 0 }} x="86" y="26" width="9" height="4" rx="2" fill="#fde047" />
+            <circle className="an-conf" style={{ '--i': 1 }} cx="150" cy="22" r="3.5" fill="#fff" />
+            <rect className="an-conf" style={{ '--i': 2 }} x="214" y="30" width="8" height="4" rx="2" fill="#67e8f9" />
+            <circle className="an-conf" style={{ '--i': 3 }} cx="258" cy="70" r="3" fill="#fde047" />
+            <rect className="an-conf" style={{ '--i': 4 }} x="60" y="82" width="8" height="4" rx="2" fill="#86efac" />
+            <circle className="an-conf" style={{ '--i': 5 }} cx="236" cy="22" r="3" fill="#f9a8d4" />
+            <rect className="an-conf" style={{ '--i': 6 }} x="118" y="16" width="7" height="4" rx="2" fill="#67e8f9" />
+            <circle className="an-conf" style={{ '--i': 7 }} cx="282" cy="104" r="3.5" fill="#fff" />
+
+            <g transform="translate(78,52)"><path className="an-star" d="M0 -7 L2 -2 L7 0 L2 2 L0 7 L-2 2 L-7 0 L-2 -2 Z" fill="#fde047" /></g>
+            <g transform="translate(268,148)"><path className="an-star an-star--b" d="M0 -6 L1.8 -1.8 L6 0 L1.8 1.8 L0 6 L-1.8 1.8 L-6 0 L-1.8 -1.8 Z" fill="#fff" /></g>
+
+            <path className="an-wave" style={{ '--i': 0 }} d="M206 70 Q222 92 206 114" stroke="#fff" strokeWidth="4" fill="none" strokeLinecap="round" />
+            <path className="an-wave" style={{ '--i': 1 }} d="M218 58 Q242 92 218 126" stroke="#fff" strokeWidth="4" fill="none" strokeLinecap="round" />
+            <path className="an-wave" style={{ '--i': 2 }} d="M230 46 Q262 92 230 138" stroke="#fff" strokeWidth="4" fill="none" strokeLinecap="round" />
+
+            <g className="an-mega">
+              <path d="M120 108 L132 138 Q134 144 128 146 L118 148 Q112 148 112 142 L108 110 Z" fill="#fde047" />
+              <rect x="84" y="76" width="22" height="34" rx="8" fill="#fff" />
+              <path d="M104 78 L182 42 Q192 40 192 52 L192 132 Q192 144 182 142 L104 108 Z" fill="url(#anCone)" />
+              <path d="M150 62 L150 123" stroke="#f472b6" strokeWidth="8" strokeLinecap="round" />
+              <path d="M168 54 L168 130" stroke="#a78bfa" strokeWidth="8" strokeLinecap="round" />
+              <ellipse cx="192" cy="92" rx="8" ry="40" fill="#fde047" />
+            </g>
           </svg>
         </div>
       </motion.section>
@@ -205,6 +222,7 @@ export default function Announcements() {
         <motion.div className="ann-feed" initial="hidden" animate="show" variants={stagger}>
           {pageItems.map((item) => (
               <motion.article className="panel ann-card" key={item.id} variants={fadeUp} whileHover={{ y: -4 }}>
+                <div className="ann-card-icon"><Megaphone size={20} /></div>
                 <h3>{item.title}</h3>
                 <p>{item.message}</p>
                 {item.attachmentUrls?.length > 0 && (

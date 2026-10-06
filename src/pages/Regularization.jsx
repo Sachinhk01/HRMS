@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import {
-  ClipboardEdit,
   CalendarRange,
   Clock3,
   CheckCircle2,
@@ -270,7 +269,79 @@ export default function Regularization() {
           <p>Request corrections for missed check-ins, late marks, or absences — your manager will review each line.</p>
         </div>
         <div className="reg-hero-icon" aria-hidden="true">
-          <ClipboardEdit size={64} strokeWidth={1.4} />
+          <svg viewBox="0 0 300 180" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <linearGradient id="rgCard" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0" stopColor="#ffffff" />
+                <stop offset="1" stopColor="#f1f5ff" />
+              </linearGradient>
+              <linearGradient id="rgHead" x1="0" y1="0" x2="1" y2="0">
+                <stop offset="0" stopColor="#2563eb" />
+                <stop offset="1" stopColor="#6366f1" />
+              </linearGradient>
+            </defs>
+
+            <circle className="rg-blob" cx="248" cy="46" r="52" fill="#dbeafe" opacity="0.55" />
+            <circle className="rg-blob rg-blob--b" cx="50" cy="150" r="38" fill="#c7d2fe" opacity="0.4" />
+
+            <g transform="translate(240,42)"><path className="rg-spark" d="M0 -6 L1.8 -1.8 L6 0 L1.8 1.8 L0 6 L-1.8 1.8 L-6 0 L-1.8 -1.8 Z" fill="#818cf8" /></g>
+            <g transform="translate(68,56)"><path className="rg-spark rg-spark--b" d="M0 -5 L1.5 -1.5 L5 0 L1.5 1.5 L0 5 L-1.5 1.5 L-5 0 L-1.5 -1.5 Z" fill="#38bdf8" /></g>
+            <g transform="translate(252,112)"><path className="rg-spark rg-spark--c" d="M0 -4 L1.2 -1.2 L4 0 L1.2 1.2 L0 4 L-1.2 1.2 L-4 0 L-1.2 -1.2 Z" fill="#34d399" /></g>
+
+            <g className="rg-board">
+              <rect x="88" y="22" width="124" height="140" rx="16" fill="url(#rgCard)" stroke="#c7d2fe" strokeWidth="1.5" />
+              <rect x="124" y="14" width="52" height="18" rx="8" fill="url(#rgHead)" />
+              <circle cx="150" cy="23" r="3" fill="#fff" opacity="0.8" />
+
+              <rect x="100" y="50" width="100" height="24" rx="8" fill="#f5f8ff" />
+              <rect x="132" y="55" width="52" height="5" rx="2.5" fill="#dbe4f7" />
+              <rect x="132" y="64" width="34" height="4" rx="2" fill="#e8eefc" />
+              <g className="rg-bad" style={{ '--d': 0 }}>
+                <circle cx="114" cy="62" r="8" fill="#fee2e2" />
+                <path d="M110 58 l8 8 M118 58 l-8 8" stroke="#ef4444" strokeWidth="2.4" strokeLinecap="round" />
+              </g>
+              <g className="rg-good" style={{ '--d': 0 }}>
+                <circle cx="114" cy="62" r="8" fill="#10b981" />
+                <path d="M110 62 l3 4 l6 -7" stroke="#fff" strokeWidth="2.4" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+              </g>
+
+              <rect x="100" y="80" width="100" height="24" rx="8" fill="#f5f8ff" />
+              <rect x="132" y="85" width="52" height="5" rx="2.5" fill="#dbe4f7" />
+              <rect x="132" y="94" width="34" height="4" rx="2" fill="#e8eefc" />
+              <g className="rg-bad" style={{ '--d': 1.6 }}>
+                <circle cx="114" cy="92" r="8" fill="#fef3c7" />
+                <path d="M114 87 v6" stroke="#f59e0b" strokeWidth="2.4" strokeLinecap="round" />
+                <circle cx="114" cy="96.5" r="1.3" fill="#f59e0b" />
+              </g>
+              <g className="rg-good" style={{ '--d': 1.6 }}>
+                <circle cx="114" cy="92" r="8" fill="#10b981" />
+                <path d="M110 92 l3 4 l6 -7" stroke="#fff" strokeWidth="2.4" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+              </g>
+
+              <rect x="100" y="110" width="100" height="24" rx="8" fill="#f5f8ff" />
+              <rect x="132" y="115" width="52" height="5" rx="2.5" fill="#dbe4f7" />
+              <rect x="132" y="124" width="34" height="4" rx="2" fill="#e8eefc" />
+              <circle cx="114" cy="122" r="8" fill="#10b981" />
+              <path d="M110 122 l3 4 l6 -7" stroke="#fff" strokeWidth="2.4" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+
+              <rect x="100" y="142" width="64" height="8" rx="4" fill="#e8eefc" />
+            </g>
+
+            <g transform="translate(192,44)">
+              <g className="rg-pencil">
+                <path d="M2 14 L16 0 L24 8 L10 22 L0 24 Z" fill="#f59e0b" />
+                <path d="M16 0 L20 -4 L28 4 L24 8 Z" fill="#6366f1" />
+                <path d="M0 24 L2 14 L10 22 Z" fill="#fde68a" />
+              </g>
+            </g>
+
+            <g className="rg-clockbadge">
+              <circle cx="80" cy="146" r="15" fill="#fff" stroke="#bfdbfe" strokeWidth="2" />
+              <line x1="80" y1="146" x2="80" y2="140" stroke="#1e3a8a" strokeWidth="2.2" strokeLinecap="round" />
+              <line className="rg-hand" x1="80" y1="146" x2="80" y2="136" stroke="#2563eb" strokeWidth="2" strokeLinecap="round" />
+              <circle cx="80" cy="146" r="2" fill="#2563eb" />
+            </g>
+          </svg>
         </div>
       </motion.section>
 
@@ -295,6 +366,14 @@ export default function Regularization() {
           </div>
         </div>
         <p className="panel-desc">Pick a date range, choose the attendance records you'd like corrected, and tell us why.</p>
+
+        <div className="reg-steps">
+          <div className={`reg-step ${rangeFrom && rangeTo ? 'is-done' : 'is-active'}`}><span>1</span> Pick dates</div>
+          <i />
+          <div className={`reg-step ${attendanceLoaded ? (selectedCount > 0 ? 'is-done' : 'is-active') : ''}`}><span>2</span> Select records</div>
+          <i />
+          <div className={`reg-step ${selectedCount > 0 ? (reason.trim() ? 'is-done' : 'is-active') : ''}`}><span>3</span> Add reason</div>
+        </div>
 
         <div className="reg-range-row">
           <div className="reg-field">

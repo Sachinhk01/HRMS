@@ -3,7 +3,6 @@ import { motion } from 'framer-motion';
 import {
   CalendarDays, Heart, Share2, Plus, X, ImagePlus, Send,
 } from 'lucide-react';
-import PageHeader from '../components/PageHeader';
 import Pagination from '../components/Pagination';
 import usePagination, { sortRecent } from '../hooks/usePagination';
 import { useAuth } from '../context/AuthContext';
@@ -92,19 +91,6 @@ export default function Events() {
 
   return (
     <div className="page-stack events-page page-reveal">
-      <PageHeader
-        eyebrow="Company Activities"
-        title="Upcoming Events"
-        description="Stay Connected With Upcoming Company Activities, Celebrations, And Team Milestones."
-        action={
-          canCreateEvent && !composerOpen ? (
-            <button type="button" className="btn btn-gradient" onClick={() => setComposerOpen(true)}>
-              <Plus size={18} /> Add Event
-            </button>
-          ) : null
-        }
-      />
-
       {/* ---------- HR-only composer ---------- */}
       {canCreateEvent && composerOpen && (
         <section className="panel ev-composer">
@@ -206,24 +192,66 @@ export default function Events() {
           <span className="eyebrow">Company Activities</span>
           <h1>Upcoming Events</h1>
           <p>Stay Connected With Company Activities And Celebration Events.</p>
+          {canCreateEvent && !composerOpen && (
+            <button type="button" className="ev-hero-btn" onClick={() => setComposerOpen(true)}>
+              <Plus size={18} /> Add Event
+            </button>
+          )}
         </div>
         <div className="ev-hero-illustration" aria-hidden="true">
           <svg viewBox="0 0 320 200" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <circle cx="250" cy="55" r="56" fill="#dbeafe" opacity="0.5" />
-            <circle cx="60" cy="155" r="40" fill="#bfdbfe" opacity="0.4" />
-            <rect x="110" y="50" width="130" height="120" rx="18" fill="#fff" stroke="#bfdbfe" strokeWidth="2" />
-            <rect x="110" y="50" width="130" height="30" rx="18" fill="#2563eb" />
-            <rect x="110" y="68" width="130" height="12" fill="#2563eb" />
-            <circle cx="135" cy="46" r="6" fill="#64748b" />
-            <circle cx="215" cy="46" r="6" fill="#64748b" />
-            <rect x="125" y="92" width="14" height="14" rx="4" fill="#e0edff" />
-            <rect x="148" y="92" width="14" height="14" rx="4" fill="#e0edff" />
-            <rect x="171" y="92" width="14" height="14" rx="4" fill="#2563eb" />
-            <rect x="194" y="92" width="14" height="14" rx="4" fill="#e0edff" />
-            <rect x="125" y="114" width="14" height="14" rx="4" fill="#e0edff" />
-            <rect x="148" y="114" width="14" height="14" rx="4" fill="#fde68a" />
-            <rect x="171" y="114" width="14" height="14" rx="4" fill="#e0edff" />
-            <rect x="194" y="114" width="14" height="14" rx="4" fill="#e0edff" />
+            <circle cx="262" cy="50" r="46" fill="#fff" opacity="0.14" />
+            <circle cx="54" cy="158" r="36" fill="#fff" opacity="0.12" />
+
+            <rect className="ev-conf" style={{ '--i': 0 }} x="92" y="26" width="9" height="4" rx="2" fill="#fde047" />
+            <circle className="ev-conf" style={{ '--i': 1 }} cx="150" cy="20" r="3.5" fill="#fff" />
+            <rect className="ev-conf" style={{ '--i': 2 }} x="208" y="26" width="8" height="4" rx="2" fill="#67e8f9" />
+            <circle className="ev-conf" style={{ '--i': 3 }} cx="244" cy="40" r="3" fill="#f9a8d4" />
+            <rect className="ev-conf" style={{ '--i': 4 }} x="120" y="14" width="7" height="4" rx="2" fill="#86efac" />
+            <circle className="ev-conf" style={{ '--i': 5 }} cx="286" cy="90" r="3" fill="#fde047" />
+            <rect className="ev-conf" style={{ '--i': 6 }} x="40" y="100" width="8" height="4" rx="2" fill="#fff" />
+
+            <g transform="translate(80,32)"><path className="ev-star" d="M0 -7 L2 -2 L7 0 L2 2 L0 7 L-2 2 L-7 0 L-2 -2 Z" fill="#fde047" /></g>
+            <g transform="translate(272,150)"><path className="ev-star ev-star--b" d="M0 -6 L1.8 -1.8 L6 0 L1.8 1.8 L0 6 L-1.8 1.8 L-6 0 L-1.8 -1.8 Z" fill="#fff" /></g>
+
+            <g transform="translate(62,112)">
+              <g className="ev-balloon">
+                <path d="M0 24 Q-6 34 0 44 T0 62" stroke="#fff" strokeWidth="1.5" fill="none" opacity="0.8" />
+                <ellipse cx="0" cy="0" rx="15" ry="19" fill="#fb7185" />
+                <path d="M-3 19 L3 19 L0 24 Z" fill="#e11d48" />
+                <ellipse cx="-5" cy="-6" rx="3" ry="5" fill="#fff" opacity="0.5" />
+              </g>
+            </g>
+            <g transform="translate(260,98)">
+              <g className="ev-balloon ev-balloon--b">
+                <path d="M0 22 Q-6 32 0 42 T0 58" stroke="#fff" strokeWidth="1.5" fill="none" opacity="0.8" />
+                <ellipse cx="0" cy="0" rx="13" ry="17" fill="#fde047" />
+                <path d="M-3 17 L3 17 L0 22 Z" fill="#f59e0b" />
+                <ellipse cx="-4" cy="-5" rx="3" ry="4.5" fill="#fff" opacity="0.5" />
+              </g>
+            </g>
+            <g transform="translate(36,64)">
+              <g className="ev-balloon ev-balloon--c">
+                <path d="M0 18 Q-5 26 0 34 T0 48" stroke="#fff" strokeWidth="1.5" fill="none" opacity="0.8" />
+                <ellipse cx="0" cy="0" rx="12" ry="16" fill="#4ade80" />
+                <path d="M-3 15 L3 15 L0 20 Z" fill="#16a34a" />
+                <ellipse cx="-4" cy="-5" rx="2.5" ry="4" fill="#fff" opacity="0.5" />
+              </g>
+            </g>
+
+            <g className="ev-cal" transform="translate(88,30)">
+              <rect x="66" y="38" width="120" height="118" rx="18" fill="#fff" opacity="0.96" />
+              <rect x="66" y="38" width="120" height="28" rx="18" fill="#8b5cf6" />
+              <rect x="78" y="76" width="20" height="18" rx="5" fill="#e9d5ff" />
+              <rect x="104" y="76" width="20" height="18" rx="5" fill="#ede9fe" />
+              <rect x="130" y="76" width="20" height="18" rx="5" fill="#ddd6fe" />
+              <rect x="156" y="76" width="20" height="18" rx="5" fill="#f5d0fe" />
+              <rect x="78" y="104" width="20" height="18" rx="5" fill="#dbeafe" />
+              <rect x="104" y="104" width="20" height="18" rx="5" fill="#fef3c7" />
+              <rect x="130" y="104" width="20" height="18" rx="5" fill="#d1fae5" />
+              <rect x="156" y="104" width="20" height="18" rx="5" fill="#fee2e2" />
+              <rect x="96" y="130" width="66" height="12" rx="6" fill="#f3f4f6" />
+            </g>
           </svg>
         </div>
       </motion.section>

@@ -248,3 +248,268 @@ tbody tr:last-child td { border-bottom: none; }
 }
 .reg-detail-loading { padding: 30px; text-align: center; color: #64748b; font-size: 14px; }
 .reg-char-count { align-self: flex-end; font-size: 11px; color: #64748b; }
+
+/* =====================================================================
+   REGULARIZATION PAGE — REDESIGN LAYER
+   All rules are scoped to .regularization-page except unique rg-* artwork.
+   ===================================================================== */
+
+.regularization-page { gap: 14px; }
+
+/* ---------- HERO ---------- */
+.regularization-page .reg-hero {
+  min-height: 140px;
+  padding: 18px 32px;
+  isolation: isolate;
+  border: 1px solid rgba(165, 180, 252, .45);
+  background:
+    radial-gradient(rgba(37, 99, 235, .11) 1.2px, transparent 1.2px) 0 0 / 18px 18px,
+    linear-gradient(120deg, #eef4ff 0%, #f1efff 55%, #e9f6ff 100%);
+}
+.regularization-page .reg-hero::before {
+  content: ''; position: absolute; top: -110px; right: 14%;
+  width: 320px; height: 320px; z-index: -1; pointer-events: none;
+  background: radial-gradient(circle, rgba(99, 102, 241, .20), transparent 65%);
+  animation: rg-aurora 10s ease-in-out infinite alternate;
+}
+.regularization-page .reg-hero::after {
+  content: ''; position: absolute; bottom: -120px; left: 26%;
+  width: 300px; height: 300px; z-index: -1; pointer-events: none;
+  background: radial-gradient(circle, rgba(56, 189, 248, .22), transparent 65%);
+  animation: rg-aurora 13s ease-in-out -4s infinite alternate-reverse;
+}
+.regularization-page .reg-hero-text .eyebrow {
+  display: inline-flex; align-items: center; gap: 7px;
+  padding: 4px 11px; margin-bottom: 10px;
+  border-radius: 999px; background: rgba(37, 99, 235, .09);
+  font-size: 11px; letter-spacing: .08em;
+}
+.regularization-page .reg-hero-text .eyebrow::before {
+  content: ''; width: 6px; height: 6px; border-radius: 50%;
+  background: #2563eb; animation: rg-blink 1.8s ease-in-out infinite;
+}
+.regularization-page .reg-hero-text h1 {
+  background: linear-gradient(90deg, #0f172a 0%, #1d4ed8 60%, #6366f1 100%);
+  -webkit-background-clip: text; background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+.regularization-page .reg-hero-icon {
+  display: block; width: 290px; max-width: 40%; height: auto;
+  border-radius: 0; background: none; box-shadow: none;
+  transition: transform .5s cubic-bezier(.34, 1.56, .64, 1);
+}
+.regularization-page .reg-hero:hover .reg-hero-icon { transform: translateY(-3px) scale(1.03); }
+.regularization-page .reg-hero-icon svg { display: block; width: 100%; height: auto; }
+
+/* illustration parts */
+.rg-board { animation: rg-float 5s ease-in-out infinite; }
+.rg-clockbadge { animation: rg-float 5s ease-in-out -2s infinite; }
+.rg-blob { transform-box: fill-box; transform-origin: center; animation: rg-breathe 7s ease-in-out infinite; }
+.rg-blob--b { animation-delay: -3s; }
+.rg-bad, .rg-good { transform-box: fill-box; transform-origin: center; }
+.rg-bad { animation: rg-bad 9s ease-in-out calc(var(--d, 0) * 1s) infinite both; }
+.rg-good { animation: rg-good 9s ease-in-out calc(var(--d, 0) * 1s) infinite both; }
+.rg-pencil { animation: rg-pencil 9s ease-in-out infinite; }
+.rg-spark { transform-box: fill-box; transform-origin: center; animation: rg-twinkle 2.6s ease-in-out infinite; }
+.rg-spark--b { animation-delay: -1.2s; }
+.rg-spark--c { animation-delay: -2s; }
+.rg-hand { transform-origin: 80px 146px; animation: rg-spin 6s linear infinite; }
+
+/* ---------- SUMMARY CARDS ---------- */
+.regularization-page .reg-overview-grid { gap: 12px; }
+.regularization-page .reg-overview-card {
+  position: relative; overflow: hidden;
+  display: grid;
+  grid-template-columns: 44px 1fr;
+  grid-template-areas: "icon label" "icon value" "icon desc";
+  column-gap: 14px; row-gap: 0; align-items: center;
+  padding: 14px 16px; border-radius: 16px;
+  background: linear-gradient(180deg, #fff, #fafcff);
+  border: 1px solid #e8eef8;
+  transition: box-shadow .25s ease, border-color .25s ease;
+}
+.regularization-page .reg-overview-card:hover { box-shadow: 0 14px 30px rgba(30, 55, 90, .12); border-color: transparent; }
+.regularization-page .reg-icon { grid-area: icon; width: 44px; height: 44px; margin: 0; transition: transform .25s cubic-bezier(.34, 1.56, .64, 1); }
+.regularization-page .reg-overview-card:hover .reg-icon { transform: scale(1.12) rotate(-4deg); }
+.regularization-page .reg-overview-card > span { grid-area: label; }
+.regularization-page .reg-overview-card > strong { grid-area: value; line-height: 1.15; }
+.regularization-page .reg-overview-card > small { grid-area: desc; }
+.regularization-page .reg-overview-card::before {
+  content: ''; position: absolute; left: 0; top: 0; width: 100%; height: 3px;
+  background: linear-gradient(90deg, #2563eb, #6366f1);
+  transform-origin: left;
+  animation: rg-bar .9s cubic-bezier(.16, 1, .3, 1) .3s both;
+}
+.regularization-page .reg-overview-card.tone-amber::before { background: linear-gradient(90deg, #f59e0b, #fb923c); }
+.regularization-page .reg-overview-card.tone-green::before { background: linear-gradient(90deg, #10b981, #34d399); }
+.regularization-page .reg-overview-card.tone-red::before { background: linear-gradient(90deg, #ef4444, #f87171); }
+.regularization-page .reg-overview-card::after {
+  content: ''; position: absolute; top: 0; left: -60%; width: 40%; height: 100%;
+  background: linear-gradient(100deg, transparent, rgba(255, 255, 255, .75), transparent);
+  transform: skewX(-18deg); transition: left .7s ease; pointer-events: none;
+}
+.regularization-page .reg-overview-card:hover::after { left: 130%; }
+
+/* ---------- PANELS ---------- */
+.regularization-page .panel {
+  position: relative; padding: 18px 22px; border-radius: 18px;
+  transition: box-shadow .25s ease;
+}
+.regularization-page .panel:hover { transform: none; box-shadow: 0 10px 26px rgba(30, 55, 90, .09); }
+.regularization-page .panel::before {
+  content: ''; position: absolute; top: -1px; left: 24px; right: 24px; height: 3px;
+  border-radius: 0 0 4px 4px;
+  background: linear-gradient(90deg, #2563eb, #6366f1, #38bdf8);
+  transform-origin: left;
+  animation: rg-bar .9s cubic-bezier(.16, 1, .3, 1) .35s both;
+}
+.regularization-page .panel-desc { margin-bottom: 12px; }
+
+/* ---------- STEPPER ---------- */
+.reg-steps { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; margin: 0 0 16px; }
+.reg-step {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 5px 13px 5px 6px; border-radius: 999px;
+  background: #f1f5f9; color: #64748b;
+  font-size: 12px; font-weight: 700;
+  transition: background-color .3s ease, color .3s ease, box-shadow .3s ease;
+}
+.reg-step span {
+  width: 22px; height: 22px; border-radius: 50%;
+  display: grid; place-items: center;
+  background: #e2e8f0; color: #64748b; font-size: 11px;
+  transition: background-color .3s ease, color .3s ease, transform .3s cubic-bezier(.34, 1.56, .64, 1);
+}
+.reg-step.is-active { background: #eaf1ff; color: #1d4ed8; box-shadow: 0 0 0 3px rgba(37, 99, 235, .10); }
+.reg-step.is-active span { background: #2563eb; color: #fff; transform: scale(1.08); }
+.reg-step.is-done { background: #dcfce7; color: #15803d; }
+.reg-step.is-done span { background: #16a34a; color: #fff; font-size: 0; }
+.reg-step.is-done span::after { content: '\2713'; font-size: 12px; }
+.reg-steps > i { flex: 0 0 26px; height: 2px; border-radius: 2px; background: #e2e8f0; }
+
+/* ---------- CREATE FORM ---------- */
+.regularization-page .reg-range-row { gap: 12px; margin-bottom: 16px; }
+.regularization-page .reg-range-row:last-child { margin-bottom: 0; }
+.regularization-page .reg-field label { transition: color .2s ease; }
+.regularization-page .reg-field:focus-within label { color: #2563eb; }
+.regularization-page .reg-field .dp-input,
+.regularization-page .reg-field textarea,
+.regularization-page .reg-field input[type="date"] {
+  min-height: 40px; border-radius: 12px; background: #f8faff; border: 1.5px solid #e2e8f0;
+  transition: border-color .2s ease, box-shadow .2s ease, background-color .2s ease;
+}
+.regularization-page .reg-field .dp-input:hover,
+.regularization-page .reg-field textarea:hover { border-color: #bfd3f7; background: #fff; }
+.regularization-page .reg-field .dp-input:focus,
+.regularization-page .reg-field textarea:focus {
+  background: #fff; border-color: #2563eb; box-shadow: 0 0 0 4px rgba(37, 99, 235, .12);
+}
+.regularization-page .reg-field textarea { min-height: 64px; }
+.regularization-page .reg-range-row > .btn { height: 40px; border-radius: 12px; }
+.regularization-page .reg-create-form { gap: 14px; }
+.regularization-page .reg-create-form input[type="checkbox"] { width: 16px; height: 16px; accent-color: #2563eb; cursor: pointer; }
+.regularization-page .reg-create-form tbody tr:has(input:checked) { background: #eef4ff; box-shadow: inset 3px 0 0 #2563eb; }
+
+/* action bar */
+.regularization-page .reg-form-actions {
+  padding: 10px 14px; border-radius: 14px;
+  background: linear-gradient(135deg, #f5f8ff, #f7f4ff);
+  border: 1.5px dashed #c7d6f5;
+}
+.regularization-page .reg-selected-count { color: #1d4ed8; }
+.regularization-page .reg-form-actions .btn-primary {
+  position: relative; overflow: hidden; border-radius: 12px; padding-inline: 22px;
+  background: linear-gradient(110deg, #2563eb, #4f46e5, #2563eb); background-size: 200% 100%;
+  transition: background-position .6s ease, box-shadow .25s ease, transform .2s ease;
+}
+.regularization-page .reg-form-actions .btn-primary:hover:not(:disabled) { background-position: 100% 0; box-shadow: 0 12px 28px rgba(79, 70, 229, .38); }
+.regularization-page .reg-form-actions .btn-primary::after {
+  content: ''; position: absolute; top: 0; left: -70%; width: 40%; height: 100%;
+  background: linear-gradient(100deg, transparent, rgba(255, 255, 255, .4), transparent);
+  transform: skewX(-20deg); transition: left .7s ease; pointer-events: none;
+}
+.regularization-page .reg-form-actions .btn-primary:hover:not(:disabled)::after { left: 130%; }
+
+/* ---------- HISTORY ---------- */
+.regularization-page .reg-filters-row { flex-wrap: nowrap; gap: 8px; margin-bottom: 12px; }
+.regularization-page .reg-search {
+  min-width: 0; border-radius: 12px; background: #f8faff; border: 1.5px solid #e2e8f0;
+  transition: border-color .2s ease, box-shadow .2s ease, background-color .2s ease;
+}
+.regularization-page .reg-search:focus-within { background: #fff; border-color: #2563eb; box-shadow: 0 0 0 4px rgba(37, 99, 235, .10); color: #2563eb; }
+.regularization-page .compact-select {
+  width: auto; flex: 0 0 170px; border-radius: 12px; background: #f8faff; border: 1.5px solid #e2e8f0;
+  transition: border-color .2s ease, box-shadow .2s ease;
+}
+.regularization-page .compact-select:focus { border-color: #2563eb; box-shadow: 0 0 0 4px rgba(37, 99, 235, .10); }
+.regularization-page .table-wrap { border-radius: 14px; }
+.regularization-page thead th { position: sticky; top: 0; z-index: 1; background: linear-gradient(180deg, #f8faff, #f1f5fd); }
+.regularization-page tbody td { padding: 11px 14px; }
+.regularization-page tbody tr { transition: background-color .15s ease, box-shadow .15s ease; }
+.regularization-page tbody tr:not(.skeleton-row):hover { background: #f4f8ff; box-shadow: inset 3px 0 0 #2563eb; }
+.regularization-page .reg-tally span {
+  padding: 2px 8px; border-radius: 999px; background: #f1f5f9; font-weight: 700;
+  transition: transform .18s ease, background-color .18s ease;
+}
+.regularization-page .reg-tally span:hover { transform: translateY(-2px) scale(1.06); background: #e8eefc; }
+.regularization-page .btn-icon.btn-light {
+  border-radius: 10px;
+  transition: transform .18s ease, background-color .18s ease, color .18s ease, border-color .18s ease;
+}
+.regularization-page .btn-icon.btn-light:hover { background: #eaf1ff; color: #2563eb; border-color: #bfd3f7; transform: translateY(-2px); }
+.regularization-page .status-badge::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+.regularization-page .status-pending::before { animation: rg-blink 1.6s ease-in-out infinite; }
+.regularization-page .empty-state { padding: 30px 20px; }
+.regularization-page .empty-state svg { animation: rg-float 4s ease-in-out infinite; }
+.regularization-page .modal-overlay { animation: rg-fade .2s ease both; }
+.regularization-page .modal-card { animation: rg-modal .3s cubic-bezier(.16, 1, .3, 1) both; }
+
+/* ---------- KEYFRAMES ---------- */
+@keyframes rg-aurora { from { transform: translate(0, 0) scale(1); } to { transform: translate(-40px, 22px) scale(1.15); } }
+@keyframes rg-float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
+@keyframes rg-breathe { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.08); } }
+@keyframes rg-blink { 0%, 100% { opacity: 1; } 50% { opacity: .3; } }
+@keyframes rg-bar { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+@keyframes rg-spin { to { transform: rotate(360deg); } }
+@keyframes rg-twinkle { 0%, 100% { opacity: .25; transform: scale(.5); } 50% { opacity: 1; transform: scale(1.1); } }
+@keyframes rg-bad {
+  0%, 28% { opacity: 1; transform: scale(1); }
+  34%, 94% { opacity: 0; transform: scale(.3); }
+  100% { opacity: 1; transform: scale(1); }
+}
+@keyframes rg-good {
+  0%, 28% { opacity: 0; transform: scale(.3); }
+  36% { opacity: 1; transform: scale(1.18); }
+  42%, 94% { opacity: 1; transform: scale(1); }
+  100% { opacity: 0; transform: scale(.3); }
+}
+@keyframes rg-pencil {
+  0%, 20% { transform: translate(0, 0) rotate(0deg); }
+  30%, 50% { transform: translate(0, 30px) rotate(-6deg); }
+  60%, 80% { transform: translate(0, 60px) rotate(0deg); }
+  100% { transform: translate(0, 0) rotate(0deg); }
+}
+@keyframes rg-fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes rg-modal { from { opacity: 0; transform: translateY(14px) scale(.96); } to { opacity: 1; transform: none; } }
+
+/* ---------- RESPONSIVE ---------- */
+@media (max-width: 1100px) {
+  .regularization-page .reg-overview-grid { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 768px) {
+  .regularization-page .reg-hero { padding: 18px; }
+  .regularization-page .reg-hero-icon { width: 220px; max-width: 70%; }
+  .regularization-page .reg-filters-row { flex-wrap: wrap; }
+}
+@media (max-width: 560px) {
+  .regularization-page .reg-overview-grid { grid-template-columns: 1fr; }
+  .reg-steps > i { display: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .regularization-page .reg-hero::before, .regularization-page .reg-hero::after,
+  .rg-board, .rg-clockbadge, .rg-blob, .rg-bad, .rg-good, .rg-pencil, .rg-spark, .rg-hand,
+  .regularization-page .reg-overview-card::before, .regularization-page .panel::before,
+  .regularization-page .empty-state svg { animation: none; }
+  .rg-good { opacity: 1; }
+  .rg-bad { opacity: 0; }
+}

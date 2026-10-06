@@ -263,48 +263,76 @@ export default function Leave() {
           <p>Apply For Leave, Monitor Balances And Track Approval Progress.</p>
         </div>
         <div className="leave-hero-illustration" aria-hidden="true">
-          <svg viewBox="0 0 320 220" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <svg viewBox="0 0 320 200" fill="none" xmlns="http://www.w3.org/2000/svg">
             <defs>
-              <linearGradient id="cardGrad" x1="0" y1="0" x2="1" y2="1">
-                <stop offset="0%" stopColor="#ffffff" />
-                <stop offset="100%" stopColor="#f4f8ff" />
+              <linearGradient id="lvCard" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0" stopColor="#ffffff" />
+                <stop offset="1" stopColor="#f1f5ff" />
               </linearGradient>
-              <linearGradient id="planeGrad" x1="0" y1="0" x2="1" y2="1">
-                <stop offset="0%" stopColor="#3b82f6" />
-                <stop offset="100%" stopColor="#2563eb" />
+              <linearGradient id="lvHead" x1="0" y1="0" x2="1" y2="0">
+                <stop offset="0" stopColor="#2563eb" />
+                <stop offset="1" stopColor="#6366f1" />
+              </linearGradient>
+              <linearGradient id="lvPlane" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0" stopColor="#60a5fa" />
+                <stop offset="1" stopColor="#2563eb" />
               </linearGradient>
             </defs>
-            <circle cx="256" cy="46" r="46" fill="#dbeafe" opacity="0.55" />
-            <circle cx="46" cy="176" r="34" fill="#bfdbfe" opacity="0.4" />
 
-            {/* Calendar card */}
-            <rect x="86" y="52" width="150" height="122" rx="20" fill="url(#cardGrad)" stroke="#bfdbfe" strokeWidth="1.5" />
-            <rect x="86" y="52" width="150" height="30" rx="20" fill="#2563eb" />
-            <rect x="86" y="70" width="150" height="12" fill="#2563eb" />
-            <circle cx="108" cy="67" r="4" fill="#fff" />
-            <circle cx="126" cy="67" r="4" fill="#fff" opacity="0.7" />
-            <rect x="104" y="96" width="16" height="16" rx="4" fill="#eef4ff" />
-            <rect x="128" y="96" width="16" height="16" rx="4" fill="#eef4ff" />
-            <rect x="152" y="96" width="16" height="16" rx="4" fill="#dbeafe" />
-            <rect x="176" y="96" width="16" height="16" rx="4" fill="#eef4ff" />
-            <rect x="200" y="96" width="16" height="16" rx="4" fill="#eef4ff" />
-            <rect x="104" y="120" width="16" height="16" rx="4" fill="#eef4ff" />
-            <rect x="128" y="120" width="16" height="16" rx="4" fill="#2563eb" />
-            <rect x="152" y="120" width="16" height="16" rx="4" fill="#2563eb" />
-            <rect x="176" y="120" width="16" height="16" rx="4" fill="#eef4ff" />
-            <rect x="200" y="120" width="16" height="16" rx="4" fill="#eef4ff" />
-            <rect x="104" y="144" width="112" height="14" rx="7" fill="#eef4ff" />
+            <ellipse className="lv-cloud" cx="70" cy="40" rx="22" ry="8" fill="#dbeafe" />
+            <ellipse className="lv-cloud lv-cloud--b" cx="268" cy="86" rx="18" ry="6" fill="#e0e7ff" />
 
-            {/* Palm tree accent */}
-            <path d="M56 178 Q56 150 70 140" stroke="#16a34a" strokeWidth="3" fill="none" strokeLinecap="round" />
-            <path d="M70 140 Q56 130 46 138 M70 140 Q84 130 94 138 M70 140 Q70 126 80 122 M70 140 Q60 126 55 122" stroke="#16a34a" strokeWidth="2.5" fill="none" strokeLinecap="round" />
+            <path className="lv-trail" d="M40 78 C110 8, 210 8, 292 52" stroke="#93c5fd" strokeWidth="2" strokeLinecap="round" />
+            <g>
+              <path d="M-12 0 L10 -4 L14 0 L10 4 Z" fill="url(#lvPlane)" />
+              <path d="M-2 0 L-8 -9 L-4 -9 L4 0 Z" fill="#60a5fa" />
+              <path d="M-2 0 L-8 9 L-4 9 L4 0 Z" fill="#3b82f6" />
+              <animateMotion dur="9s" repeatCount="indefinite" rotate="auto" path="M40 78 C110 8, 210 8, 292 52" />
+              <animate attributeName="opacity" values="0;1;1;0" keyTimes="0;.1;.9;1" dur="9s" repeatCount="indefinite" />
+            </g>
 
-            {/* Sun */}
-            <circle cx="252" cy="148" r="13" fill="#fbbf24" />
+            <circle cx="268" cy="138" r="11" fill="#fbbf24" />
+            <circle className="lv-sun-ring" cx="268" cy="138" r="18" stroke="#fcd34d" strokeWidth="2" strokeDasharray="3 6" strokeLinecap="round" />
 
-            {/* Plane */}
-            <path d="M226 42 L266 34 L274 40 L266 46 L226 54 Z" fill="url(#planeGrad)" />
-            <path d="M238 42 L244 28 L250 28 L246 42" fill="#60a5fa" />
+            <g className="lv-cal">
+              <rect x="84" y="44" width="150" height="116" rx="18" fill="url(#lvCard)" stroke="#c7d2fe" strokeWidth="1.5" />
+              <path d="M84 62 a18 18 0 0 1 18 -18 h114 a18 18 0 0 1 18 18 v10 h-150 Z" fill="url(#lvHead)" />
+              <circle cx="106" cy="58" r="4" fill="#fff" />
+              <circle cx="124" cy="58" r="4" fill="#fff" opacity="0.65" />
+
+              <rect className="lv-cell" style={{ '--i': 0 }} x="104" y="80" width="16" height="14" rx="4" fill="#eef2ff" />
+              <rect className="lv-cell" style={{ '--i': 1 }} x="128" y="80" width="16" height="14" rx="4" fill="#eef2ff" />
+              <rect className="lv-cell" style={{ '--i': 2 }} x="152" y="80" width="16" height="14" rx="4" fill="#e0e7ff" />
+              <rect className="lv-cell" style={{ '--i': 3 }} x="176" y="80" width="16" height="14" rx="4" fill="#eef2ff" />
+              <rect className="lv-cell" style={{ '--i': 4 }} x="200" y="80" width="16" height="14" rx="4" fill="#eef2ff" />
+
+              <rect className="lv-cell" style={{ '--i': 5 }} x="104" y="98" width="16" height="14" rx="4" fill="#eef2ff" />
+              <rect className="lv-range" style={{ '--i': 0 }} x="128" y="98" width="16" height="14" rx="4" fill="#2563eb" />
+              <rect className="lv-range" style={{ '--i': 1 }} x="152" y="98" width="16" height="14" rx="4" fill="#4f46e5" />
+              <rect className="lv-range" style={{ '--i': 2 }} x="176" y="98" width="16" height="14" rx="4" fill="#6366f1" />
+              <rect className="lv-cell" style={{ '--i': 6 }} x="200" y="98" width="16" height="14" rx="4" fill="#eef2ff" />
+
+              <rect className="lv-cell" style={{ '--i': 7 }} x="104" y="116" width="16" height="14" rx="4" fill="#eef2ff" />
+              <rect className="lv-cell" style={{ '--i': 8 }} x="128" y="116" width="16" height="14" rx="4" fill="#eef2ff" />
+              <rect className="lv-cell" style={{ '--i': 9 }} x="152" y="116" width="16" height="14" rx="4" fill="#eef2ff" />
+              <rect className="lv-cell" style={{ '--i': 10 }} x="176" y="116" width="16" height="14" rx="4" fill="#eef2ff" />
+              <rect className="lv-cell" style={{ '--i': 11 }} x="200" y="116" width="16" height="14" rx="4" fill="#eef2ff" />
+
+              <rect x="104" y="138" width="112" height="10" rx="5" fill="#eef2ff" />
+            </g>
+
+            <g className="lv-palm">
+              <path d="M52 176 Q50 152 64 138" stroke="#16a34a" strokeWidth="3" fill="none" strokeLinecap="round" />
+              <path d="M64 138 Q50 128 40 136 M64 138 Q78 128 88 136 M64 138 Q64 124 74 120 M64 138 Q54 124 49 120" stroke="#22c55e" strokeWidth="2.5" fill="none" strokeLinecap="round" />
+            </g>
+
+            <g>
+              <circle className="lv-pulse" cx="236" cy="158" r="14" fill="#10b981" />
+              <g className="lv-badge">
+                <circle cx="236" cy="158" r="13" fill="#10b981" stroke="#fff" strokeWidth="3" />
+                <path className="lv-check" d="M230 158 l4 5 l8 -10" stroke="#fff" strokeWidth="2.8" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+              </g>
+            </g>
           </svg>
         </div>
       </motion.section>
@@ -337,28 +365,41 @@ export default function Leave() {
         {!loading && balances.map((balance) => {
           const theme = themeFor(balance.leaveType);
           const TIcon = theme.icon;
-          const pct = balance.allocatedLeaves ? Math.min(100, (balance.usedLeaves / balance.allocatedLeaves) * 100) : 0;
+          const allocated = Number(balance.allocatedLeaves) || 0;
+          const remaining = Number(balance.remainingLeaves) || 0;
+          const pct = allocated > 0 ? Math.max(0, Math.min(100, (remaining / allocated) * 100)) : 0;
+          const RING_R = 22;
+          const RING_C = 2 * Math.PI * RING_R;
           return (
             <motion.div
               key={balance.id}
               className="leave-balance-card"
               style={{ '--lb-color': theme.color, '--lb-bg': theme.soft, '--lb-border': theme.border }}
               variants={fadeUp}
-              whileHover={{ y: -5 }}
+              whileHover={{ y: -4 }}
             >
-              <div className="lb-top">
-                <div className="lb-icon" style={{ background: theme.bg, color: theme.color }}><TIcon size={20} /></div>
-                <div className="lb-name">
-                  <strong>{balance.leaveType}</strong>
-                  <span>{balance.remainingLeaves} Days Remaining</span>
-                </div>
+              <div className="lb-ring">
+                <svg viewBox="0 0 56 56">
+                  <circle className="lb-ring-track" cx="28" cy="28" r={RING_R} />
+                  <motion.circle
+                    className="lb-ring-bar"
+                    cx="28" cy="28" r={RING_R}
+                    strokeDasharray={RING_C}
+                    initial={{ strokeDashoffset: RING_C }}
+                    animate={{ strokeDashoffset: RING_C * (1 - pct / 100) }}
+                    transition={{ duration: 1, ease: easeOut }}
+                    style={{ stroke: theme.color }}
+                  />
+                </svg>
+                <span className="lb-ring-icon" style={{ color: theme.color }}><TIcon size={18} /></span>
               </div>
-              <div className="lb-progress">
-                <motion.i initial={{ width: 0 }} animate={{ width: `${pct}%` }} transition={{ duration: 0.9, ease: easeOut }} style={{ background: `linear-gradient(90deg, ${theme.color}, ${theme.color}cc)` }} />
+              <div className="lb-info">
+                <strong>{balance.leaveType}</strong>
+                <span>{balance.usedLeaves} of {balance.allocatedLeaves} used</span>
               </div>
-              <div className="lb-stats">
-                <span><b>{balance.usedLeaves}</b> Used</span>
-                <span><b>{balance.allocatedLeaves}</b> Allocated</span>
+              <div className="lb-remaining">
+                <b><Counter value={balance.remainingLeaves} /></b>
+                <small>days left</small>
               </div>
             </motion.div>
           );
