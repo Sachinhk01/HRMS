@@ -66,6 +66,11 @@ export async function deactivateLeaveType(leaveTypeId) {
   return data.data;
 }
 
+export async function syncLeaveTypeBalances(leaveTypeId) {
+  const { data } = await api.post(`/leave-allocation/leave-type/${leaveTypeId}`);
+  return data.data;
+}
+
 // ---- Leave Requests ----
 export async function applyLeave({ leaveTypeId, startDate, endDate, reason }) {
   const { data } = await api.post("/leave-requests", {

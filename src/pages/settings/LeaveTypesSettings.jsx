@@ -16,9 +16,11 @@ import {
   updateLeaveType,
   activateLeaveType,
   deactivateLeaveType,
+  syncLeaveTypeBalances,
 } from '../../services/leaveService';
 // Reuses the table / modal / form styles from the Master Data settings.
 import './MasterDataSettings.css';
+import './LeaveTypesFilter.css';
 
 const NAME_MAX = 50;
 const DESC_MAX = 255;
@@ -40,6 +42,7 @@ export default function LeaveTypesSettings({ canManage = false }) {
   const [types, setTypes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [statusFilter, setStatusFilter] = useState('ACTIVE');
   const [modal, setModal] = useState(null); // { mode: 'create' | 'edit', item? }
   const [busyId, setBusyId] = useState(null);
   const { showToast } = useToast();
@@ -63,6 +66,18 @@ export default function LeaveTypesSettings({ canManage = false }) {
   useEffect(() => { load(); }, [load]);
 
   const activeTypes = useMemo(() => types.filter((t) => t.active), [types]);
+  const statusCounts = useMemo(() => ({
+    ACTIVE: types.filter((type) => type.active).length,
+    INACTIVE: types.filter((type) => !type.active).length,
+    ALL: types.length,
+  }), [types]);
+  const filteredTypes = useMemo(
+    () => types.filter((type) => (
+      statusFilter === 'ALL'
+      || (statusFilter === 'ACTIVE' ? type.active : !type.active)
+    )),
+    [types, statusFilter],
+  );
   const totalDays = useMemo(
     () => activeTypes.reduce((sum, t) => sum + (Number(t.allocatedDays) || 0), 0),
     [activeTypes],
@@ -92,7 +107,22 @@ export default function LeaveTypesSettings({ canManage = false }) {
     try {
       if (item.active) await deactivateLeaveType(item.id);
       else await activateLeaveType(item.id);
-      showToast(`${item.name} ${item.active ? 'deactivated' : 'activated'}.`, 'success');
+      if (item.active) {
+        showToast(`${item.name} deactivated.`, 'success');
+      } else {
+        let syncError = '';
+        try {
+          await syncLeaveTypeBalances(item.id);
+        } catch (err) {
+          syncError = errMsg(err, 'Unknown sync error.');
+        }
+        showToast(
+          syncError
+            ? `${item.name} activated, but syncing employee balances failed: ${syncError}`
+            : `${item.name} activated and employee balances synced.`,
+          syncError ? 'error' : 'success',
+        );
+      }
       await load();
     } catch (err) {
       showToast(errMsg(err, 'Failed to update status.'), 'error');
@@ -113,30 +143,48 @@ export default function LeaveTypesSettings({ canManage = false }) {
         Define each kind of leave (for example Sick Leave or Casual Leave) and how many days employees get per year.
       </p>
 
-      <div className="mdm-toolbar" style={{ justifyContent: 'space-between', alignItems: 'center' }}>
-        <span style={{ fontSize: 12.5, color: '#5b6478', fontWeight: 600 }}>
-          {loading
-            ? 'Loading…'
-            : `Total: ${totalDays} day${totalDays === 1 ? '' : 's'}/year across ${activeTypes.length} active leave type${activeTypes.length === 1 ? '' : 's'}`}
-        </span>
-        {canManage && (
-                   <button
+      <div className="mdm-toolbar lt-toolbar">
+        <div className="lt-toolbar-left">
+          <span className="lt-total">
+            {loading
+              ? 'Loading…'
+              : `Total: ${totalDays} day${totalDays === 1 ? '' : 's'}/year across ${activeTypes.length} active leave type${activeTypes.length === 1 ? '' : 's'}`}
+          </span>
+          <div className="lt-filter" role="group" aria-label="Filter leave types by status">
+            {[
+              ['ACTIVE', 'Active'],
+              ['INACTIVE', 'Inactive'],
+              ['ALL', 'All'],
+            ].map(([value, label]) => (
+              <button
+                key={value}
                 type="button"
-                className="btn btn-primary"
-                style={{
-                  padding: '6px 12px',
-                  fontSize: 12.5,
-                  minHeight: 0,
-                  gap: 6,
-                  borderRadius: 10,
-                  marginBottom: 16,
-                }}
-                onClick={() => setModal({ mode: 'create' })}
+                className={statusFilter === value ? 'is-active' : ''}
+                aria-pressed={statusFilter === value}
+                onClick={() => setStatusFilter(value)}
               >
-                <Plus size={14} />
-                Add Leave Type
+                {label}<span>{statusCounts[value]}</span>
               </button>
-                    )}
+            ))}
+          </div>
+        </div>
+        {canManage && (
+          <button
+            type="button"
+            className="btn btn-primary"
+            style={{
+              padding: '6px 12px',
+              fontSize: 12.5,
+              minHeight: 0,
+              gap: 6,
+              borderRadius: 10,
+            }}
+            onClick={() => setModal({ mode: 'create' })}
+          >
+            <Plus size={14} />
+            Add Leave Type
+          </button>
+        )}
       </div>
 
       {error && (
@@ -167,14 +215,16 @@ export default function LeaveTypesSettings({ canManage = false }) {
                 </td>
               </tr>
             )}
-            {!loading && types.length === 0 && (
+            {!loading && filteredTypes.length === 0 && (
               <tr>
                 <td colSpan={colCount} className="mdm-empty">
-                  No leave types found{canManage ? '. Use "Add Leave Type" to create one.' : '.'}
+                  {types.length === 0
+                    ? `No leave types found${canManage ? '. Use "Add Leave Type" to create one.' : '.'}`
+                    : `No ${statusFilter.toLowerCase()} leave types found.`}
                 </td>
               </tr>
             )}
-            {!loading && types.map((item) => (
+            {!loading && filteredTypes.map((item) => (
               <tr key={item.id}>
                 <td>
                   <strong>{item.name}</strong>
@@ -277,9 +327,27 @@ function LeaveTypeFormModal({ mode, item, types, onClose, onSaved }) {
         monthlyGuideline: Number(monthlyGuideline),
         carryForwardAllowed: carryForward,
       };
-      if (isEdit) await updateLeaveType(item.id, payload);
-      else await createLeaveType(payload);
-      showToast(`Leave type ${isEdit ? 'updated' : 'created'}.`, 'success');
+      const savedType = isEdit ? await updateLeaveType(item.id, payload) : await createLeaveType(payload);
+      const leaveTypeId = savedType?.id ?? item?.id;
+      const isActive = savedType?.active ?? (isEdit ? item.active : true);
+      let syncError = '';
+      if (isActive) {
+        if (leaveTypeId == null) {
+          syncError = 'The saved leave type did not include an ID.';
+        } else {
+          try {
+            await syncLeaveTypeBalances(leaveTypeId);
+          } catch (err) {
+            syncError = errMsg(err, 'Unknown sync error.');
+          }
+        }
+      }
+      showToast(
+        syncError
+          ? `Leave type ${isEdit ? 'updated' : 'created'}, but syncing employee balances failed: ${syncError}`
+          : `Leave type ${isEdit ? 'updated' : 'created'}${isActive ? ' and employee balances synced' : ''}.`,
+        syncError ? 'error' : 'success',
+      );
       onSaved();
     } catch (err) {
       const message = errMsg(err, 'Something went wrong.');
