@@ -25,6 +25,7 @@ import { form16Service, getForm16EmployeeDropdown } from '../services/form16Serv
 import './Form16.css';
 import { INPUT_LIMITS } from '../utils/inputLimits';
 import DatePicker from '../components/DatePicker';
+import Form16Preview from './Form16Preview';
 
 // Backend occasionally serializes an entity's default Object.toString()
 // (e.g. "com.my_hourly.master.entity.Designation@463364df") into a text
@@ -86,52 +87,9 @@ function SectionEditor({ title, fields, value, setValue, onSave, saving, exists,
   </div>;
 }
 
-function FormPreview({ base, quarter, challans, salary, exemption, section16, chapter, lastFields, verification }) {
-  if (!base) return <div className="f16-empty"><FileText size={44}/><strong>No Form 16 loaded</strong>Select an employee and generate or load a Form 16.</div>;
-  const qRows = [1,2,3,4].map((q) => [
-    `Q${q}`,
-    quarter?.[`q${q}ReceiptNumber`] || '—',
-    money(quarter?.[`q${q}AmountPaidCredited`]),
-    money(quarter?.[`q${q}TaxDeducted`]),
-    money(quarter?.[`q${q}TaxDepositedRemitted`]),
-  ]);
-  return <div className="form16-paper">
-    <div className="form16-watermark"><span>MYHOURLY HRMS</span></div>
-    <div className="f16-doc-header">
-      <div className="title">FORM NO. 16</div><div className="part">PART A &amp; PART B</div>
-      <div className="subtitle">Certificate under Section 203 of the Income-tax Act, 1961 for tax deducted at source on salary</div>
-    </div>
-    <div className="f16-doc-box">
-      <div className="f16-doc-cell"><span className="f16-doc-label">Name and address of Employer</span><b>{base.employerName || '—'}</b><br/>{base.employerAddress || '—'}<br/>{base.employerPhone || ''}<br/>{base.employerEmail || ''}</div>
-      <div className="f16-doc-cell"><span className="f16-doc-label">Name and address of Employee</span><b>{base.employeeName || '—'}</b><br/>{base.employeeAddress || '—'}<br/>{base.employeeCode || ''}</div>
-    </div>
-    <div className="f16-mini-grid">
-      <div><b>PAN of Deductor</b><br/>{base.deductorPan || '—'}</div><div><b>TAN of Deductor</b><br/>{base.deductorTan || '—'}</div><div><b>PAN of Employee</b><br/>{base.employeePan || '—'}</div>
-    </div>
-    <div className="f16-mini-grid">
-      <div><b>Assessment Year</b><br/>{base.assessmentYear || '—'}</div><div><b>Period From</b><br/>{base.employmentFrom || '—'}</div><div><b>Period To</b><br/>{base.employmentTo || '—'}</div>
-    </div>
-    <div className="f16-section-title">Summary of amount paid/credited and tax deducted at source</div>
-    <table className="f16-preview-table"><thead><tr><th>Quarter</th><th>Receipt No.</th><th>Amount paid</th><th>Tax deducted</th><th>Tax deposited</th></tr></thead><tbody>{qRows.map((r) => <tr key={r[0]}>{r.map((c,i)=><td key={i}>{c}</td>)}</tr>)}<tr className="f16-total-row"><td>Total</td><td>—</td><td>{money(quarterTotal(quarter, 'AmountPaidCredited'))}</td><td>{money(quarterTotal(quarter, 'TaxDeducted'))}</td><td>{money(quarterTotal(quarter, 'TaxDepositedRemitted'))}</td></tr></tbody></table>
-    <div className="f16-section-title">PART B — Details of Salary Paid and Tax Deducted</div>
-    <table className="f16-preview-table"><tbody>
-      <tr><td>1(a) Salary under section 17(1)</td><td>{money(salary?.salaryUnderSection17_1)}</td></tr>
-      <tr><td>1(b) Perquisites under section 17(2)</td><td>{money(salary?.perquisitesUnderSection17_2)}</td></tr>
-      <tr><td>1(c) Profits in lieu of salary under section 17(3)</td><td>{money(salary?.profitsInLieuOfSalaryUnderSection17_3)}</td></tr>
-      <tr><th>Gross Salary</th><th>{money(salary?.grossSalary)}</th></tr>
-      <tr><td>Total exemption under section 10</td><td>{money(exemption?.totalExemption)}</td></tr>
-      <tr><td>Total deduction under section 16</td><td>{money(section16?.totalDeductionsSection16)}</td></tr>
-      <tr><td>Gross total income</td><td>{money(section16?.grossTotalIncome)}</td></tr>
-      <tr><td>Aggregate deduction Chapter VI-A</td><td>{money(chapter?.totalChapterVIA)}</td></tr>
-      <tr><th>Total taxable income</th><th>{money(chapter?.totalTaxableIncome)}</th></tr>
-      <tr><td>Tax on total income</td><td>{money(lastFields?.taxOnTotalIncome)}</td></tr>
-      <tr><th>Net tax payable</th><th>{money(lastFields?.netTaxPayable)}</th></tr>
-    </tbody></table>
-    {!!challans?.length && <><div className="f16-section-title">Challan Identification Number (CIN)</div><table className="f16-preview-table"><thead><tr><th>Sl.</th><th>Tax deposited</th><th>BSR Code</th><th>Date</th><th>Challan No.</th><th>OLTAS</th></tr></thead><tbody>{challans.map((c)=><tr key={c.id}><td>{c.serialNumber}</td><td>{money(c.taxDeposited)}</td><td>{c.bsrCode||'—'}</td><td>{c.taxDepositedDate||'—'}</td><td>{c.challanSerialNumber||'—'}</td><td>{c.statusOfMatchingWithOltas||'—'}</td></tr>)}</tbody></table></>}
-    <div className="f16-section-title">Verification</div>
-    <div className="f16-doc-box"><div className="f16-doc-cell">Place: <b>{verification?.place || '—'}</b><br/>Date: <b>{verification?.date || base.lastUpdatedOn || '—'}</b></div><div className="f16-doc-cell">Designation: <b>{verification?.designation || '—'}</b><br/>Full Name: <b>{verification?.fullName || '—'}</b><br/>Signature: <b>{verification?.signature || '—'}</b></div></div>
-    <div className="f16-preview-note">Preview follows the structure of the supplied Form 16 blueprint while using MyHourly branding and a non-obstructive watermark.</div>
-  </div>;
+function FormPreview(props) {
+  if (!props.base) return <div className="f16-empty"><FileText size={44}/><strong>No Form 16 loaded</strong>Select an employee and generate or load a Form 16.</div>;
+  return <Form16Preview {...props} />;
 }
 
 export default function Form16() {
@@ -280,7 +238,7 @@ export default function Form16() {
   };
 
   const salaryFields = [
-    ['salaryUnderSection17_1','Salary under section 17(1)'],['perquisitesUnderSection17_2','Perquisites under section 17(2)'],['profitsInLieuOfSalaryUnderSection17_3','Profits in lieu of salary under section 17(3)'],['grossSalary','Gross Salary'],['salaryReceivedFromOtherEmployers','Salary received from other employer(s)']
+    ['salaryUnderSection17_1','Salary under section 17(1)'],['perquisitesUnderSection17_2','Perquisites under section 17(2)'],['profitsInLieuOfSalaryUnderSection17_3','Profits in lieu of salary under section 17(3)'],['salaryReceivedFromOtherEmployers','Salary received from other employer(s)']
   ].map(([key,label])=>({key,label}));
   const exemptionFields = [['section10_5','Travel concession — 10(5)'],['section10_10','Gratuity — 10(10)'],['section10_10A','Commuted pension — 10(10A)'],['section10_10AA','Leave encashment — 10(10AA)'],['section10_13A','House rent allowance — 10(13A)'],['section10_10B','Other specified exemption — 10(10B)'],['otherSection10','Other exemption under section 10']].map(([key,label])=>({key,label}));
   const section16Fields = [['salaryReceivedFromOtherEmployers','Salary received from other employers'],['standardDeductionSection16I','Standard deduction — 16(ia)'],['entertainmentAllowanceSection16II','Entertainment allowance — 16(ii)'],['taxOnEmploymentSection16III','Tax on employment — 16(iii)'],['incomeLossHouseProperty','Income/loss from house property'],['incomeUnderOtherSources','Income under other sources']].map(([key,label])=>({key,label}));
@@ -310,7 +268,7 @@ export default function Form16() {
         {!canManage && <div className="f16-note" style={{marginTop:8}}>You can view these sections. Only HR can edit, save, or add entries — use the preview panel on the right to view and download this Form 16.</div>}
         {!base && tab!=='overview' ? <div className="f16-empty"><strong>Generate or load Form 16 first.</strong>The section endpoints require a Form 16 ID.</div> : null}
         {tab==='overview' && <div className="f16-form"><div className="f16-section-heading"><h4>Form 16 Header</h4></div><div className="f16-form-grid"><Field label="Employee Address" full readOnly={!canManage} value={baseDraft.employeeAddress} onChange={(v)=>setBaseDraft(s=>({...s,employeeAddress:v}))}/><Field label="Employment From" type="date" readOnly={!canManage} value={baseDraft.employmentFrom} onChange={(v)=>setBaseDraft(s=>({...s,employmentFrom:v}))}/><Field label="Employment To" type="date" readOnly={!canManage} value={baseDraft.employmentTo} onChange={(v)=>setBaseDraft(s=>({...s,employmentTo:v}))}/><label className="f16-toggle"><input type="checkbox" disabled={!canManage} checked={!!baseDraft.optingOutOfTaxation115BAC1A} onChange={(e)=>setBaseDraft(s=>({...s,optingOutOfTaxation115BAC1A:e.target.checked}))}/>Opting Out Of Taxation U/S 115BAC(1A)</label></div><hr className="f16-section-separator"/><div className="f16-note">The main Form 16 endpoint supports CREATE, GET, ACTIVATE, DEACTIVATE and DELETE. It does not expose a PUT/PATCH for the header, so header fields are entered before generation; editable tax sections below use their respective PUT endpoints.</div></div>}
-        {base && tab==='quarter' && <SectionEditor title="Quarter-Wise TDS Summary" exists={!!quarter} value={quarterDraft} setValue={setQuarterDraft} saving={saving} readOnly={!canManage} onSave={()=>saveSection({existing:quarter,draft:quarterDraft,create:form16Service.createQuarter,update:form16Service.updateQuarter,setter:setQuarter,draftSetter:setQuarterDraft})}>{<><div style={{overflowX:'auto'}}><table className="f16-quarter-table"><thead><tr><th>Quarter</th><th>Amount Paid/Credited</th><th>Tax Deducted</th><th>Tax Deposited/Remitted</th></tr></thead><tbody>{[1,2,3,4].map(q=><tr key={q}><td>Q{q}</td>{['AmountPaidCredited','TaxDeducted','TaxDepositedRemitted'].map(s=><td key={s}>{canManage?<input type="number" value={quarterDraft[`q${q}${s}`]??''} onChange={e=>setQuarterDraft(d=>({...d,[`q${q}${s}`]:e.target.value}))}/>:<div className="f16-readonly">{quarterDraft[`q${q}${s}`] || '—'}</div>}</td>)}</tr>)}</tbody></table></div><div className="f16-form-grid" style={{marginTop:14}}><Field label="Book Adjustment Tax Deposited" type="number" value={quarterDraft.bookAdjustmentTaxDeposited} readOnly={!canManage} onChange={v=>setQuarterDraft(d=>({...d,bookAdjustmentTaxDeposited:v}))}/><Field label="Matching Status With Form 24G" value={quarterDraft.statusOfMatchingWithForm24G} readOnly={!canManage} onChange={v=>setQuarterDraft(d=>({...d,statusOfMatchingWithForm24G:v}))}/></div>{canManage && <div className="f16-savebar"><button className="btn btn-primary" onClick={()=>saveSection({existing:quarter,draft:quarterDraft,create:form16Service.createQuarter,update:form16Service.updateQuarter,setter:setQuarter,draftSetter:setQuarterDraft})}><Save size={16}/>{quarter?'Save Changes':'Create Quarter Details'}</button></div>}</>}</SectionEditor>}
+        {base && tab==='quarter' && <SectionEditor title="Quarter-Wise TDS Summary" exists={!!quarter} value={quarterDraft} setValue={setQuarterDraft} saving={saving} readOnly={!canManage} onSave={()=>saveSection({existing:quarter,draft:quarterDraft,create:form16Service.createQuarter,update:form16Service.updateQuarter,setter:setQuarter,draftSetter:setQuarterDraft})}>{<><div style={{overflowX:'auto'}}><table className="f16-quarter-table"><thead><tr><th>Quarter</th><th>Amount Paid/Credited</th><th>Tax Deducted</th><th>Tax Deposited/Remitted</th></tr></thead><tbody>{[1,2,3,4].map(q=><tr key={q}><td>Q{q}</td>{['AmountPaidCredited','TaxDeducted','TaxDepositedRemitted'].map(s=><td key={s}>{canManage?<input type="number" value={quarterDraft[`q${q}${s}`]??''} onChange={e=>setQuarterDraft(d=>({...d,[`q${q}${s}`]:e.target.value}))}/>:<div className="f16-readonly">{quarterDraft[`q${q}${s}`] || '—'}</div>}</td>)}</tr>)}<tr className="f16-quarter-total"><td><b>Total</b></td>{['AmountPaidCredited','TaxDeducted','TaxDepositedRemitted'].map(s=><td key={s}><div className="f16-readonly" style={{fontWeight:700}}>{[1,2,3,4].reduce((t,q)=>t+num(quarterDraft[`q${q}${s}`]),0).toFixed(2)}</div></td>)}</tr></tbody></table></div><div className="f16-form-grid" style={{marginTop:14}}><Field label="Book Adjustment Tax Deposited" type="number" value={quarterDraft.bookAdjustmentTaxDeposited} readOnly={!canManage} onChange={v=>setQuarterDraft(d=>({...d,bookAdjustmentTaxDeposited:v}))}/><Field label="Matching Status With Form 24G" value={quarterDraft.statusOfMatchingWithForm24G} readOnly={!canManage} onChange={v=>setQuarterDraft(d=>({...d,statusOfMatchingWithForm24G:v}))}/></div>{canManage && <div className="f16-savebar"><button className="btn btn-primary" onClick={()=>saveSection({existing:quarter,draft:quarterDraft,create:form16Service.createQuarter,update:form16Service.updateQuarter,setter:setQuarter,draftSetter:setQuarterDraft})}><Save size={16}/>{quarter?'Save Changes':'Create Quarter Details'}</button></div>}</>}</SectionEditor>}
         {base && tab==='challan' && <div className="f16-form"><div className="f16-section-heading"><h4>Tax Deposited Through Challan</h4></div>{canManage && <><div className="f16-form-grid"><Field label="Tax Deposited" type="number" value={challanDraft.taxDeposited} onChange={v=>setChallanDraft(s=>({...s,taxDeposited:v}))}/><Field label="BSR Code" value={challanDraft.bsrCode} onChange={v=>setChallanDraft(s=>({...s,bsrCode:v}))}/><Field label="Deposit Date" type="date" value={challanDraft.taxDepositedDate} onChange={v=>setChallanDraft(s=>({...s,taxDepositedDate:v}))}/><Field label="Challan Serial Number" value={challanDraft.challanSerialNumber} onChange={v=>setChallanDraft(s=>({...s,challanSerialNumber:v}))}/><Field label="OLTAS Matching Status" value={challanDraft.statusOfMatchingWithOltas}>{<select value={challanDraft.statusOfMatchingWithOltas} onChange={e=>setChallanDraft(s=>({...s,statusOfMatchingWithOltas:e.target.value}))}><option>F</option><option>U</option><option>P</option><option>O</option></select>}</Field></div><div className="f16-savebar"><button className="btn btn-primary" onClick={saveChallan}><Plus size={16}/>{editingChallan?'Update Challan':'Add Challan'}</button></div></>}<div className="f16-challan-list">{challans.map(c=><div className="f16-challan-row" key={c.id}><b>{c.serialNumber}</b><div><b>₹{money(c.taxDeposited)}</b><div className="f16-note">{c.taxDepositedDate} • BSR {c.bsrCode||'—'} • OLTAS {c.statusOfMatchingWithOltas||'—'}</div></div>{canManage && <div><button className="f16-icon-btn" onClick={()=>{setEditingChallan(c);setChallanDraft({...emptyChallan,...c});}}><Edit3 size={15}/></button> <button className="f16-icon-btn" onClick={()=>deleteChallan(c.id)}><Trash2 size={15}/></button></div>}</div>)}</div></div>}
         {base && tab==='salary' && <SectionEditor title="Gross Salary — Part B" fields={salaryFields} value={salaryDraft} setValue={setSalaryDraft} exists={!!salary} saving={saving} readOnly={!canManage} onSave={()=>saveSection({existing:salary,draft:salaryDraft,create:form16Service.createSalary,update:form16Service.updateSalary,setter:setSalary,draftSetter:setSalaryDraft})}/>} 
         {base && tab==='exemption' && <SectionEditor title="Allowances exempt under Section 10" fields={exemptionFields} value={exemptionDraft} setValue={setExemptionDraft} exists={!!exemption} saving={saving} note="Totals are calculated by the backend and shown in the preview." readOnly={!canManage} onSave={()=>saveSection({existing:exemption,draft:exemptionDraft,create:form16Service.createExemption,update:form16Service.updateExemption,setter:setExemption,draftSetter:setExemptionDraft})}/>} 

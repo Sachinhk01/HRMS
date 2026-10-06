@@ -948,3 +948,59 @@
 }
 .f16-viewfull-btn:hover:not(:disabled) { background: var(--f16-primary-dark, #1d56b7); }
 .f16-viewfull-btn:disabled { opacity: .5; cursor: not-allowed; }
+
+/* ===== Form 16 preview: mirrors the official TRACES PDF (Part A, Part B, annexures) ===== */
+.f16-pdf { color: #111; font-family: "Times New Roman", Times, serif; }
+.f16-pdf .f16-brand {
+  display: grid; grid-template-columns: 1fr 1.4fr 1fr; align-items: center; gap: 6px;
+  padding: 2px 2px 6px; font-size: 7px; line-height: 1.3; color: #334155;
+}
+.f16-pdf .f16-brand > div:nth-child(2) { text-align: center; }
+.f16-pdf .f16-brand > div:last-child { text-align: right; }
+.f16-pdf .f16-brand b { font-size: 10px; color: #1d56b7; }
+
+.f16-pt {
+  width: 100%; border-collapse: collapse; table-layout: auto; margin-top: -1px;
+  font-size: 7.2px; line-height: 1.35; background: transparent;
+}
+.f16-pt th, .f16-pt td {
+  padding: 3px 4px; border: 1px solid #46505f; background: transparent;
+  text-align: center; vertical-align: middle; font-weight: 400; color: #111;
+  overflow-wrap: anywhere;
+}
+.f16-pt th { font-weight: 700; }
+.f16-pt th.title { font-size: 11px; }
+.f16-pt th.small { font-size: 6.6px; }
+.f16-pt .norm { font-weight: 400; }
+.f16-pt .l { text-align: left; }
+.f16-pt .r { text-align: right; }
+.f16-pt .pre { white-space: pre-line; }
+.f16-pt .just { text-align: justify; }
+.f16-pt .grey { background: #cfcfcf; }
+.f16-pt tr.bold td, .f16-pt tr.bold th { font-weight: 700; }
+.f16-pt tr.subhead td { font-weight: 400; background: #fafafa; }
+.f16-pt td.sign { vertical-align: bottom; font-weight: 600; min-height: 38px; height: 38px; }
+.f16-partb td:first-child { width: 7%; }
+.f16-annex tr.blank td { height: 14px; }
+
+.f16-annexure-label { text-align: right; font-size: 7.4px; margin: 6px 2px 2px; }
+.f16-notes { margin-top: 8px; font-size: 6.6px; line-height: 1.4; }
+.f16-notes div { margin-top: 2px; }
+.f16-legend-title { margin-top: 10px; font-size: 7.6px; font-weight: 700; }
+.f16-legend-sub { margin: 6px 0 3px; font-size: 7.2px; font-weight: 700; }
+.f16-legend th { background: #dbe7f7; }
+.f16-page-gap { height: 0; margin: 18px 0 10px; border-top: 2px dashed #cbd5e1; }
+.f16-gap { height: 14px; }
+
+/* Full page view: readable sizes */
+.f16-fullview .f16-pdf .f16-brand { font-size: 12px; }
+.f16-fullview .f16-pdf .f16-brand b { font-size: 18px; }
+.f16-fullview .f16-pt { font-size: 12px; }
+.f16-fullview .f16-pt th, .f16-fullview .f16-pt td { padding: 6px 8px; }
+.f16-fullview .f16-pt th.title { font-size: 20px; }
+.f16-fullview .f16-pt th.small { font-size: 11px; }
+.f16-fullview .f16-notes { font-size: 11px; }
+.f16-fullview .f16-legend-title { font-size: 13px; }
+.f16-fullview .f16-legend-sub { font-size: 12px; }
+.f16-fullview .f16-annexure-label { font-size: 12px; }
+.f16-fullview .f16-annex tr.blank td { height: 22px; }
