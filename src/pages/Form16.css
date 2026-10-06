@@ -960,13 +960,13 @@
 .f16-pdf .f16-brand b { font-size: 10px; color: #1d56b7; }
 
 .f16-pt {
-  width: 100%; border-collapse: collapse; table-layout: auto; margin-top: -1px;
+  width: 100%; border-collapse: collapse; table-layout: fixed; margin-top: -1px;
   font-size: 7.2px; line-height: 1.35; background: transparent;
 }
 .f16-pt th, .f16-pt td {
   padding: 3px 4px; border: 1px solid #46505f; background: transparent;
   text-align: center; vertical-align: middle; font-weight: 400; color: #111;
-  overflow-wrap: anywhere;
+  overflow-wrap: anywhere; text-transform: none; letter-spacing: normal; box-sizing: border-box;
 }
 .f16-pt th { font-weight: 700; }
 .f16-pt th.title { font-size: 11px; }
@@ -980,7 +980,6 @@
 .f16-pt tr.bold td, .f16-pt tr.bold th { font-weight: 700; }
 .f16-pt tr.subhead td { font-weight: 400; background: #fafafa; }
 .f16-pt td.sign { vertical-align: bottom; font-weight: 600; min-height: 38px; height: 38px; }
-.f16-partb td:first-child { width: 7%; }
 .f16-annex tr.blank td { height: 14px; }
 
 .f16-annexure-label { text-align: right; font-size: 7.4px; margin: 6px 2px 2px; }

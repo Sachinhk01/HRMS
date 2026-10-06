@@ -46,80 +46,91 @@ function inWords(v) {
 }
 
 // ---------- small building blocks ----------
+// Every table uses the same 24-unit column grid, so vertical lines line up from top to bottom.
+const GRID = 24;
+const Grid = () => (
+  <colgroup>{Array.from({ length: GRID }, (_, i) => <col key={i} style={{ width: `${100 / GRID}%` }} />)}</colgroup>
+);
 function Row({ sl, desc, a, b, bold = false, head = false }) {
   // a -> first amount column (spans two sub-columns), b -> last amount column
   return (
     <tr className={bold ? 'bold' : ''}>
-      <td>{sl}</td>
-      <td className="l">{desc}</td>
-      {head ? <td colSpan={2}>{a}</td> : <td colSpan={2} className="r">{a}</td>}
-      {head ? <td>{b}</td> : <td className="r">{b}</td>}
+      <td colSpan={2}>{sl}</td>
+      <td colSpan={10} className="l">{desc}</td>
+      {head ? <td colSpan={8}>{a}</td> : <td colSpan={8} className="r">{a}</td>}
+      {head ? <td colSpan={4}>{b}</td> : <td colSpan={4} className="r">{b}</td>}
     </tr>
   );
 }
 const Row3 = ({ sl, desc, g, q, d }) => (
-  <tr><td>{sl}</td><td className="l">{desc}</td><td className="r">{g}</td><td className="r">{q}</td><td className="r">{d}</td></tr>
+  <tr><td colSpan={2}>{sl}</td><td colSpan={10} className="l">{desc}</td><td colSpan={4} className="r">{g}</td><td colSpan={4} className="r">{q}</td><td colSpan={4} className="r">{d}</td></tr>
 );
 const Section = ({ sl, desc, note }) => (
-  <tr><td>{sl}</td><td className="l" colSpan={4}>{desc}{note && <> <b>{note}</b></>}</td></tr>
+  <tr><td colSpan={2}>{sl}</td><td className="l" colSpan={22}>{desc}{note && <> <b>{note}</b></>}</td></tr>
 );
 
-function CertHeader({ part, base, withEmployeeRef }) {
+function CertHeader({ part, base }) {
   const cit = base.citTds || base.citTdsAddress || base.commissionerOfIncomeTax || '—';
   return (
     <>
       <table className="f16-pt">
+        <Grid />
         <tbody>
-          <tr><th className="title">FORM NO. 16</th></tr>
-          {part === 'A' && <tr><td>[See rule 31(1)(a)]</td></tr>}
-          <tr><th>PART {part}</th></tr>
-          <tr><th className="small">Certificate under Section 203 of the Income-tax Act, 1961 for tax deducted at source on salary paid to an employee under section 192 or pension/interest income of specified senior citizen under section 194P</th></tr>
+          <tr><th colSpan={24} className="title">FORM NO. 16</th></tr>
+          {part === 'A' && <tr><td colSpan={24}>[See rule 31(1)(a)]</td></tr>}
+          <tr><th colSpan={24}>PART {part}</th></tr>
+          <tr><th colSpan={24} className="small">Certificate under Section 203 of the Income-tax Act, 1961 for tax deducted at source on salary paid to an employee under section 192 or pension/interest income of specified senior citizen under section 194P</th></tr>
         </tbody>
       </table>
       <table className="f16-pt">
+        <Grid />
         <tbody>
           <tr>
-            <td className="l"><b>Certificate No.</b> &nbsp; {base.certificateNo || '—'}</td>
-            <td className="r"><b>Last updated on</b> &nbsp; {dMonY(base.lastUpdatedOn)}</td>
+            <td colSpan={12} className="l"><b>Certificate No.</b> &nbsp; {base.certificateNo || '—'}</td>
+            <td colSpan={12} className="r"><b>Last updated on</b> &nbsp; {dMonY(base.lastUpdatedOn)}</td>
           </tr>
         </tbody>
       </table>
       <table className="f16-pt">
+        <Grid />
         <thead>
-          <tr><th>Name and address of the Employer/Specified Bank</th><th>Name and address of the Employee/Specified senior citizen</th></tr>
+          <tr><th colSpan={12}>Name and address of the Employer/Specified Bank</th><th colSpan={12}>Name and address of the Employee/Specified senior citizen</th></tr>
         </thead>
         <tbody>
           <tr>
-            <td className="l pre">{[base.employerName, base.employerAddress, base.employerPhone, base.employerEmail].filter(Boolean).join('\n') || '—'}</td>
-            <td className="l pre">{[base.employeeName, base.employeeAddress].filter(Boolean).join('\n') || '—'}</td>
+            <td colSpan={12} className="l pre">{[base.employerName, base.employerAddress, base.employerPhone, base.employerEmail].filter(Boolean).join('\n') || '—'}</td>
+            <td colSpan={12} className="l pre">{[base.employeeName, base.employeeAddress].filter(Boolean).join('\n') || '—'}</td>
           </tr>
         </tbody>
       </table>
       <table className="f16-pt">
+        <Grid />
         <thead>
           <tr>
-            <th>PAN of the Deductor</th><th>TAN of the Deductor</th>
-            <th>{withEmployeeRef ? 'PAN of the Employee/Specified senior citizen' : 'PAN of the Employee/Specified senior citizen'}</th>
-            {withEmployeeRef && <th>Employee Reference No. provided by the Employer/Pension Payment order no. provided by the Employer (If available)</th>}
+            <th colSpan={6}>PAN of the Deductor</th>
+            <th colSpan={6}>TAN of the Deductor</th>
+            <th colSpan={12}>PAN of the Employee/Specified senior citizen</th>
           </tr>
         </thead>
         <tbody>
           <tr>
-            <td>{base.deductorPan || '—'}</td><td>{base.deductorTan || '—'}</td><td>{base.employeePan || '—'}</td>
-            {withEmployeeRef && <td>{base.employeeReferenceNo || base.employeeCode || ''}</td>}
+            <td colSpan={6} className="l">{base.deductorPan || '—'}</td>
+            <td colSpan={6} className="l">{base.deductorTan || '—'}</td>
+            <td colSpan={12} className="r">{base.employeePan || '—'}</td>
           </tr>
         </tbody>
       </table>
       <table className="f16-pt">
+        <Grid />
         <thead>
-          <tr><th>CIT (TDS)</th><th>Assessment Year</th><th colSpan={2}>Period with the Employer</th></tr>
+          <tr><th colSpan={8}>CIT (TDS)</th><th colSpan={8}>Assessment Year</th><th colSpan={8}>Period with the Employer</th></tr>
         </thead>
         <tbody>
           <tr>
-            <td className="pre">{cit}</td>
-            <td>{base.assessmentYear || '—'}</td>
-            <td><b>From</b><br />{dMonY(base.employmentFrom)}</td>
-            <td><b>To</b><br />{dMonY(base.employmentTo)}</td>
+            <td colSpan={8} className="pre">{cit}</td>
+            <td colSpan={8}>{base.assessmentYear || '—'}</td>
+            <td colSpan={4}><b>From</b><br />{dMonY(base.employmentFrom)}</td>
+            <td colSpan={4}><b>To</b><br />{dMonY(base.employmentTo)}</td>
           </tr>
         </tbody>
       </table>
@@ -143,20 +154,20 @@ const LEGEND = [
 function SignBlock({ verification, base }) {
   return (
     <table className="f16-pt">
-      <colgroup><col style={{ width: '11%' }} /><col style={{ width: '39%' }} /><col style={{ width: '50%' }} /></colgroup>
+      <Grid />
       <tbody>
         <tr>
-          <td className="l"><b>Place</b></td>
-          <td>{verification?.place || '—'}</td>
-          <td rowSpan={2} className="sign">(Signature of person responsible for deduction of Tax)<br /><b>{verification?.signature || ''}</b></td>
+          <td colSpan={4} className="l"><b>Place</b></td>
+          <td colSpan={8}>{verification?.place || '—'}</td>
+          <td colSpan={12} rowSpan={2} className="sign">(Signature of person responsible for deduction of Tax)<br /><b>{verification?.signature || ''}</b></td>
         </tr>
         <tr>
-          <td className="l"><b>Date</b></td>
-          <td>{dMonY(verification?.date || base.lastUpdatedOn)}</td>
+          <td colSpan={4} className="l"><b>Date</b></td>
+          <td colSpan={8}>{dMonY(verification?.date || base.lastUpdatedOn)}</td>
         </tr>
         <tr>
-          <td className="l" colSpan={2}><b>Designation:</b> {verification?.designation || '—'}</td>
-          <td className="l"><b>Full Name:</b> {verification?.fullName || '—'}</td>
+          <td colSpan={12} className="l"><b>Designation:</b> {verification?.designation || '—'}</td>
+          <td colSpan={12} className="l"><b>Full Name:</b> {verification?.fullName || '—'}</td>
         </tr>
       </tbody>
     </table>
@@ -165,12 +176,13 @@ function SignBlock({ verification, base }) {
 
 const BlankBreakup = ({ title, particulars }) => (
   <table className="f16-pt f16-annex">
+    <Grid />
     <thead>
-      <tr><th className="l" colSpan={5}>{title}</th></tr>
-      <tr><th>Sl. No.</th><th>{particulars}<br />Rs.</th><th>Gross Amount<br />Rs.</th><th>Qualifying Amount<br />Rs.</th><th>Deductible Amount<br />Rs.</th></tr>
+      <tr><th className="l" colSpan={24}>{title}</th></tr>
+      <tr><th colSpan={2}>Sl. No.</th><th colSpan={10}>{particulars}<br />Rs.</th><th colSpan={4}>Gross Amount<br />Rs.</th><th colSpan={4}>Qualifying Amount<br />Rs.</th><th colSpan={4}>Deductible Amount<br />Rs.</th></tr>
     </thead>
     <tbody>
-      {[1, 2, 3, 4, 5, 6].map((n) => <tr key={n} className="blank"><td className="l">{n}.</td><td /><td /><td /><td /></tr>)}
+      {[1, 2, 3, 4, 5, 6].map((n) => <tr key={n} className="blank"><td colSpan={2} className="l">{n}.</td><td colSpan={10} /><td colSpan={4} /><td colSpan={4} /><td colSpan={4} /></tr>)}
     </tbody>
   </table>
 );
@@ -232,105 +244,111 @@ export default function Form16Preview({ base, quarter, challans, salary, exempti
         <div>Government of India<br /><b>Income Tax Department</b></div>
       </div>
 
-      <CertHeader part="A" base={base} withEmployeeRef />
+      <CertHeader part="A" base={base} />
 
-      <table className="f16-pt"><tbody><tr><th>Summary of amount paid/credited and tax deducted at source thereon in respect of the employee</th></tr></tbody></table>
+      <table className="f16-pt"><Grid /><tbody><tr><th colSpan={24}>Summary of amount paid/credited and tax deducted at source thereon in respect of the employee</th></tr></tbody></table>
       <table className="f16-pt">
+        <Grid />
         <thead>
           <tr>
-            <th>Quarter(s)</th>
-            <th>Receipt Numbers of original quarterly statements of TDS under sub-section (3) of Section 200</th>
-            <th>Amount paid/credited (Rs.)</th>
-            <th>Amount of tax deducted (Rs.)</th>
-            <th>Amount of tax deposited / remitted (Rs.)</th>
+            <th colSpan={4}>Quarter(s)</th>
+            <th colSpan={8}>Receipt Numbers of original quarterly statements of TDS under sub-section (3) of Section 200</th>
+            <th colSpan={4}>Amount paid/credited (Rs.)</th>
+            <th colSpan={4}>Amount of tax deducted (Rs.)</th>
+            <th colSpan={4}>Amount of tax deposited / remitted (Rs.)</th>
           </tr>
         </thead>
         <tbody>
           {[1, 2, 3, 4].map((q) => (
             <tr key={q}>
-              <td>Q{q}</td>
-              <td>{quarter?.[`q${q}ReceiptNumber`] || '—'}</td>
-              <td className="r">{a2(quarter?.[`q${q}AmountPaidCredited`])}</td>
-              <td className="r">{a2(quarter?.[`q${q}TaxDeducted`])}</td>
-              <td className="r">{a2(quarter?.[`q${q}TaxDepositedRemitted`])}</td>
+              <td colSpan={4}>Q{q}</td>
+              <td colSpan={8}>{quarter?.[`q${q}ReceiptNumber`] || '—'}</td>
+              <td colSpan={4} className="r">{a2(quarter?.[`q${q}AmountPaidCredited`])}</td>
+              <td colSpan={4} className="r">{a2(quarter?.[`q${q}TaxDeducted`])}</td>
+              <td colSpan={4} className="r">{a2(quarter?.[`q${q}TaxDepositedRemitted`])}</td>
             </tr>
           ))}
-          <tr className="bold"><td>Total (Rs.)</td><td className="grey" /><td className="r">{a2(totalPaid)}</td><td className="r">{a2(totalDeducted)}</td><td className="r">{a2(totalRemitted)}</td></tr>
+          <tr className="bold"><td colSpan={4}>Total (Rs.)</td><td colSpan={8} className="grey" /><td colSpan={4} className="r">{a2(totalPaid)}</td><td colSpan={4} className="r">{a2(totalDeducted)}</td><td colSpan={4} className="r">{a2(totalRemitted)}</td></tr>
         </tbody>
       </table>
 
       <table className="f16-pt">
+        <Grid />
         <tbody>
-          <tr><th>I. DETAILS OF TAX DEDUCTED AND DEPOSITED IN THE CENTRAL GOVERNMENT ACCOUNT THROUGH BOOK ADJUSTMENT<br /><span className="norm">(The deductor to provide payment wise details of tax deducted and deposited with respect to the deductee)</span></th></tr>
+          <tr><th colSpan={24}>I. DETAILS OF TAX DEDUCTED AND DEPOSITED IN THE CENTRAL GOVERNMENT ACCOUNT THROUGH BOOK ADJUSTMENT<br /><span className="norm">(The deductor to provide payment wise details of tax deducted and deposited with respect to the deductee)</span></th></tr>
         </tbody>
       </table>
       <table className="f16-pt">
+        <Grid />
         <thead>
           <tr>
-            <th rowSpan={2}>Sl. No.</th>
-            <th rowSpan={2}>Tax Deposited in respect of the deductee (Rs.)</th>
-            <th colSpan={4}>Book Identification Number (BIN)</th>
+            <th colSpan={4} rowSpan={2}>Sl. No.</th>
+            <th colSpan={4} rowSpan={2}>Tax Deposited in respect of the deductee (Rs.)</th>
+            <th colSpan={16}>Book Identification Number (BIN)</th>
           </tr>
           <tr>
-            <th>Receipt Numbers of Form No. 24G</th>
-            <th>DDO serial number in Form no. 24G</th>
-            <th>Date of transfer voucher (dd/mm/yyyy)</th>
-            <th>Status of matching with Form no. 24G</th>
+            <th colSpan={4}>Receipt Numbers of Form No. 24G</th>
+            <th colSpan={4}>DDO serial number in Form no. 24G</th>
+            <th colSpan={4}>Date of transfer voucher (dd/mm/yyyy)</th>
+            <th colSpan={4}>Status of matching with Form no. 24G</th>
           </tr>
         </thead>
         <tbody>
           {bookTotal > 0 && (
             <tr>
-              <td>1</td><td className="r">{a2(bookTotal)}</td>
-              <td>{quarter?.receiptNumberForm24G || quarter?.form24GReceiptNumber || '—'}</td>
-              <td>{quarter?.ddoSerialNumberForm24G || quarter?.ddoSerialNumber || '—'}</td>
-              <td>{dmySlash(quarter?.dateOfTransferVoucher) || '—'}</td>
-              <td>{quarter?.statusOfMatchingWithForm24G || '—'}</td>
+              <td colSpan={4}>1</td><td colSpan={4} className="r">{a2(bookTotal)}</td>
+              <td colSpan={4}>{quarter?.receiptNumberForm24G || quarter?.form24GReceiptNumber || '—'}</td>
+              <td colSpan={4}>{quarter?.ddoSerialNumberForm24G || quarter?.ddoSerialNumber || '—'}</td>
+              <td colSpan={4}>{dmySlash(quarter?.dateOfTransferVoucher) || '—'}</td>
+              <td colSpan={4}>{quarter?.statusOfMatchingWithForm24G || '—'}</td>
             </tr>
           )}
-          <tr className="bold"><td>Total (Rs.)</td><td className="r">{a2(bookTotal)}</td><td className="grey" colSpan={4} /></tr>
+          <tr className="bold"><td colSpan={4}>Total (Rs.)</td><td colSpan={4} className="r">{a2(bookTotal)}</td><td className="grey" colSpan={16} /></tr>
         </tbody>
       </table>
 
       <table className="f16-pt">
+        <Grid />
         <tbody>
-          <tr><th>II. DETAILS OF TAX DEDUCTED AND DEPOSITED IN THE CENTRAL GOVERNMENT ACCOUNT THROUGH CHALLAN<br /><span className="norm">(The deductor to provide payment wise details of tax deducted and deposited with respect to the deductee)</span></th></tr>
+          <tr><th colSpan={24}>II. DETAILS OF TAX DEDUCTED AND DEPOSITED IN THE CENTRAL GOVERNMENT ACCOUNT THROUGH CHALLAN<br /><span className="norm">(The deductor to provide payment wise details of tax deducted and deposited with respect to the deductee)</span></th></tr>
         </tbody>
       </table>
       <table className="f16-pt">
+        <Grid />
         <thead>
           <tr>
-            <th rowSpan={2}>Sl. No.</th>
-            <th rowSpan={2}>Tax Deposited in respect of the deductee (Rs.)</th>
-            <th colSpan={4}>Challan Identification Number (CIN)</th>
+            <th colSpan={4} rowSpan={2}>Sl. No.</th>
+            <th colSpan={4} rowSpan={2}>Tax Deposited in respect of the deductee (Rs.)</th>
+            <th colSpan={16}>Challan Identification Number (CIN)</th>
           </tr>
           <tr>
-            <th>BSR Code of the Bank Branch</th>
-            <th>Date on which Tax deposited (dd/mm/yyyy)</th>
-            <th>Challan Serial Number</th>
-            <th>Status of matching with OLTAS*</th>
+            <th colSpan={4}>BSR Code of the Bank Branch</th>
+            <th colSpan={4}>Date on which Tax deposited (dd/mm/yyyy)</th>
+            <th colSpan={4}>Challan Serial Number</th>
+            <th colSpan={4}>Status of matching with OLTAS*</th>
           </tr>
         </thead>
         <tbody>
           {(challans || []).map((ch, i) => (
             <tr key={ch.id ?? i}>
-              <td>{ch.serialNumber ?? i + 1}</td>
-              <td className="r">{a2(ch.taxDeposited)}</td>
-              <td>{ch.bsrCode || '-'}</td>
-              <td>{ch.taxDepositedDate ? dmy(ch.taxDepositedDate) : '-'}</td>
-              <td>{ch.challanSerialNumber || '-'}</td>
-              <td>{ch.statusOfMatchingWithOltas || '-'}</td>
+              <td colSpan={4}>{ch.serialNumber ?? i + 1}</td>
+              <td colSpan={4} className="r">{a2(ch.taxDeposited)}</td>
+              <td colSpan={4}>{ch.bsrCode || '-'}</td>
+              <td colSpan={4}>{ch.taxDepositedDate ? dmy(ch.taxDepositedDate) : '-'}</td>
+              <td colSpan={4}>{ch.challanSerialNumber || '-'}</td>
+              <td colSpan={4}>{ch.statusOfMatchingWithOltas || '-'}</td>
             </tr>
           ))}
-          <tr className="bold"><td>Total (Rs.)</td><td className="r">{a2(challanTotal)}</td><td className="grey" colSpan={4} /></tr>
+          <tr className="bold"><td colSpan={4}>Total (Rs.)</td><td colSpan={4} className="r">{a2(challanTotal)}</td><td className="grey" colSpan={16} /></tr>
         </tbody>
       </table>
 
-      <table className="f16-pt"><tbody><tr><th>Verification</th></tr></tbody></table>
+      <table className="f16-pt"><Grid /><tbody><tr><th colSpan={24}>Verification</th></tr></tbody></table>
       <table className="f16-pt">
+        <Grid />
         <tbody>
           <tr>
-            <td className="l just">
+            <td colSpan={24} className="l just">
               I, <b><u>{signer}</u></b>, son / daughter of <b><u>{sonOf}</u></b> working in the capacity of <b><u>{designation}</u></b> (designation) do hereby certify that a sum of Rs. <b><u>{a2(totalDeducted)}</u></b> [Rs. <b><u>{inWords(totalDeducted)}</u></b> (in words)] has been deducted and a sum of Rs. <b><u>{a2(challanTotal + bookTotal)}</u></b> [Rs. <b><u>{inWords(challanTotal + bookTotal)}</u></b>] has been deposited to the credit of the Central Government. I further certify that the information given above is true, complete and correct and is based on the books of account, documents, TDS statements, TDS deposited and other available records.
             </td>
           </tr>
@@ -345,9 +363,10 @@ export default function Form16Preview({ base, quarter, challans, salary, exempti
       <div className="f16-legend-title"><u>Legend used in Form 16</u></div>
       <div className="f16-legend-sub">* Status of matching with OLTAS</div>
       <table className="f16-pt f16-legend">
-        <thead><tr><th>Legend</th><th>Description</th><th>Definition</th></tr></thead>
+        <Grid />
+        <thead><tr><th colSpan={4}>Legend</th><th colSpan={4}>Description</th><th colSpan={16}>Definition</th></tr></thead>
         <tbody>
-          {LEGEND.map(([k, d, def]) => <tr key={k}><td><b>{k}</b></td><td>{d}</td><td className="l">{def}</td></tr>)}
+          {LEGEND.map(([k, d, def]) => <tr key={k}><td colSpan={4}><b>{k}</b></td><td colSpan={4}>{d}</td><td colSpan={16} className="l">{def}</td></tr>)}
         </tbody>
       </table>
 
@@ -364,10 +383,10 @@ export default function Form16Preview({ base, quarter, challans, salary, exempti
 
       <div className="f16-annexure-label">Annexure - I</div>
       <table className="f16-pt f16-partb">
-        <colgroup><col style={{ width: '7%' }} /><col style={{ width: '49%' }} /><col style={{ width: '14%' }} /><col style={{ width: '14%' }} /><col style={{ width: '16%' }} /></colgroup>
+        <Grid />
         <tbody>
-          <tr><td className="l" colSpan={5}>Details of Salary Paid and any other income and tax deducted</td></tr>
-          <tr><td>A</td><td className="l">Whether opting out of taxation u/s 115BAC(1A)?</td><td colSpan={3}>{base.optingOutOfTaxation115BAC1A ? 'Yes' : 'No'}</td></tr>
+          <tr><td className="l" colSpan={24}>Details of Salary Paid and any other income and tax deducted</td></tr>
+          <tr><td colSpan={2}>A</td><td colSpan={10} className="l">Whether opting out of taxation u/s 115BAC(1A)?</td><td colSpan={12}>{base.optingOutOfTaxation115BAC1A ? 'Yes' : 'No'}</td></tr>
 
           <Row sl="1." desc="Gross Salary" a="Rs." b="Rs." head />
           <Row sl="(a)" desc="Salary as per provisions contained in section 17(1)" a={a2(s171)} />
@@ -414,10 +433,10 @@ export default function Form16Preview({ base, quarter, challans, salary, exempti
           <Row sl="(i)" desc="Deduction in respect of contribution by the employee to Agnipath Scheme under section 80CCH" a={a2(c('section80CCH'))} b={a2(c('section80CCH'))} />
           <Row sl="(j)" desc="Deduction in respect of contribution by the Central Government to Agnipath Scheme under section 80CCH" a={a2(c('section80CCH2'))} b={a2(c('section80CCH2'))} />
 
-          <tr className="subhead"><td /><td /><td>Gross Amount</td><td>Qualifying Amount</td><td>Deductible Amount</td></tr>
+          <tr className="subhead"><td colSpan={12} /><td colSpan={4}>Gross Amount</td><td colSpan={4}>Qualifying Amount</td><td colSpan={4}>Deductible Amount</td></tr>
           <Row3 sl="(k)" desc="Total Deduction in respect of donations to certain funds, charitable institutions, etc. under section 80G" g={a2(c('section80G'))} q={a2(c('section80G'))} d={a2(c('section80G'))} />
           <Row3 sl="(l)" desc="Deduction in respect of interest on deposits in savings account under section 80TTA" g={a2(c('section80TTA'))} q={a2(c('section80TTA'))} d={a2(c('section80TTA'))} />
-          <tr><td>(m)</td><td className="l" colSpan={4}>Amount Deductible under any other provision (s) of Chapter VI-A <b>[Note: Break-up to be filled and signed by employer in the table provide at the bottom of this form]</b></td></tr>
+          <tr><td colSpan={2}>(m)</td><td className="l" colSpan={22}>Amount Deductible under any other provision (s) of Chapter VI-A <b>[Note: Break-up to be filled and signed by employer in the table provide at the bottom of this form]</b></td></tr>
           <Row3 sl="(n)" desc="Total of amount deductible under any other provision(s) of Chapter VI-A" g={a2(cOthers)} q={a2(cOthers)} d={a2(cOthers)} />
 
           <Row sl="11." desc="Aggregate of deductible amount under Chapter VI-A [10(d)+10(e)+10(f)+10(g)+10(h)+10(i)+10(j)+10(k)+10(l)+10(n)]" b={a2(chapterTotal)} />
@@ -434,11 +453,12 @@ export default function Form16Preview({ base, quarter, challans, salary, exempti
         </tbody>
       </table>
 
-      <table className="f16-pt"><tbody><tr><th className="norm">Verification</th></tr></tbody></table>
+      <table className="f16-pt"><Grid /><tbody><tr><th colSpan={24} className="norm">Verification</th></tr></tbody></table>
       <table className="f16-pt">
+        <Grid />
         <tbody>
           <tr>
-            <td className="l just">
+            <td colSpan={24} className="l just">
               I, <u>{signer}</u>, son/daughter of <u>{sonOf}</u> .Working in the capacity of <u>{designation}</u> (Designation) do hereby certify that the information given above is true, complete and correct and is based on the books of account, documents, TDS statements, and other available records.
             </td>
           </tr>
