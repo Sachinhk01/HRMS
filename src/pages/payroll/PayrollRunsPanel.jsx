@@ -374,10 +374,10 @@ export default function PayrollRunsPanel() {
         }
 
         if (applied) {
-          showToast(`New version ${updated.payrollNumber} (v${updated.version}) created with your changes.`, "success");
+          showToast(`New version ${updated.payrollNumber} created with your changes.`, "success");
         } else {
           showToast(
-            `New version ${updated.payrollNumber} (v${updated.version}) was created, but the server did not apply your edits. Please contact the backend team.`,
+            `New version ${updated.payrollNumber} was created, but the server did not apply your edits. Please contact the backend team.`,
             "error"
           );
         }
@@ -439,7 +439,7 @@ export default function PayrollRunsPanel() {
     setMessage("");
     try {
       const updated = await regeneratePayroll(item.id);
-      setMessage(`New version ${updated.payrollNumber} (v${updated.version}) created.`);
+      setMessage(`New version ${updated.payrollNumber} created.`);
       setDetail(updated);
       await refresh();
     } catch (err) {
@@ -514,9 +514,9 @@ export default function PayrollRunsPanel() {
               <MonthPicker id="payroll-generate-month" value={genMonth} onChange={(event) => setGenMonth(event.target.value)} required />
             </label>
             <label>Remarks
-              <input maxLength={INPUT_LIMITS.SHORT_TEXT} value={genRemarks} onChange={(event) => setGenRemarks(event.target.value)} placeholder="e.g. August 2026 payroll" />
+              <input maxLength={INPUT_LIMITS.SHORT_TEXT} value={genRemarks} onChange={(event) => setGenRemarks(event.target.value)} placeholder="Enter remarks" />
             </label>
-            <label className="checkbox-line" style={{ paddingTop: 26 }}>
+            <label className="checkbox-line" style={{ alignSelf: "end", height: 34, paddingTop: 0 }}>
               <input
                 type="checkbox"
                 checked={genSaveAsDraft}
@@ -655,11 +655,9 @@ export default function PayrollRunsPanel() {
                 <tr key={item.id}>
                   <td>
                     <strong>{item.payrollNumber}</strong>
-                    {item.version > 1 && <small className="table-subtext">v{item.version}</small>}
                   </td>
                   <td>
                     <strong>{item.employeeName}</strong>
-                    <small className="table-subtext">{item.employeeCode} · {item.departmentName || "—"}</small>
                   </td>
                   <td>{payrollMonthLabel(item.payrollMonth)}</td>
                   <td><PayrollBadge status={item.status} /></td>
@@ -721,7 +719,7 @@ export default function PayrollRunsPanel() {
           <div className="payroll-modal" onClick={(event) => event.stopPropagation()}>
             <div className="payroll-modal-head">
               <div>
-                <h2>{detail.payrollNumber} · v{detail.version}</h2>
+                <h2>{detail.payrollNumber}</h2>
                 <p>
                   {detail.employeeName} ({detail.employeeCode}) · {payrollMonthLabel(detail.payrollMonth)}
                 </p>
