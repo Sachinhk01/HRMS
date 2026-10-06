@@ -1,0 +1,46 @@
+/* ===== Global UI polish: hover + motion only. No layout or logic changes. ===== */
+
+/* Buttons */
+.btn {
+  transition: transform .18s var(--ease-in-out-soft), box-shadow .18s var(--ease-in-out-soft), background-color .18s ease, filter .18s ease;
+}
+.btn:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(25, 103, 210, .22); }
+.btn:active:not(:disabled) { transform: translateY(0) scale(.97); box-shadow: none; }
+.btn-danger:hover:not(:disabled) { box-shadow: 0 8px 20px rgba(220, 76, 100, .28); }
+.btn:focus-visible { outline: 3px solid rgba(37, 99, 235, .35); outline-offset: 2px; }
+
+/* Cards */
+.sx-card, .editor-card, .hl-card, .hero-stat, .table-wrap, .mdm-table-wrap {
+  transition: transform .25s var(--ease-in-out-soft), box-shadow .25s var(--ease-in-out-soft), border-color .25s ease;
+}
+.editor-card:hover, .hl-card:hover { transform: translateY(-4px); box-shadow: var(--shadow-lg); }
+.hero-stat:hover { transform: translateY(-3px) scale(1.02); box-shadow: 0 10px 24px rgba(37, 99, 235, .14); }
+.sx-card:hover { box-shadow: var(--shadow-lg); }
+
+/* Table rows */
+.table tbody tr, .mdm-table tbody tr, .rx-table tbody tr { transition: background-color .15s ease, box-shadow .15s ease; }
+.table tbody tr:hover, .mdm-table tbody tr:hover, .rx-table tbody tr:hover {
+  background: #f3f7ff;
+  box-shadow: inset 3px 0 0 var(--blue);
+}
+
+/* Sidebar */
+.sidebar-nav a, .sidebar-nav button { transition: transform .18s ease, background-color .18s ease, color .18s ease; }
+.sidebar-nav a:not(.active):hover, .sidebar-nav button:not(.active):hover { transform: translateX(4px); background: #f1f6ff; }
+.sidebar-nav svg { transition: transform .25s cubic-bezier(.34, 1.56, .64, 1); }
+.sidebar-nav a:hover svg, .sidebar-nav button:hover svg { transform: scale(1.18) rotate(-6deg); }
+
+/* Tabs and status pills */
+.settings-tab:not(.is-active):hover { transform: translateY(-2px); }
+.attendance-seg button { transition: transform .18s ease, background-color .18s ease; }
+.attendance-seg button:hover { transform: translateY(-1px); }
+.mdm-status { transition: transform .18s ease, box-shadow .18s ease; }
+.mdm-status:hover { transform: scale(1.06); box-shadow: 0 4px 12px rgba(15, 23, 42, .12); }
+
+/* Inputs */
+input, select, textarea { transition: border-color .18s ease, box-shadow .18s ease; }
+input:focus, select:focus, textarea:focus { box-shadow: 0 0 0 4px rgba(37, 99, 235, .12); }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition-duration: .01ms !important; animation-duration: .01ms !important; }
+}

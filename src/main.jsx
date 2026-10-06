@@ -10,6 +10,7 @@ import { ConfirmProvider } from './context/ConfirmContext';
 import './styles/global.css';
 import './styles/premium-backgrounds.css';
 import './styles/required-fields.css';
+import './styles/ui-polish.css';
 import { installFormValidationMessages, installDefaultInputLimits } from './utils/formValidation';
 
 installFormValidationMessages();

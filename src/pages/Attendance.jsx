@@ -724,15 +724,57 @@ if (failures.length) {
         ) : (
           <div className="attendance-hero-illustration" aria-hidden="true">
             <svg viewBox="0 0 320 200" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <circle cx="250" cy="50" r="60" fill="#dbeafe" opacity="0.5" />
-              <circle cx="60" cy="160" r="44" fill="#bfdbfe" opacity="0.4" />
-              <rect x="120" y="50" width="130" height="100" rx="16" fill="#fff" stroke="#bfdbfe" strokeWidth="2" />
-              <circle cx="185" cy="92" r="30" fill="none" stroke="#2563eb" strokeWidth="4" />
-              <path d="M185 76 V92 L196 100" stroke="#2563eb" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
-              <rect x="140" y="120" width="30" height="6" rx="3" fill="#dbeafe" />
-              <rect x="180" y="120" width="50" height="6" rx="3" fill="#eef2ff" />
-              <circle cx="250" cy="150" r="14" fill="#10b981" opacity="0.8" />
-              <path d="M244 150 l4 5 l8 -9" stroke="#fff" strokeWidth="2.5" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+              <defs>
+                <linearGradient id="ahCard" x1="0" y1="0" x2="1" y2="1">
+                  <stop offset="0" stopColor="#ffffff" />
+                  <stop offset="1" stopColor="#eef4ff" />
+                </linearGradient>
+                <linearGradient id="ahRing" x1="0" y1="0" x2="1" y2="1">
+                  <stop offset="0" stopColor="#60a5fa" />
+                  <stop offset="1" stopColor="#2563eb" />
+                </linearGradient>
+                <linearGradient id="ahBar" x1="0" y1="1" x2="0" y2="0">
+                  <stop offset="0" stopColor="#93c5fd" />
+                  <stop offset="1" stopColor="#3b82f6" />
+                </linearGradient>
+              </defs>
+
+              <circle className="ah-blob ah-blob--a" cx="262" cy="48" r="56" fill="#dbeafe" opacity="0.55" />
+              <circle className="ah-blob ah-blob--b" cx="52" cy="164" r="40" fill="#c7d2fe" opacity="0.4" />
+              <circle className="ah-dot ah-dot--1" cx="96" cy="26" r="4" fill="#60a5fa" />
+              <circle className="ah-dot ah-dot--2" cx="288" cy="118" r="3" fill="#a78bfa" />
+              <circle className="ah-dot ah-dot--3" cx="68" cy="104" r="2.5" fill="#34d399" />
+
+              <g className="ah-card">
+                <rect x="86" y="34" width="148" height="116" rx="18" fill="url(#ahCard)" stroke="#bfdbfe" strokeWidth="2" />
+
+                <circle cx="140" cy="82" r="28" fill="#fff" stroke="#e0e7ff" strokeWidth="5" />
+                <circle className="ah-ring" cx="140" cy="82" r="28" stroke="url(#ahRing)" strokeWidth="5"
+                  strokeLinecap="round" fill="none" transform="rotate(-90 140 82)" />
+                <line className="ah-hand ah-hand--hr" x1="140" y1="82" x2="140" y2="72" stroke="#1e3a8a" strokeWidth="3.5" strokeLinecap="round" />
+                <line className="ah-hand ah-hand--min" x1="140" y1="82" x2="140" y2="64" stroke="#2563eb" strokeWidth="3" strokeLinecap="round" />
+                <circle cx="140" cy="82" r="3.5" fill="#2563eb" />
+
+                <rect x="178" y="58" width="42" height="5" rx="2.5" fill="#dbeafe" />
+                <rect x="178" y="68" width="26" height="5" rx="2.5" fill="#eef2ff" />
+                <g>
+                  <rect className="ah-bar" style={{ '--i': 0 }} x="178" y="100" width="6" height="24" rx="3" fill="url(#ahBar)" />
+                  <rect className="ah-bar" style={{ '--i': 1 }} x="188" y="88" width="6" height="36" rx="3" fill="url(#ahBar)" />
+                  <rect className="ah-bar" style={{ '--i': 2 }} x="198" y="94" width="6" height="30" rx="3" fill="url(#ahBar)" />
+                  <rect className="ah-bar" style={{ '--i': 3 }} x="208" y="82" width="6" height="42" rx="3" fill="url(#ahBar)" />
+                  <rect className="ah-bar" style={{ '--i': 4 }} x="218" y="106" width="6" height="18" rx="3" fill="#bfdbfe" />
+                </g>
+
+                <rect x="112" y="136" width="108" height="6" rx="3" fill="#e0e7ff" />
+                <rect className="ah-progress" x="112" y="136" width="72" height="6" rx="3" fill="url(#ahRing)" />
+              </g>
+
+              <g className="ah-badge">
+                <circle className="ah-pulse" cx="234" cy="148" r="16" fill="#10b981" />
+                <circle cx="234" cy="148" r="15" fill="#10b981" stroke="#fff" strokeWidth="3" />
+                <path className="ah-check" d="M227 148 l5 6 l9 -11" stroke="#fff" strokeWidth="3"
+                  fill="none" strokeLinecap="round" strokeLinejoin="round" />
+              </g>
             </svg>
           </div>
         )}
