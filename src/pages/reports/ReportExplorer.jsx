@@ -12,7 +12,7 @@ import { daysInMonth, formatDate, makeISO, pad } from '../../utils/dateUtils';
 import { INPUT_LIMITS } from '../../utils/inputLimits';
 import {
   ATTENDANCE_STATUSES, LEAVE_STATUSES, PAGE_SIZES, EMPTY,
-  defaultReportFilters, validateReportFilters, fetchReport, downloadReportFile,
+  calculateAttendanceShare, defaultReportFilters, validateReportFilters, fetchReport, downloadReportFile,
   getReportDepartments, getReportEmployees, formatMinutes, timeOfDay, statusLabel,
 } from '../../services/reportService';
 import './Reportexplorer.css';
@@ -55,10 +55,10 @@ const CONFIG = {
       { icon: Clock3, tone: 'orange', label: 'Late', value: s.lateCount },
       { icon: UserX, tone: 'red', label: 'Absent', value: s.absentCount },
       { icon: CalendarDays, tone: 'pink', label: 'On Leave', value: s.leaveCount },
-      // Row-level share, not a per-employee attendance rate — labelled honestly.
       {
         icon: Percent, tone: 'teal', label: 'Present-Day Share',
-        value: `${Number(s.attendancePercentage || 0).toFixed(1)}%`, desc: 'Present rows ÷ all rows',
+        value: s.attendanceShare == null ? '—' : `${s.attendanceShare.toFixed(1)}%`,
+        desc: '((Present + Half Days / 2 + Late + Missed Checkouts) / All Rows) × 100',
       },
     ],
     note: null,
@@ -102,6 +102,7 @@ export default function ReportExplorer({ kind }) {
 
   const [filters, setFilters] = useState(() => defaultReportFilters(kind));
   const [data, setData] = useState(null);
+  const [missedCheckoutCount, setMissedCheckoutCount] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [reloadKey, setReloadKey] = useState(0);
@@ -129,11 +130,25 @@ export default function ReportExplorer({ kind }) {
     let cancelled = false;
     setLoading(true);
     setError('');
-    fetchReport(kind, filters)
-      .then((res) => { if (!cancelled) setData(res); })
+    Promise.all([
+      fetchReport(kind, filters),
+      kind === 'attendance'
+        ? fetchReport(kind, { ...filters, status: 'MISSED_CHECKOUT', page: 0, size: 1 })
+        : Promise.resolve(null),
+    ])
+      .then(([res, missedResult]) => {
+        if (cancelled) return;
+        setData(res);
+        setMissedCheckoutCount(
+          kind === 'attendance'
+            ? missedResult?.totalElements ?? missedResult?.summary?.totalRecords ?? 0
+            : null
+        );
+      })
       .catch((err) => {
         if (cancelled) return;
         setData(null);
+        setMissedCheckoutCount(null);
         setError(err.message || 'Unable to load the report.');
       })
       .finally(() => { if (!cancelled) setLoading(false); });
@@ -189,6 +204,15 @@ export default function ReportExplorer({ kind }) {
   }, [employees, empSearch, filters.employeeId]);
 
   const rows = data?.content || [];
+  const attendanceShare = kind === 'attendance'
+    ? calculateAttendanceShare(data?.summary, missedCheckoutCount)
+    : null;
+  const cards = kind === 'attendance'
+    ? cfg.cards({
+      ...data?.summary,
+      attendanceShare,
+    })
+    : cfg.cards(data?.summary || {});
   const showLoading = loading && !validation;
   const monthValue = filters.month && filters.year ? `${filters.year}-${pad(filters.month)}` : '';
   const defaults = useMemo(() => defaultReportFilters(kind), [kind]);
@@ -277,8 +301,8 @@ export default function ReportExplorer({ kind }) {
 
       {!validation && data?.summary && (
         <section className="panel rx-panel rx-stats-panel">
-          <div className="rx-stats" data-count={cfg.cards(data.summary).length}>
-            {cfg.cards(data.summary).map((card) => (
+          <div className="rx-stats" data-count={cards.length}>
+            {cards.map((card) => (
               <div key={card.label} className={`rx-stat tone-${card.tone}`}>
                 <div className="kpi-icon"><card.icon size={17} /></div>
                 <div className="rx-stat-text">

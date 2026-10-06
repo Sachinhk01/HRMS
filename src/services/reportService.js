@@ -97,6 +97,17 @@ export async function fetchReport(kind, filters) {
   return data; // NOT wrapped in ApiResponse
 }
 
+export function calculateAttendanceShare(summary, missedCheckoutCount) {
+  const totalRecords = Number(summary?.totalRecords);
+  if (!Number.isFinite(totalRecords) || totalRecords <= 0 || missedCheckoutCount == null) return null;
+
+  const presentCount = Number(summary?.presentCount) || 0;
+  const halfDayCount = Number(summary?.halfDayCount) || 0;
+  const lateCount = Number(summary?.lateCount) || 0;
+  const missedCount = Number(missedCheckoutCount) || 0;
+  return ((presentCount + halfDayCount / 2 + lateCount + missedCount) / totalRecords) * 100;
+}
+
 function periodStamp(f) {
   return f.periodMode === 'month'
     ? `${f.year}-${String(f.month).padStart(2, '0')}`

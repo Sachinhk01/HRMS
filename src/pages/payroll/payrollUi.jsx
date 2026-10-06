@@ -35,9 +35,22 @@ export function EarningsSection({ data }) {
   );
 }
 
+// The payroll response carries the stored Total Deductions (which already
+// include the half-day deduction) but not the half-day line itself, so derive
+// it as: total - (all the other listed deductions). This matches the backend
+// total and keeps the UI consistent with the server response.
+export function getHalfDayDeduction(data) {
+  if (data?.halfDaysAmount != null) return Number(data.halfDaysAmount) || 0;
+  if (data?.totalDeduction == null) return 0;
+  const others = [data.lopAmount, data.pf, data.esi, data.professionalTax, data.incomeTax, data.otherDeduction]
+    .reduce((sum, value) => sum + (Number(value) || 0), 0);
+  return Math.max(0, Math.round((Number(data.totalDeduction) - others) * 100) / 100);
+}
+
 export function DeductionsSection({ data }) {
   const rows = [
     ["LOP Amount", data?.lopAmount],
+    ["Half Day Deduction", getHalfDayDeduction(data)],
     ["Provident Fund (PF)", data?.pf],
     ["ESI", data?.esi],
     ["Professional Tax", data?.professionalTax],
@@ -59,10 +72,11 @@ export function DeductionsSection({ data }) {
   );
 }
 
-export function AttendanceSection({ data }) {
+export function AttendanceSection({ data, halfDays }) {
   const cells = [
     ["Total Working Days", data?.totalWorkingDays],
     ["Worked Days", data?.workedDays],
+    ["Half Days", halfDays ?? data?.halfDays],
     ["LOP Days", data?.lopDays],
     ["Payable Days", data?.payableDays],
   ];
@@ -84,6 +98,30 @@ export function EmptyState({ icon: Icon, title, note }) {
       {Icon && <Icon size={40} />}
       <strong>{title}</strong>
       {note && <p>{note}</p>}
+    </div>
+  );
+}
+
+export function StatusFilter({ value, onChange, counts = {} }) {
+  const options = [
+    ["ACTIVE", "Active"],
+    ["INACTIVE", "Inactive"],
+    ["ALL", "All"],
+  ];
+  return (
+    <div className="payroll-status-filter" role="group" aria-label="Filter by status">
+      {options.map(([key, label]) => (
+        <button
+          key={key}
+          type="button"
+          className={value === key ? "is-active" : ""}
+          aria-pressed={value === key}
+          onClick={() => onChange(key)}
+        >
+          {label}
+          {counts[key] != null && <span>{counts[key]}</span>}
+        </button>
+      ))}
     </div>
   );
 }

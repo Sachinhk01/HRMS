@@ -7,7 +7,7 @@ import {
   updateSalaryTemplate,
   updateSalaryTemplateStatus,
 } from "../../services/payrollService";
-import { EmptyState } from "./payrollUi";
+import { EmptyState, StatusFilter } from "./payrollUi";
 import { useConfirm } from "../../context/ConfirmContext";
 import { INPUT_LIMITS } from '../../utils/inputLimits';
 
@@ -62,6 +62,7 @@ export default function SalaryTemplatesPanel() {
   const [templates, setTemplates] = useState([]);
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState("ACTIVE");
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState(EMPTY_FORM);
@@ -82,9 +83,19 @@ export default function SalaryTemplatesPanel() {
 
   useEffect(() => { refresh(); }, []);
 
+  const statusCounts = useMemo(() => ({
+    ACTIVE: templates.filter((item) => item.active).length,
+    INACTIVE: templates.filter((item) => !item.active).length,
+    ALL: templates.length,
+  }), [templates]);
+
   const filtered = useMemo(() => templates
+    .filter((item) =>
+      statusFilter === "ALL"
+      || (statusFilter === "ACTIVE" ? item.active : !item.active)
+    )
     .filter((item) => item.employeeType.toLowerCase().includes(query.toLowerCase()))
-    .sort((a, b) => a.employeeType.localeCompare(b.employeeType)), [templates, query]);
+    .sort((a, b) => a.employeeType.localeCompare(b.employeeType)), [templates, query, statusFilter]);
 
   function resetForm() {
     setForm(EMPTY_FORM);
@@ -182,6 +193,7 @@ export default function SalaryTemplatesPanel() {
             <Search size={17} />
             <input maxLength={INPUT_LIMITS.SEARCH} value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search by employee type" />
           </div>
+          <StatusFilter value={statusFilter} onChange={setStatusFilter} counts={statusCounts} />
           {!showForm && (
             <button
               type="button"
@@ -254,7 +266,17 @@ export default function SalaryTemplatesPanel() {
               {!loading && filtered.length === 0 && (
                 <tr>
                   <td colSpan="5">
-                    <EmptyState icon={Layers} title="No salary templates" note="Create a template to define earnings and deductions per employment type." />
+                    <EmptyState
+                      icon={Layers}
+                      title={templates.length === 0
+                        ? "No salary templates"
+                        : query.trim()
+                          ? "No salary templates match your search"
+                          : `No ${statusFilter.toLowerCase()} salary templates`}
+                      note={templates.length === 0
+                        ? "Create a template to define earnings and deductions per employment type."
+                        : "Try changing the search or selecting a different status filter."}
+                    />
                   </td>
                 </tr>
               )}

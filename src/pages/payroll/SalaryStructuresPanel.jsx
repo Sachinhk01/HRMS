@@ -9,7 +9,7 @@ import {
   getSalaryTemplates,
   payrollMonthLabel,
 } from "../../services/payrollService";
-import { DeductionsSection, EarningsSection, EmptyState, PayrollBadge } from "./payrollUi";
+import { DeductionsSection, EarningsSection, EmptyState, PayrollBadge, StatusFilter } from "./payrollUi";
 import { INPUT_LIMITS } from '../../utils/inputLimits';
 import DatePicker from '../../components/DatePicker';
 
@@ -27,7 +27,7 @@ export default function SalaryStructuresPanel() {
   const [templates, setTemplates] = useState([]);
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState("");
-  const [activeOnly] = useState(false);
+  const [statusFilter, setStatusFilter] = useState("ACTIVE");
   const [showForm, setShowForm] = useState(false);
   const [isRevision, setIsRevision] = useState(false);
   const [form, setForm] = useState(EMPTY_FORM);
@@ -39,13 +39,13 @@ export default function SalaryStructuresPanel() {
   const refresh = useCallback(async () => {
     setLoading(true);
     try {
-      setStructures(await getSalaryStructures({ activeOnly }));
+      setStructures(await getSalaryStructures({ activeOnly: false }));
     } catch (err) {
       setError(err.message || "Failed to load salary structures.");
     } finally {
       setLoading(false);
     }
-  }, [activeOnly]);
+  }, []);
 
   useEffect(() => { refresh(); }, [refresh]);
 
@@ -54,13 +54,23 @@ export default function SalaryStructuresPanel() {
     getSalaryTemplates({ activeOnly: false }).then(setTemplates).catch(() => setTemplates([]));
   }, []);
 
+  const statusCounts = useMemo(() => ({
+    ACTIVE: structures.filter((item) => item.status === "ACTIVE").length,
+    INACTIVE: structures.filter((item) => item.status !== "ACTIVE").length,
+    ALL: structures.length,
+  }), [structures]);
+
   const filtered = useMemo(() => structures
     .filter((item) =>
-      `${item.employeeName} ${item.employeeCode} ${item.status}`
+      statusFilter === "ALL"
+      || (statusFilter === "ACTIVE" ? item.status === "ACTIVE" : item.status !== "ACTIVE")
+    )
+    .filter((item) =>
+      `${item.employeeName} ${item.employeeCode}`
         .toLowerCase()
         .includes(query.toLowerCase())
     )
-    .sort((a, b) => new Date(b.effectiveFrom) - new Date(a.effectiveFrom)), [structures, query]);
+    .sort((a, b) => new Date(b.effectiveFrom) - new Date(a.effectiveFrom)), [structures, query, statusFilter]);
 
   function resetForm() {
     setForm(EMPTY_FORM);
@@ -125,9 +135,7 @@ export default function SalaryStructuresPanel() {
             <Search size={17} />
             <input maxLength={INPUT_LIMITS.SEARCH} value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search employee or code" />
           </div>
-          <label className="checkbox-line">
-           
-          </label>
+          <StatusFilter value={statusFilter} onChange={setStatusFilter} counts={statusCounts} />
           <button type="button" className="btn btn-primary" onClick={beginCreate}>
             <Plus size={18} /> New Structure
           </button>
@@ -195,7 +203,17 @@ export default function SalaryStructuresPanel() {
               {!loading && filtered.length === 0 && (
                 <tr>
                   <td colSpan="6">
-                    <EmptyState icon={GitCommitHorizontal} title="No salary structures" note="Assign a salary structure to an employee to get started." />
+                    <EmptyState
+                      icon={GitCommitHorizontal}
+                      title={structures.length === 0
+                        ? "No salary structures"
+                        : query.trim()
+                          ? "No salary structures match your search"
+                          : `No ${statusFilter.toLowerCase()} salary structures`}
+                      note={structures.length === 0
+                        ? "Assign a salary structure to an employee to get started."
+                        : "Try changing the search or selecting a different status filter."}
+                    />
                   </td>
                 </tr>
               )}

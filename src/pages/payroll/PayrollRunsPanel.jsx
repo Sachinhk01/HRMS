@@ -11,8 +11,9 @@ import {
   IndianRupee,
   Pencil,
   Plus,
-  RotateCcw,
   Search,
+  Settings,
+  Users,
   WalletCards,
   X,
   XCircle,
@@ -22,6 +23,7 @@ import {
   formatINR,
   generatePayroll,
   getEmployeeDropdown,
+  getPayrollById,
   getPayrollsByMonth,
   getPayrollsByStatus,
   payrollMonthLabel,
@@ -35,11 +37,13 @@ import { useConfirm } from "../../context/ConfirmContext";
 import { useToast } from "../../context/ToastContext";
 import { INPUT_LIMITS } from '../../utils/inputLimits';
 import { MonthPicker } from '../../components/DatePicker';
+import { getEmployeeAttendanceHistory } from "../../services/attendanceService";
 
 const EMPTY_EDIT_FORM = {
   totalWorkingDays: "",
   workedDays: "",
   lopDays: "",
+  halfDays: "",
   basicSalary: "",
   hra: "",
   specialAllowance: "",
@@ -59,6 +63,7 @@ const EDIT_SECTIONS = [
   ["Attendance", [
     ["totalWorkingDays", "Total working days", "1", "1"],
     ["workedDays", "Worked days", "1", "0"],
+    ["halfDays", "Half days", "1", "0"],
     ["lopDays", "LOP days", "1", "0"],
   ]],
   ["Earnings", [
@@ -80,12 +85,36 @@ const EDIT_SECTIONS = [
 ];
 
 const NUMERIC_KEYS = [
-  "totalWorkingDays", "workedDays", "lopDays",
+  "totalWorkingDays", "workedDays", "lopDays", "halfDays",
   "basicSalary", "hra", "specialAllowance", "medicalAllowance", "travelAllowance", "bonus", "otherAllowance",
   "pf", "esi", "professionalTax", "incomeTax", "otherDeduction",
 ];
 
 const num = (value) => (value === "" || value === null || value === undefined ? undefined : Number(value));
+const formatINRWithPaise = (value) => new Intl.NumberFormat("en-IN", {
+  style: "currency",
+  currency: "INR",
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
+}).format(Number(value) || 0);
+
+async function fetchHalfDayCount(employeeId, payrollMonth) {
+  const [year, month] = String(payrollMonth).slice(0, 7).split("-").map(Number);
+  if (!year || !month || month < 1 || month > 12) {
+    throw new Error("Payroll month is invalid.");
+  }
+  const pad = (value) => String(value).padStart(2, "0");
+  const lastDay = new Date(year, month, 0).getDate();
+  const page = await getEmployeeAttendanceHistory(employeeId, {
+    fromDate: `${year}-${pad(month)}-01`,
+    toDate: `${year}-${pad(month)}-${pad(lastDay)}`,
+    status: "HALF_DAY",
+    page: 0,
+    size: 100,
+  });
+  const content = Array.isArray(page?.content) ? page.content : Array.isArray(page) ? page : [];
+  return page?.totalElements ?? content.length;
+}
 
 export default function PayrollRunsPanel() {
   const { confirm, promptDialog } = useConfirm();
@@ -112,10 +141,12 @@ export default function PayrollRunsPanel() {
   const [genSummary, setGenSummary] = useState(null);
 
   const [detail, setDetail] = useState(null);
+  const [halfDays, setHalfDays] = useState(null);
   const [editing, setEditing] = useState(null);
   const [editForm, setEditForm] = useState(EMPTY_EDIT_FORM);
   const [editMode, setEditMode] = useState("draft"); // "draft" | "regenerate"
   const [editError, setEditError] = useState("");
+  const [halfDaysLoadError, setHalfDaysLoadError] = useState("");
   const [saving, setSaving] = useState(false);
 
   const refresh = useCallback(async (targetMonth = month) => {
@@ -204,9 +235,13 @@ export default function PayrollRunsPanel() {
     const totalDays = n(editForm.totalWorkingDays);
     const lopDays = n(editForm.lopDays);
     const lopAmount = lopDays > 0 && totalDays > 0 ? round2(round2(gross / totalDays) * lopDays) : 0;
+    const halfDayCount = n(editForm.halfDays);
+    const halfDayAmount = halfDayCount > 0 && totalDays > 0
+      ? round2(round2(gross / totalDays) * halfDayCount / 2)
+      : 0;
     const deductions = n(editForm.pf) + n(editForm.esi) + n(editForm.professionalTax)
-      + n(editForm.incomeTax) + n(editForm.otherDeduction) + lopAmount;
-    return { gross, lopAmount, deductions, net: gross - deductions };
+      + n(editForm.incomeTax) + n(editForm.otherDeduction) + lopAmount + halfDayAmount;
+    return { gross, lopAmount, halfDayAmount, deductions, net: gross - deductions };
   }, [editForm]);
 
   const availableEmployees = useMemo(() => loadingEligibleEmployees
@@ -219,8 +254,7 @@ export default function PayrollRunsPanel() {
       `${item.employeeCode} ${item.employeeName}`
         .toLowerCase()
         .includes(genEmployeeQuery.toLowerCase())
-    )
-    .slice(0, 40), [availableEmployees, genEmployeeQuery]);
+    ), [availableEmployees, genEmployeeQuery]);
 
   useEffect(() => {
     setSelectedIds((current) => current.filter((id) => !generatedEmployeeIds.has(String(id))));
@@ -230,6 +264,20 @@ export default function PayrollRunsPanel() {
     setSelectedIds((current) =>
       current.includes(id) ? current.filter((value) => value !== id) : [...current, id]
     );
+  }
+
+  const allMatchedSelected = matchedEmployees.length > 0
+    && matchedEmployees.every((item) => selectedIds.includes(item.id));
+
+  function toggleAllMatched() {
+    const matchedIdList = matchedEmployees.map((item) => item.id);
+    setSelectedIds((current) => allMatchedSelected
+      ? current.filter((id) => !matchedIdList.includes(id))
+      : [...new Set([...current, ...matchedIdList])]);
+  }
+
+  function initials(name = "") {
+    return name.split(" ").filter(Boolean).slice(0, 2).map((part) => part[0]).join("").toUpperCase() || "?";
   }
 
   function selectAllEmployees(event) {
@@ -267,18 +315,63 @@ export default function PayrollRunsPanel() {
     }
   }
 
-  function openDetail(item) {
+  useEffect(() => {
+    let isActive = true;
+    setHalfDays(null);
+
+    const employeeId = detail?.employeeId ?? detail?.employee?.id;
+    if (!employeeId || !detail?.payrollMonth) return () => { isActive = false; };
+
+    fetchHalfDayCount(employeeId, detail.payrollMonth)
+      .then((count) => {
+        if (isActive) setHalfDays(count);
+      })
+      .catch(() => {
+        if (isActive) setHalfDays(null);
+      });
+
+    return () => { isActive = false; };
+  }, [detail?.id, detail?.employeeId, detail?.employee?.id, detail?.payrollMonth]);
+
+  useEffect(() => {
+    if (!editing || editing.halfDays != null) return undefined;
+    const employeeId = editing.employeeId ?? editing.employee?.id;
+    if (!employeeId || !editing.payrollMonth) return undefined;
+
+    let isActive = true;
+    setHalfDaysLoadError("");
+    fetchHalfDayCount(employeeId, editing.payrollMonth)
+      .then((count) => {
+        if (!isActive) return;
+        setEditForm((form) => (form.halfDays === "" ? { ...form, halfDays: count } : form));
+      })
+      .catch(() => {
+        if (isActive) setHalfDaysLoadError("Could not load half-day attendance. Enter the value manually.");
+      });
+
+    return () => { isActive = false; };
+  }, [editing?.id, editing?.employeeId, editing?.employee?.id, editing?.payrollMonth, editing?.halfDays]);
+
+  async function openDetail(item) {
     setDetail(item);
+    try {
+      const fresh = await getPayrollById(item.id);
+      setDetail((current) => (current?.id === item.id ? { ...current, ...fresh } : current));
+    } catch (err) {
+      setError(err.message || "Unable to load payroll details.");
+    }
   }
 
   function beginEdit(item) {
     setEditMode(item.status === "DRAFT" ? "draft" : "regenerate");
     setEditError("");
+    setHalfDaysLoadError("");
     setEditing(item);
     setEditForm({
       totalWorkingDays: item.totalWorkingDays ?? "",
       workedDays: item.workedDays ?? "",
       lopDays: item.lopDays ?? "",
+      halfDays: item.halfDays ?? "",
       basicSalary: item.basicSalary ?? "",
       hra: item.hra ?? "",
       specialAllowance: item.specialAllowance ?? "",
@@ -315,8 +408,8 @@ export default function PayrollRunsPanel() {
     setMessage("");
 
     const n = (value) => Number(value || 0);
-    if (n(editForm.workedDays) + n(editForm.lopDays) > n(editForm.totalWorkingDays)) {
-      setEditError("Worked days + LOP days cannot exceed total working days.");
+    if (n(editForm.workedDays) + n(editForm.lopDays) + n(editForm.halfDays) > n(editForm.totalWorkingDays)) {
+      setEditError("Worked days + LOP days + Half days cannot exceed total working days.");
       return;
     }
     if (editPreview.gross <= 0) {
@@ -332,6 +425,7 @@ export default function PayrollRunsPanel() {
       totalWorkingDays: num(editForm.totalWorkingDays),
       workedDays: num(editForm.workedDays),
       lopDays: num(editForm.lopDays),
+      halfDays: num(editForm.halfDays),
       basicSalary: num(editForm.basicSalary),
       hra: num(editForm.hra),
       specialAllowance: num(editForm.specialAllowance),
@@ -431,25 +525,6 @@ export default function PayrollRunsPanel() {
     }
   }
 
-  async function handleRegenerate(item) {
-    const ok = await confirm({
-      title: "Regenerate payroll",
-      message: `Create a new version superseding ${item.payrollNumber}?`,
-      confirmText: "Regenerate",
-    });
-    if (!ok) return;
-    setError("");
-    setMessage("");
-    try {
-      const updated = await regeneratePayroll(item.id);
-      setMessage(`New version ${updated.payrollNumber} created.`);
-      setDetail(updated);
-      await refresh();
-    } catch (err) {
-      setError(err.message || "Failed to regenerate payroll.");
-    }
-  }
-
   async function handleDownload(item) {
     try {
       const { blob, filename } = await downloadPayslip(item.id);
@@ -460,8 +535,6 @@ export default function PayrollRunsPanel() {
   }
 
   const canDownload = (item) => ["APPROVED", "PAID"].includes(item.status);
-  // PAID/SUPERSEDED/CANCELLED payrolls must not be regenerated.
-  const canRegenerate = (item) => ["DRAFT", "GENERATED", "APPROVED"].includes(item.status);
   // Drafts are edited in place; generated/approved payslips are edited as a new version.
   const canEdit = (item) => ["DRAFT", "GENERATED", "APPROVED"].includes(item.status);
 
@@ -512,67 +585,111 @@ export default function PayrollRunsPanel() {
         </button>
 
         {showGenerate && (
-          <form className="payroll-form-grid" style={{ marginTop: 16 }} onSubmit={submitGenerate}>
-            <label>Payroll month
-              <MonthPicker id="payroll-generate-month" value={genMonth} onChange={(event) => setGenMonth(event.target.value)} required />
-            </label>
-            <label>Remarks
-              <input maxLength={INPUT_LIMITS.SHORT_TEXT} value={genRemarks} onChange={(event) => setGenRemarks(event.target.value)} placeholder="Enter remarks" />
-            </label>
-            <label className="checkbox-line" style={{ alignSelf: "end", height: 34, paddingTop: 0 }}>
-              <input
-                type="checkbox"
-                checked={genSaveAsDraft}
-                onChange={(event) => setGenSaveAsDraft(event.target.checked)}
-              />
-              Save as draft
-            </label>
-            <div className="full-span">
-              <label>Employees</label>
-              <select value="" onChange={selectAllEmployees}>
-                <option value="">Quick select…</option>
-                <option value="ALL">Select all active employees</option>
-                <option value="NONE" disabled={selectedIds.length === 0}>Deselect all</option>
-              </select>
-              <input maxLength={INPUT_LIMITS.SEARCH}
-                value={genEmployeeQuery}
-                onChange={(event) => setGenEmployeeQuery(event.target.value)}
-                placeholder="Search employees to include…"
-              />
-              <div
-                style={{
-                  maxHeight: 160, overflowY: "auto", border: "1px solid var(--line)",
-                  borderRadius: 10, marginTop: 8, padding: "6px 10px",
-                  display: "flex", flexDirection: "column", gap: 2,
-                }}
-              >
-                {matchedEmployees.length === 0 && (
-                  <span style={{ fontSize: 12, color: "var(--muted)", padding: "6px 2px" }}>
-                    {loadingEligibleEmployees
-                      ? "Loading employees eligible for payroll…"
-                      : availableEmployees.length === 0
-                      ? "All employees already have a payroll for this month."
-                      : "No employees match."}
-                  </span>
-                )}
-                {matchedEmployees.map((item) => (
-                  <label className="checkbox-line" key={item.id} style={{ fontSize: 12 }}>
+          <form className="gen-payroll" onSubmit={submitGenerate}>
+            <div className="gen-payroll-grid">
+              <section className="gen-card gen-settings">
+                <header className="gen-card-head"><Settings size={18} /> Payroll Settings</header>
+                <div className="gen-card-body">
+                  <label>Payroll Month <span className="gen-req">*</span>
+                    <MonthPicker id="payroll-generate-month" value={genMonth} onChange={(event) => setGenMonth(event.target.value)} required />
+                  </label>
+                  <label>Remarks
+                    <textarea
+                      rows={3}
+                      maxLength={200}
+                      value={genRemarks}
+                      onChange={(event) => setGenRemarks(event.target.value)}
+                      placeholder="e.g. August 2026 payroll"
+                    />
+                    <span className="gen-count">{genRemarks.length}/200</span>
+                  </label>
+                  <label className="gen-draft">
                     <input
                       type="checkbox"
-                      checked={selectedIds.includes(item.id)}
-                      onChange={() => toggleEmployee(item.id)}
+                      checked={genSaveAsDraft}
+                      onChange={(event) => setGenSaveAsDraft(event.target.checked)}
                     />
-                    <span>{item.employeeCode}</span> · {item.employeeName}
+                    <span>
+                      <strong>Save As Draft</strong>
+                      <small>Save the payroll as draft instead of final generation.</small>
+                    </span>
                   </label>
-                ))}
-              </div>
-              {selectedIds.length > 0 && (
-                <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 6 }}>
-                  {selectedIds.length} employee(s) selected
                 </div>
-              )}
+              </section>
+
+              <section className="gen-card gen-employees">
+                <header className="gen-card-head gen-employees-head">
+                  <span className="gen-title"><Users size={18} /> Employees</span>
+                  <span className="gen-head-actions">
+                    <span className="gen-selected-pill">{selectedIds.length} Selected</span>
+                    <label className="gen-select-all">
+                      <input type="checkbox" checked={allMatchedSelected} onChange={toggleAllMatched} disabled={matchedEmployees.length === 0} />
+                      Select All
+                    </label>
+                  </span>
+                </header>
+                <div className="gen-card-body">
+                  <div className="gen-search">
+                    <Search size={16} />
+                    <input
+                      maxLength={INPUT_LIMITS.SEARCH}
+                      value={genEmployeeQuery}
+                      onChange={(event) => setGenEmployeeQuery(event.target.value)}
+                      placeholder="Search employees to include…"
+                    />
+                  </div>
+                  <div className="gen-table-wrap">
+                    <table className="gen-table">
+                      <thead>
+                        <tr>
+                          <th className="gen-col-check">
+                            <input type="checkbox" aria-label="Select all employees" checked={allMatchedSelected} onChange={toggleAllMatched} disabled={matchedEmployees.length === 0} />
+                          </th>
+                          <th>Employee</th>
+                          <th>Emp Code</th>
+                          <th>Name</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {matchedEmployees.length === 0 && (
+                          <tr>
+                            <td colSpan={4} className="gen-empty">
+                              {loadingEligibleEmployees
+                                ? "Loading employees eligible for payroll…"
+                                : availableEmployees.length === 0
+                                ? "All employees already have a payroll for this month."
+                                : "No employees match."}
+                            </td>
+                          </tr>
+                        )}
+                        {matchedEmployees.map((item, index) => (
+                          <tr
+                            key={item.id}
+                            className={selectedIds.includes(item.id) ? "is-selected" : ""}
+                            onClick={() => toggleEmployee(item.id)}
+                          >
+                            <td className="gen-col-check">
+                              <input
+                                type="checkbox"
+                                checked={selectedIds.includes(item.id)}
+                                onClick={(event) => event.stopPropagation()}
+                                onChange={() => toggleEmployee(item.id)}
+                                aria-label={`Select ${item.employeeName}`}
+                              />
+                            </td>
+                            <td><span className={`gen-avatar gen-avatar-${index % 5}`}>{initials(item.employeeName)}</span></td>
+                            <td>{item.employeeCode}</td>
+                            <td>{item.employeeName}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </section>
             </div>
-            <div className="full-span payroll-form-actions">
+            <div className="gen-actions">
+              <button className="btn" type="button" onClick={() => setShowGenerate(false)}>Cancel</button>
               <button className="btn btn-primary" type="submit" disabled={generating}>
                 <Plus size={18} /> {generating ? "Generating…" : genSaveAsDraft ? "Generate Drafts" : "Generate Payroll"}
               </button>
@@ -702,9 +819,6 @@ export default function PayrollRunsPanel() {
                       {item.status === "APPROVED" && (
                         <button type="button" title="Mark as paid" onClick={() => runStatusAction(item, "PAID")}><Banknote size={16} /></button>
                       )}
-                      {canRegenerate(item) && (
-                        <button type="button" title="Regenerate (new version)" onClick={() => handleRegenerate(item)}><RotateCcw size={16} /></button>
-                      )}
                       {canDownload(item) && (
                         <button type="button" title="Download payslip" onClick={() => handleDownload(item)}><Download size={16} /></button>
                       )}
@@ -736,7 +850,7 @@ export default function PayrollRunsPanel() {
                 {detail.remarks && <span style={{ fontSize: 12, color: "var(--muted)" }}>{detail.remarks}</span>}
               </div>
 
-              <AttendanceSection data={detail} />
+              <AttendanceSection data={detail} halfDays={halfDays} />
 
               <div className="payroll-detail-grid">
                 <EarningsSection data={detail} />
@@ -783,6 +897,7 @@ export default function PayrollRunsPanel() {
             </div>
             <div className="payroll-modal-body">
               {editError && <div className="form-alert">{editError}</div>}
+              {halfDaysLoadError && <div className="form-alert">{halfDaysLoadError}</div>}
 
               {EDIT_SECTIONS.map(([heading, fields]) => (
                 <div key={heading}>
@@ -796,6 +911,7 @@ export default function PayrollRunsPanel() {
                           max="999999"
                           step={step || "0.01"}
                           value={editForm[key]}
+                          required={key === "halfDays"}
                           onChange={(event) => setEditForm((form) => ({ ...form, [key]: event.target.value }))}
                         />
                       </label>
@@ -815,6 +931,7 @@ export default function PayrollRunsPanel() {
               <div className="payroll-detail-grid">
                 <div className="pay-detail-item"><span>Gross</span><strong>{formatINR(editPreview.gross)}</strong></div>
                 <div className="pay-detail-item"><span>LOP amount</span><strong>{formatINR(editPreview.lopAmount)}</strong></div>
+                <div className="pay-detail-item"><span>Half day</span><strong>{formatINRWithPaise(editPreview.halfDayAmount)}</strong></div>
                 <div className="pay-detail-item"><span>Total deductions</span><strong>{formatINR(editPreview.deductions)}</strong></div>
                 <div className="pay-detail-item"><span>Net payable</span><strong>{formatINR(editPreview.net)}</strong></div>
               </div>

@@ -21,6 +21,7 @@ import { getEmployees } from '../services/employeeService';
 import { getAttendanceReport } from '../services/attendanceService';
 import { getLeaveReport } from '../services/leaveService';
 import { capitalizeName } from '../utils/formatName';
+import { calculateAttendanceShare } from '../services/reportService';
 import { todayISO } from '../utils/dateUtils';
 import ReportExplorer from './reports/ReportExplorer';
 import AttendanceMix from './reports/AttendanceMix';
@@ -102,6 +103,7 @@ export default function Reports() {
   const [loadingLeaves, setLoadingLeaves] = useState(true);
 
   const [attendanceSummary, setAttendanceSummary] = useState(null);
+  const [missedCheckoutCount, setMissedCheckoutCount] = useState(null);
   const [loadingAttendance, setLoadingAttendance] = useState(true);
 
   useEffect(() => {
@@ -147,11 +149,23 @@ export default function Reports() {
     async function loadAttendance() {
       setLoadingAttendance(true);
       try {
-        const result = await getAttendanceReport({ size: 1, month: currentMonth, year: currentYear });
-        if (!cancelled) setAttendanceSummary(result?.summary || null);
+        const [result, missedResult] = await Promise.all([
+          getAttendanceReport({ size: 1, month: currentMonth, year: currentYear }),
+          getAttendanceReport({
+            size: 1,
+            month: currentMonth,
+            year: currentYear,
+            attendanceStatus: 'MISSED_CHECKOUT',
+          }),
+        ]);
+        if (!cancelled) {
+          setAttendanceSummary(result?.summary || null);
+          setMissedCheckoutCount(missedResult?.totalElements ?? missedResult?.summary?.totalRecords ?? 0);
+        }
       } catch {
         if (!cancelled) {
           setAttendanceSummary(null);
+          setMissedCheckoutCount(null);
           showToast('Failed to load attendance report. HR/Manager access is required.', 'error');
         }
       } finally {
@@ -203,6 +217,7 @@ export default function Reports() {
   }), [leaveSummary]);
   const totalLeaves = leaveSummary?.totalLeaves || 0;
   const pendingLeaveCount = leaveSummary?.pendingLeaves || 0;
+  const attendanceShare = calculateAttendanceShare(attendanceSummary, missedCheckoutCount);
   const donutGradient = useMemo(() => {
     if (!totalLeaves) return '#eef2f7';
     let acc = 0;
@@ -224,8 +239,8 @@ export default function Reports() {
       icon: Clock3,
       tone: 'teal',
       label: 'Present-Day Share',
-      value: loadingAttendance ? '…' : `${Number(attendanceSummary?.attendancePercentage ?? 0).toFixed(1)}%`,
-      desc: loadingAttendance ? '' : `${attendanceSummary?.totalRecords ?? 0} Records · This Month`,
+      value: loadingAttendance ? '…' : attendanceShare == null ? '—' : `${attendanceShare.toFixed(1)}%`,
+      desc: loadingAttendance ? '' : '((Present + Half Days / 2 + Late + Missed Checkouts) / All Rows) × 100',
     },
     { icon: CalendarDays, tone: 'pink', label: 'Leave Requests', value: loadingLeaves ? '…' : totalLeaves, desc: 'This Month' },
     { icon: Hourglass, tone: 'orange', label: 'Pending Approvals', value: loadingLeaves ? '…' : pendingLeaveCount, desc: 'Awaiting Review · This Month' },
