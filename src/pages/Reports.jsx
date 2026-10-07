@@ -21,6 +21,7 @@ import { getEmployees } from '../services/employeeService';
 import { getAttendanceReport } from '../services/attendanceService';
 import { getLeaveReport } from '../services/leaveService';
 import { capitalizeName } from '../utils/formatName';
+import { formatEnum, displayDate, orDash, toExcelSerial } from '../utils/employeeFormat';
 import { calculateAttendanceShare } from '../services/reportService';
 import { todayISO } from '../utils/dateUtils';
 import ReportExplorer from './reports/ReportExplorer';
@@ -40,43 +41,84 @@ const LEAVE_STATUS_META = {
   CANCELLED: { label: 'Cancelled', color: '#94a3b8' },
 };
 
-// There's no backend report endpoint for the employee directory (only
-// /reports/attendance and /reports/leave exist), so PDF/Excel are built
-// client-side from the same rows already loaded into the table — no new
-// or changed API calls involved.
-const REPORT_HEADER = ['Employee Code', 'Name', 'Department', 'Designation', 'Email', 'Status'];
+// The employee directory is exported client-side; one column list keeps both
+// formats aligned. Date columns are written as real Excel date cells.
+const REPORT_COLUMNS = [
+  { header: 'S.No', wch: 6, value: (_employee, index) => index + 1 },
+  { header: 'Employee Code', wch: 15, value: (x) => x.employeeCode || '' },
+  { header: 'First Name', wch: 16, value: (x) => capitalizeName(x.firstName) },
+  { header: 'Last Name', wch: 16, value: (x) => capitalizeName(x.lastName) },
+  { header: 'Gender', wch: 9, value: (x) => formatEnum(x.gender) },
+  { header: 'Date of Birth', wch: 14, date: true, value: (x) => x.dateOfBirth || '' },
+  { header: 'Date of Joining', wch: 15, date: true, value: (x) => x.dateOfJoining || '' },
+  { header: 'Employment Type', wch: 17, value: (x) => formatEnum(x.employmentType) },
+  { header: 'Department', wch: 16, value: (x) => x.departmentName || '' },
+  { header: 'Designation', wch: 22, value: (x) => x.designationName || '' },
+  { header: 'Job Title', wch: 22, value: (x) => x.jobTitle || '' },
+  { header: 'Reporting Manager', wch: 20, value: (x) => capitalizeName(x.reportingManagerName) },
+  { header: 'Email', wch: 32, value: (x) => x.email || '' },
+  { header: 'Mobile', wch: 14, value: (x) => x.phoneNumber || '' },
+  { header: 'Status', wch: 10, value: (x) => (x.active ? 'Active' : 'Inactive') },
+];
 
-function rowsToAoA(rows) {
-  return rows.map((x) => [
-    x.employeeCode || '',
-    `${x.firstName || ''} ${x.lastName || ''}`.trim(),
-    x.departmentName || '',
-    x.designationName || '',
-    x.email || '',
-    x.active ? 'Active' : 'Inactive',
-  ]);
-}
+const exportStamp = () => new Date().toISOString().slice(0, 10);
 
 function downloadExcel(rows) {
-  const worksheet = XLSX.utils.aoa_to_sheet([REPORT_HEADER, ...rowsToAoA(rows)]);
-  worksheet['!cols'] = [{ wch: 14 }, { wch: 22 }, { wch: 16 }, { wch: 20 }, { wch: 28 }, { wch: 10 }];
+  const aoa = [
+    REPORT_COLUMNS.map((column) => column.header),
+    ...rows.map((row, index) =>
+      REPORT_COLUMNS.map((column) => {
+        const value = column.value(row, index);
+        if (!column.date) return value;
+        const serial = toExcelSerial(value);
+        return serial === null ? '' : { t: 'n', v: serial, z: 'dd-mmm-yyyy' };
+      }),
+    ),
+  ];
+  const worksheet = XLSX.utils.aoa_to_sheet(aoa);
+  worksheet['!cols'] = REPORT_COLUMNS.map((column) => ({ wch: column.wch }));
+  worksheet['!autofilter'] = {
+    ref: XLSX.utils.encode_range({
+      s: { r: 0, c: 0 },
+      e: { r: aoa.length - 1, c: REPORT_COLUMNS.length - 1 },
+    }),
+  };
   const workbook = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(workbook, worksheet, 'Employee Directory');
-  XLSX.writeFile(workbook, `employee-directory-${new Date().toISOString().slice(0, 10)}.xlsx`);
+  XLSX.writeFile(workbook, `employee-directory-${exportStamp()}.xlsx`);
 }
 
 function downloadPdf(rows) {
-  const doc = new jsPDF({ orientation: 'landscape' });
+  const doc = new jsPDF({ orientation: 'landscape', format: 'a3' });
   doc.setFontSize(14);
   doc.text('Employee Directory', 14, 16);
+  doc.setFontSize(9);
+  doc.text(`${rows.length} employees · generated ${displayDate(exportStamp())}`, 14, 22);
   autoTable(doc, {
-    head: [REPORT_HEADER],
-    body: rowsToAoA(rows),
-    startY: 22,
-    styles: { fontSize: 9 },
+    head: [REPORT_COLUMNS.map((column) => column.header)],
+    body: rows.map((row, index) =>
+      REPORT_COLUMNS.map((column) =>
+        column.date ? displayDate(column.value(row, index)) : column.value(row, index),
+      ),
+    ),
+    startY: 27,
+    styles: { fontSize: 8, cellPadding: 2 },
     headStyles: { fillColor: [37, 99, 235] },
   });
-  doc.save(`employee-directory-${new Date().toISOString().slice(0, 10)}.pdf`);
+  doc.save(`employee-directory-${exportStamp()}.pdf`);
+}
+
+async function fetchAllEmployees(pageSize = 100) {
+  const employees = [];
+  let page = 0;
+  while (true) {
+    const result = await getEmployees({ page, size: pageSize });
+    const content = result?.content || [];
+    employees.push(...content);
+    if (result?.last !== false || content.length === 0) break;
+    page += 1;
+  }
+  return employees;
 }
 
 const TABS = [
@@ -110,10 +152,13 @@ export default function Reports() {
     let cancelled = false;
     async function loadEmployees() {
       try {
-        const result = await getEmployees({ size: 100 });
-        if (!cancelled) setEmployees(result?.content || []);
+        const result = await fetchAllEmployees();
+        if (!cancelled) setEmployees(result);
       } catch {
-        if (!cancelled) setEmployees([]);
+        if (!cancelled) {
+          setEmployees([]);
+          showToast('Failed to load employee directory.', 'error');
+        }
       } finally {
         if (!cancelled) setEmployeesLoading(false);
       }
@@ -188,7 +233,10 @@ export default function Reports() {
     return employees.filter((x) => {
       if (department && x.departmentName !== department) return false;
       if (!term) return true;
-      const haystack = [x.firstName, x.lastName, x.email, x.departmentName, x.designationName]
+      const haystack = [
+        x.firstName, x.lastName, x.employeeCode, x.email, x.phoneNumber,
+        x.departmentName, x.designationName, x.jobTitle, formatEnum(x.employmentType),
+      ]
         .filter(Boolean)
         .join(' ')
         .toLowerCase();
@@ -355,7 +403,7 @@ export default function Reports() {
             <Search size={16} />
             <input maxLength={INPUT_LIMITS.SEARCH}
               type="text"
-              placeholder="Search by name, email or department…"
+              placeholder="Search by name, code, email, mobile or department…"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
@@ -380,15 +428,18 @@ export default function Reports() {
         </div>
 
         <div className="table-wrap">
-          <table className="reports-table">
+          <table className="reports-table reports-table--wide">
             <thead>
-              <tr><th>Employee</th><th>Department</th><th>Designation</th><th>Email</th><th>Status</th></tr>
+              <tr>
+                <th>Code</th><th>Employee</th><th>Gender</th><th>Date of Birth</th><th>Date of Joining</th>
+                <th>Employment Type</th><th>Department</th><th>Designation</th><th>Email</th><th>Mobile</th><th>Status</th>
+              </tr>
             </thead>
             <tbody>
               {employeesLoading &&
                 Array.from({ length: 5 }).map((_, i) => (
                   <tr className="skeleton-row" key={i}>
-                    {Array.from({ length: 5 }).map((__, j) => (
+                    {Array.from({ length: 11 }).map((__, j) => (
                       <td key={j}><div className="skeleton-bar" /></td>
                     ))}
                   </tr>
@@ -396,15 +447,21 @@ export default function Reports() {
               {!employeesLoading &&
                 filteredEmployees.map((x) => (
                   <tr key={x.id}>
+                    <td className="cell-nowrap">{orDash(x.employeeCode)}</td>
                     <td>
                       <div className="emp-cell">
                         <span className="emp-avatar">{initialsOf(x.firstName, x.lastName)}</span>
                         <span className="emp-name">{capitalizeName(x.firstName)} {capitalizeName(x.lastName)}</span>
                       </div>
                     </td>
+                    <td>{orDash(formatEnum(x.gender))}</td>
+                    <td className="cell-nowrap">{orDash(displayDate(x.dateOfBirth))}</td>
+                    <td className="cell-nowrap">{orDash(displayDate(x.dateOfJoining))}</td>
+                    <td className="cell-nowrap">{orDash(formatEnum(x.employmentType))}</td>
                     <td>{x.departmentName ? <span className="dept-badge">{x.departmentName}</span> : '—'}</td>
-                    <td>{x.designationName || '—'}</td>
-                    <td>{x.email}</td>
+                    <td>{orDash(x.designationName)}</td>
+                    <td>{orDash(x.email)}</td>
+                    <td className="cell-nowrap">{orDash(x.phoneNumber)}</td>
                     <td>
                       <span className={`status-pill ${x.active ? 'approved' : 'cancelled'}`}>
                         {x.active ? 'Active' : 'Inactive'}

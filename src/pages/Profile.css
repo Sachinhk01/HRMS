@@ -280,3 +280,13 @@
   .profile-header-actions { width: 100%; justify-content: flex-start; }
   .profile-header-actions .btn { flex: 1; justify-content: center; }
 }
+
+.profile-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.profile-card .profile-chip {
+  display: inline-flex; align-items: center; padding: 4px 11px; border-radius: 999px;
+  font-size: 12px; font-weight: 600; color: #475569; background: #f1f5f9; border: 1px solid #e2e8f0;
+}
+.profile-card .profile-chip--code { color: #2563eb; background: #eaf2fe; border-color: #cfe0fc; font-weight: 700; }
+.profile-card .profile-chip--ok { color: #15803d; background: #dcfce7; border-color: #bbf7d0; }
+.profile-card .profile-chip--off { color: #64748b; background: #f1f5f9; }
+@media (max-width: 640px) { .profile-chips { justify-content: center; } }

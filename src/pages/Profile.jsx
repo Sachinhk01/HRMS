@@ -8,6 +8,7 @@ import { hrmsService } from '../services/hrmsService';
 
 import { getEmployeeById, getProfilePhotoUrl } from '../services/employeeService';
 import { capitalizeName } from '../utils/formatName';
+import { formatEnum, displayDate, orDash, calcAge, calcTenure } from '../utils/employeeFormat';
 import './Profile.css';
 import { INPUT_LIMITS } from '../utils/inputLimits';
 import DatePicker from '../components/DatePicker';
@@ -172,6 +173,14 @@ export default function Profile() {
         <div className="profile-card-body">
           <h2>{fullName}</h2>
           <span>{profile.jobTitle || profile.designationName}{profile.departmentName ? ` · ${profile.departmentName}` : ''}</span>
+          <div className="profile-chips">
+            {profile.employeeCode && <span className="profile-chip profile-chip--code">{profile.employeeCode}</span>}
+            {profile.employmentType && <span className="profile-chip">{formatEnum(profile.employmentType)}</span>}
+            <span className={`profile-chip ${profile.active ? 'profile-chip--ok' : 'profile-chip--off'}`}>
+              {profile.active ? 'Active' : 'Inactive'}
+            </span>
+            {profile.dateOfJoining && <span className="profile-chip">Joined {displayDate(profile.dateOfJoining)}</span>}
+          </div>
         </div>
       </section>
 
@@ -208,30 +217,39 @@ export default function Profile() {
                     <option value="FEMALE">Female</option>
                   </select>
                 </label>
+                <label>Employee Code<input value={profile.employeeCode || ''} disabled /></label>
+                <label>Age<input value={calcAge(profile.dateOfBirth) || 'Not provided'} disabled /></label>
                 <button className="btn btn-primary full-span" type="submit" disabled={saving}>
                   <Save size={18} />{saving ? 'Saving…' : 'Save Changes'}
                 </button>
               </form>
             ) : (
               <div className="profile-info-grid">
-                <div><span>Full Name</span><strong>{fullName}</strong></div>
-                <div><span>Email</span><strong>{profile.email}</strong></div>
-                <div><span>Phone</span><strong>{profile.phoneNumber || 'Not provided'}</strong></div>
-                <div><span>Date of Birth</span><strong>{profile.dateOfBirth || 'Not provided'}</strong></div>
-                <div><span>Gender</span><strong>{profile.gender || 'Not provided'}</strong></div>
+                <div><span>First Name</span><strong>{capitalizeName(profile.firstName) || 'Not provided'}</strong></div>
+                <div><span>Last Name</span><strong>{capitalizeName(profile.lastName) || 'Not provided'}</strong></div>
+                <div><span>Email</span><strong>{orDash(profile.email)}</strong></div>
+                <div><span>Mobile</span><strong>{profile.phoneNumber || 'Not provided'}</strong></div>
+                <div><span>Date of Birth</span><strong>{displayDate(profile.dateOfBirth) || 'Not provided'}</strong></div>
+                <div><span>Age</span><strong>{calcAge(profile.dateOfBirth) || 'Not provided'}</strong></div>
+                <div><span>Gender</span><strong>{formatEnum(profile.gender) || 'Not provided'}</strong></div>
+                <div><span>Employee Code</span><strong>{orDash(profile.employeeCode)}</strong></div>
               </div>
             )
           )}
 
           {activeTab === 'Employment Details' && (
             <div className="profile-info-grid">
-              <div><span>Employee Code</span><strong>{profile.employeeCode}</strong></div>
-              <div><span>Job Title</span><strong>{profile.jobTitle || 'Not provided'}</strong></div>
-              <div><span>Designation</span><strong>{profile.designationName || 'Not provided'}</strong></div>
+              <div><span>Employee Code</span><strong>{orDash(profile.employeeCode)}</strong></div>
+              <div><span>Status</span><strong>{profile.active ? 'Active' : 'Inactive'}</strong></div>
+              <div><span>Employment Type</span><strong>{formatEnum(profile.employmentType) || 'Not provided'}</strong></div>
+              <div><span>Date of Joining</span><strong>{displayDate(profile.dateOfJoining) || 'Not provided'}</strong></div>
+              <div><span>Tenure</span><strong>{calcTenure(profile.dateOfJoining) || 'Not provided'}</strong></div>
               <div><span>Department</span><strong>{profile.departmentName || 'Not provided'}</strong></div>
-              <div><span>Date of Joining</span><strong>{profile.dateOfJoining || 'Not provided'}</strong></div>
-              <div><span>Employment Type</span><strong>{profile.employmentType || 'Not provided'}</strong></div>
+              <div><span>Designation</span><strong>{profile.designationName || 'Not provided'}</strong></div>
+              <div><span>Job Title</span><strong>{profile.jobTitle || 'Not provided'}</strong></div>
               <div><span>Reporting Manager</span><strong>{capitalizeName(profile.reportingManagerName) || 'Not assigned'}</strong></div>
+              <div><span>Work Email</span><strong>{orDash(profile.email)}</strong></div>
+              <div><span>Mobile</span><strong>{profile.phoneNumber || 'Not provided'}</strong></div>
               <div className="full-span"><small>Employment Details Can Only be Updated By HR From The Employees Page.</small></div>
             </div>
           )}

@@ -211,3 +211,6 @@
   to   { opacity: 1; transform: translateY(0); }
 }
 @media (prefers-reduced-motion: reduce) { .page-reveal > * { animation: none; } }
+
+.reports-table--wide { min-width: 1280px; }
+.reports-table .cell-nowrap { white-space: nowrap; }
