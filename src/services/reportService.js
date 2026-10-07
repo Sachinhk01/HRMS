@@ -159,11 +159,19 @@ export async function getReportEmployees() {
 
 export const EMPTY = '—';
 
+// Same "Xh Ym" style as the Attendance page (e.g. 0h 0m, 6h 43m).
 export const formatMinutes = (m) =>
-  m == null ? EMPTY : `${Math.floor(m / 60)}h ${String(m % 60).padStart(2, '0')}m`;
+  m == null ? EMPTY : `${Math.floor(m / 60)}h ${m % 60}m`;
 
-/** "2026-07-27T09:04:11" -> "09:04". Values are local wall-clock: no timezone conversion. */
-export const timeOfDay = (iso) => (iso ? iso.slice(11, 16) : EMPTY);
+/** "2026-07-27T18:04:11" -> "06:04 PM" (same 12-hour style as the Attendance page).
+ *  Values are local wall-clock: no timezone conversion. */
+export const timeOfDay = (iso) => {
+  if (!iso) return EMPTY;
+  const hour = Number(iso.slice(11, 13));
+  const minutes = iso.slice(14, 16);
+  if (Number.isNaN(hour) || minutes.length !== 2) return EMPTY;
+  return `${String(hour % 12 || 12).padStart(2, '0')}:${minutes} ${hour >= 12 ? 'PM' : 'AM'}`;
+};
 
 export const statusLabel = (s) =>
   String(s || '').toLowerCase().split('_').map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');

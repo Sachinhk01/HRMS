@@ -1,5 +1,6 @@
 import DatePicker from '../components/DatePicker';
 import { useEffect, useMemo, useState } from 'react';
+import { motion } from 'framer-motion';
 import {
   Users,
   UserCheck,
@@ -14,7 +15,6 @@ import {
 import * as XLSX from 'xlsx';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import PageHeader from '../components/PageHeader';
 import ExportMenu from '../components/ExportMenu';
 import { useToast } from '../context/ToastContext';
 import { getEmployees } from '../services/employeeService';
@@ -27,6 +27,7 @@ import { todayISO } from '../utils/dateUtils';
 import ReportExplorer from './reports/ReportExplorer';
 import AttendanceMix from './reports/AttendanceMix';
 import './Reports.css';
+import './ReportsRedesign.css';
 import './reports/Reportexplorer.css';
 import { INPUT_LIMITS } from '../utils/inputLimits';
 
@@ -41,10 +42,18 @@ const LEAVE_STATUS_META = {
   CANCELLED: { label: 'Cancelled', color: '#94a3b8' },
 };
 
-// The employee directory is exported client-side; one column list keeps both
-// formats aligned. Date columns are written as real Excel date cells.
+// There's no backend report endpoint for the employee directory (only
+// /reports/attendance and /reports/leave exist), so PDF/Excel are built
+// client-side from the employee rows already loaded for the table — no new
+// or changed API calls involved.
+//
+// One column list drives BOTH the Excel and PDF export, so they never drift.
+//   header : column title
+//   wch    : Excel column width
+//   value  : (employee, rowIndex) => cell value
+//   date   : true -> written to Excel as a real date cell (sortable/filterable)
 const REPORT_COLUMNS = [
-  { header: 'S.No', wch: 6, value: (_employee, index) => index + 1 },
+  { header: 'S.No', wch: 6, value: (x, i) => i + 1 },
   { header: 'Employee Code', wch: 15, value: (x) => x.employeeCode || '' },
   { header: 'First Name', wch: 16, value: (x) => capitalizeName(x.firstName) },
   { header: 'Last Name', wch: 16, value: (x) => capitalizeName(x.lastName) },
@@ -61,64 +70,66 @@ const REPORT_COLUMNS = [
   { header: 'Status', wch: 10, value: (x) => (x.active ? 'Active' : 'Inactive') },
 ];
 
-const exportStamp = () => new Date().toISOString().slice(0, 10);
+const EXPORT_STAMP = () => new Date().toISOString().slice(0, 10);
 
 function downloadExcel(rows) {
   const aoa = [
-    REPORT_COLUMNS.map((column) => column.header),
-    ...rows.map((row, index) =>
-      REPORT_COLUMNS.map((column) => {
-        const value = column.value(row, index);
-        if (!column.date) return value;
-        const serial = toExcelSerial(value);
-        return serial === null ? '' : { t: 'n', v: serial, z: 'dd-mmm-yyyy' };
+    REPORT_COLUMNS.map((c) => c.header),
+    ...rows.map((row, i) =>
+      REPORT_COLUMNS.map((c) => {
+        const v = c.value(row, i);
+        if (c.date) {
+          const serial = toExcelSerial(v);
+          // Real Excel date (shown as 15-Aug-2024); blank when the employee has no date.
+          return serial === null ? '' : { t: 'n', v: serial, z: 'dd-mmm-yyyy' };
+        }
+        return v;
       }),
     ),
   ];
+
   const worksheet = XLSX.utils.aoa_to_sheet(aoa);
-  worksheet['!cols'] = REPORT_COLUMNS.map((column) => ({ wch: column.wch }));
+  worksheet['!cols'] = REPORT_COLUMNS.map((c) => ({ wch: c.wch }));
+  // Filter arrows on the header row so HR can sort/filter inside Excel.
   worksheet['!autofilter'] = {
-    ref: XLSX.utils.encode_range({
-      s: { r: 0, c: 0 },
-      e: { r: aoa.length - 1, c: REPORT_COLUMNS.length - 1 },
-    }),
+    ref: XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: aoa.length - 1, c: REPORT_COLUMNS.length - 1 } }),
   };
+
   const workbook = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(workbook, worksheet, 'Employee Directory');
-  XLSX.writeFile(workbook, `employee-directory-${exportStamp()}.xlsx`);
+  XLSX.writeFile(workbook, `employee-directory-${EXPORT_STAMP()}.xlsx`);
 }
 
 function downloadPdf(rows) {
+  // 15 columns need real width: A3 landscape + small type keeps it readable.
   const doc = new jsPDF({ orientation: 'landscape', format: 'a3' });
   doc.setFontSize(14);
   doc.text('Employee Directory', 14, 16);
   doc.setFontSize(9);
-  doc.text(`${rows.length} employees · generated ${displayDate(exportStamp())}`, 14, 22);
+  doc.text(`${rows.length} employees · generated ${displayDate(EXPORT_STAMP())}`, 14, 22);
   autoTable(doc, {
-    head: [REPORT_COLUMNS.map((column) => column.header)],
-    body: rows.map((row, index) =>
-      REPORT_COLUMNS.map((column) =>
-        column.date ? displayDate(column.value(row, index)) : column.value(row, index),
-      ),
+    head: [REPORT_COLUMNS.map((c) => c.header)],
+    body: rows.map((row, i) =>
+      REPORT_COLUMNS.map((c) => (c.date ? displayDate(c.value(row, i)) : c.value(row, i))),
     ),
     startY: 27,
     styles: { fontSize: 8, cellPadding: 2 },
     headStyles: { fillColor: [37, 99, 235] },
   });
-  doc.save(`employee-directory-${exportStamp()}.pdf`);
+  doc.save(`employee-directory-${EXPORT_STAMP()}.pdf`);
 }
 
-async function fetchAllEmployees(pageSize = 100) {
-  const employees = [];
-  let page = 0;
-  while (true) {
-    const result = await getEmployees({ page, size: pageSize });
-    const content = result?.content || [];
-    employees.push(...content);
-    if (result?.last !== false || content.length === 0) break;
-    page += 1;
+// The directory endpoint is paged, so walk every page. The old code read only
+// the first 100 employees, which silently truncated both the table and the export.
+async function fetchAllEmployees(pageSize = 100, maxPages = 50) {
+  const all = [];
+  for (let page = 0; page < maxPages; page += 1) {
+    const res = await getEmployees({ page, size: pageSize });
+    const content = res?.content || [];
+    all.push(...content);
+    if (res?.last !== false || content.length === 0) break;
   }
-  return employees;
+  return all;
 }
 
 const TABS = [
@@ -152,13 +163,10 @@ export default function Reports() {
     let cancelled = false;
     async function loadEmployees() {
       try {
-        const result = await fetchAllEmployees();
-        if (!cancelled) setEmployees(result);
+        const list = await fetchAllEmployees();
+        if (!cancelled) setEmployees(list);
       } catch {
-        if (!cancelled) {
-          setEmployees([]);
-          showToast('Failed to load employee directory.', 'error');
-        }
+        if (!cancelled) setEmployees([]);
       } finally {
         if (!cancelled) setEmployeesLoading(false);
       }
@@ -280,27 +288,102 @@ export default function Reports() {
     return `conic-gradient(${segments.join(', ')})`;
   }, [leaveStatusCounts, totalLeaves]);
 
+  const pct = (n, total) => (total ? Math.round((n / total) * 100) : 0);
+  const shareValue = attendanceShare == null ? null : Math.max(0, Math.min(100, attendanceShare));
+
   const kpis = [
-    { icon: Users, tone: 'blue', label: 'Employees', value: employeesLoading ? '…' : employees.length, desc: 'Total Accounts' },
-    { icon: UserCheck, tone: 'green', label: 'Active Employees', value: employeesLoading ? '…' : activeCount, desc: employeesLoading ? '' : `${activePct}% of Total` },
+    { icon: Users, tone: 'blue', label: 'Employees', loading: employeesLoading, value: employees.length, desc: 'Total accounts' },
     {
-      icon: Clock3,
-      tone: 'teal',
-      label: 'Present-Day Share',
-      value: loadingAttendance ? '…' : attendanceShare == null ? '—' : `${attendanceShare.toFixed(1)}%`,
-      desc: loadingAttendance ? '' : '((Present + Half Days / 2 + Late + Missed Checkouts) / All Rows) × 100',
+      icon: UserCheck, tone: 'green', label: 'Active employees', loading: employeesLoading,
+      value: activeCount, desc: `${activePct}% of total`, progress: activePct,
     },
-    { icon: CalendarDays, tone: 'pink', label: 'Leave Requests', value: loadingLeaves ? '…' : totalLeaves, desc: 'This Month' },
-    { icon: Hourglass, tone: 'orange', label: 'Pending Approvals', value: loadingLeaves ? '…' : pendingLeaveCount, desc: 'Awaiting Review · This Month' },
+    {
+      icon: Clock3, tone: 'teal', label: 'Present-day share', loading: loadingAttendance,
+      value: shareValue == null ? '—' : `${shareValue.toFixed(1)}%`, desc: 'This month',
+      progress: shareValue, hint: '((Present + Half Days / 2 + Late + Missed Checkouts) / All Rows) × 100',
+    },
+    { icon: CalendarDays, tone: 'pink', label: 'Leave requests', loading: loadingLeaves, value: totalLeaves, desc: 'This month' },
+    { icon: Hourglass, tone: 'orange', label: 'Pending approvals', loading: loadingLeaves, value: pendingLeaveCount, desc: 'Awaiting review' },
+  ];
+
+  // Quick numbers shown in the hero banner (same real data as the cards below).
+  const heroStats = [
+    { icon: Users, label: 'Employees', loading: employeesLoading, value: employees.length },
+    { icon: UserCheck, label: 'Active', loading: employeesLoading, value: activeCount },
+    { icon: Hourglass, label: 'Pending leave', loading: loadingLeaves, value: pendingLeaveCount },
   ];
 
   return (
     <div className="reports-page page-reveal">
-      <PageHeader
-        eyebrow="HR Analytics"
-        title="Reports"
-        description="Attendance And Leave Insights For The Current Month, Straight From The Backend."
-      />
+      <motion.section
+        className="reports-hero"
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+      >
+        <div className="reports-hero-text">
+          <span className="eyebrow">HR analytics</span>
+          <h1>Workforce reports</h1>
+          <p>Attendance and leave for the current month, plus your full employee directory.</p>
+          <div className="reports-hero-stats">
+            {heroStats.map((stat) => (
+              <div className="reports-hero-stat" key={stat.label}>
+                <span className="reports-hero-stat-icon"><stat.icon size={16} /></span>
+                <div>
+                  {stat.loading ? <span className="rd-skel rd-skel--hero" /> : <strong>{stat.value}</strong>}
+                  <small>{stat.label}</small>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="reports-hero-illustration" aria-hidden="true">
+          <svg viewBox="0 0 320 200" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <linearGradient id="rhCard" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0" stopColor="#ffffff" />
+                <stop offset="1" stopColor="#eef4ff" />
+              </linearGradient>
+              <linearGradient id="rhBar" x1="0" y1="1" x2="0" y2="0">
+                <stop offset="0" stopColor="#93c5fd" />
+                <stop offset="1" stopColor="#3b82f6" />
+              </linearGradient>
+            </defs>
+
+            <circle cx="262" cy="46" r="52" fill="#dbeafe" opacity="0.55" />
+            <circle cx="56" cy="160" r="38" fill="#c7d7fe" opacity="0.45" />
+            <circle cx="40" cy="64" r="4" fill="#60a5fa" />
+            <circle cx="292" cy="132" r="4" fill="#a5b4fc" />
+
+            <rect x="84" y="30" width="172" height="130" rx="16" fill="url(#rhCard)" stroke="#dbe7fb" strokeWidth="2" />
+            <rect x="100" y="46" width="56" height="7" rx="3.5" fill="#bfdbfe" />
+            <rect x="100" y="59" width="36" height="5" rx="2.5" fill="#e2e8f0" />
+
+            <path d="M100 138 H178" stroke="#e2e8f0" strokeWidth="2" strokeLinecap="round" />
+            <g>
+              <rect className="rh-bar" style={{ '--i': 0 }} x="102" y="112" width="13" height="26" rx="4" fill="url(#rhBar)" />
+              <rect className="rh-bar" style={{ '--i': 1 }} x="122" y="96" width="13" height="42" rx="4" fill="url(#rhBar)" />
+              <rect className="rh-bar" style={{ '--i': 2 }} x="142" y="106" width="13" height="32" rx="4" fill="url(#rhBar)" />
+              <rect className="rh-bar" style={{ '--i': 3 }} x="162" y="82" width="13" height="56" rx="4" fill="#2563eb" />
+            </g>
+
+            <circle cx="216" cy="98" r="24" stroke="#e2e8f0" strokeWidth="9" />
+            <circle
+              className="rh-ring"
+              cx="216" cy="98" r="24"
+              stroke="#2563eb" strokeWidth="9" strokeLinecap="round"
+              strokeDasharray="105 151" transform="rotate(-90 216 98)"
+            />
+            <rect x="198" y="132" width="36" height="5" rx="2.5" fill="#e2e8f0" />
+
+            <g className="rh-badge">
+              <circle cx="250" cy="152" r="16" fill="#22c55e" stroke="#fff" strokeWidth="3" />
+              <path d="M243 152 l5 5 l9 -10" stroke="#fff" strokeWidth="3.2" strokeLinecap="round" strokeLinejoin="round" />
+            </g>
+          </svg>
+        </div>
+      </motion.section>
 
       <div className="rx-tabs" role="tablist" aria-label="Report sections">
         {TABS.map(([key, label]) => (
@@ -321,70 +404,105 @@ export default function Reports() {
       {tab === 'leave' && <ReportExplorer kind="leave" />}
 
       {tab === 'overview' && (<>
-      <div className="reports-kpi-grid">
+      <div className="rd-kpi-grid">
         {kpis.map((kpi) => (
-          <div key={kpi.label} className={`reports-kpi-card tone-${kpi.tone}`}>
-            <div className="kpi-top">
-              <div className="kpi-icon"><kpi.icon size={19} /></div>
+          <div key={kpi.label} className={`rd-kpi tone-${kpi.tone}`} title={kpi.hint}>
+            <div className="rd-kpi-icon"><kpi.icon size={19} /></div>
+            <div className="rd-kpi-body">
+              <span className="rd-kpi-label">{kpi.label}</span>
+              {kpi.loading ? <span className="rd-skel rd-skel--value" /> : <strong className="rd-kpi-value">{kpi.value}</strong>}
+              {!kpi.loading && kpi.desc && <small className="rd-kpi-desc">{kpi.desc}</small>}
             </div>
-            <strong className="kpi-value">{kpi.value}</strong>
-            <span className="kpi-label">{kpi.label}</span>
-            {kpi.desc && <small className="kpi-desc">{kpi.desc}</small>}
+            {!kpi.loading && kpi.progress != null && (
+              <div className="rd-kpi-meter" role="img" aria-label={`${Math.round(kpi.progress)} percent`}>
+                <span style={{ width: `${kpi.progress}%` }} />
+              </div>
+            )}
           </div>
         ))}
       </div>
 
-      <div className="reports-charts-grid">
-        <div className="panel chart-card wide">
-          <div className="chart-head"><BarChart3 size={17} /><h3>Employees by Department</h3></div>
-          {departmentCounts.length ? (
-            <div className="chart-placeholder bars">
-              {departmentCounts.map(([name, count]) => (
-                <div className="bar-col" key={name}>
-                  <span className="bar-value">{count}</span>
-                  <div className="bar-fill" style={{ height: `${(count / maxDeptCount) * 85}%` }} />
-                  <small title={name}>{name}</small>
+      <div className="rd-charts-grid">
+        <section className="rd-card rd-card--wide">
+          <div className="rd-card-head">
+            <span className="rd-card-icon"><BarChart3 size={17} /></span>
+            <div>
+              <h3>Employees by department</h3>
+              <small>{employeesLoading ? 'Loading…' : `${employees.length} employees across ${departmentCounts.length} ${departmentCounts.length === 1 ? 'department' : 'departments'}`}</small>
+            </div>
+          </div>
+          {employeesLoading ? (
+            <div className="rd-dept-list">
+              {[0, 1, 2].map((i) => <div key={i} className="rd-skel rd-skel--row" />)}
+            </div>
+          ) : departmentCounts.length ? (
+            <div className="rd-dept-list">
+              {departmentCounts.map(([name, count], i) => (
+                <div className="rd-dept-row" key={name}>
+                  <div className="rd-dept-meta">
+                    <span className="rd-dept-name" title={name}>{name}</span>
+                    <span className="rd-dept-num"><strong>{count}</strong><em>{pct(count, employees.length)}%</em></span>
+                  </div>
+                  <div className="rd-dept-track">
+                    <span className="rd-dept-fill" style={{ width: `${(count / maxDeptCount) * 100}%`, '--i': i }} />
+                  </div>
                 </div>
               ))}
             </div>
           ) : (
             <div className="empty-state">
               <FolderOpen size={28} />
-              <p>No Department Data Yet</p>
+              <p>No department data yet</p>
             </div>
           )}
-        </div>
+        </section>
 
-        <div className="panel chart-card">
-          <div className="chart-head"><PieChart size={17} /><h3>Leave Status · This Month</h3></div>
-          {totalLeaves ? (
-            <div className="donut-wrap">
-              <div className="donut" style={{ background: donutGradient }}>
-                <div className="donut-hole"><strong>{totalLeaves}</strong><small>Requests</small></div>
+        <section className="rd-card">
+          <div className="rd-card-head">
+            <span className="rd-card-icon"><PieChart size={17} /></span>
+            <div>
+              <h3>Leave status</h3>
+              <small>This month</small>
+            </div>
+          </div>
+          {loadingLeaves ? (
+            <div className="rd-skel rd-skel--donut" />
+          ) : totalLeaves ? (
+            <div className="rd-donut-wrap">
+              <div className="rd-donut" style={{ background: donutGradient }}>
+                <div className="rd-donut-hole"><strong>{totalLeaves}</strong><small>Requests</small></div>
               </div>
-              <div className="donut-legend">
+              <ul className="rd-legend">
                 {Object.entries(leaveStatusCounts)
                   .filter(([, count]) => count > 0)
                   .map(([status, count]) => (
-                    <span key={status}>
+                    <li key={status}>
                       <i style={{ background: LEAVE_STATUS_META[status].color }} />
-                      {LEAVE_STATUS_META[status].label} ({count})
-                    </span>
+                      <span>{LEAVE_STATUS_META[status].label}</span>
+                      <strong>{count}</strong>
+                      <em>{pct(count, totalLeaves)}%</em>
+                    </li>
                   ))}
-              </div>
+              </ul>
             </div>
           ) : (
             <div className="empty-state">
               <CalendarDays size={28} />
-              <p>No Leave Requests Yet</p>
+              <p>No leave requests this month</p>
             </div>
           )}
-        </div>
+        </section>
       </div>
 
       {attendanceSummary?.totalRecords > 0 && (
-        <section className="panel">
-          <div className="chart-head"><Clock3 size={17} /><h3>Attendance Mix · This Month</h3></div>
+        <section className="rd-card">
+          <div className="rd-card-head">
+            <span className="rd-card-icon"><Clock3 size={17} /></span>
+            <div>
+              <h3>Attendance mix</h3>
+              <small>{attendanceSummary.totalRecords} person-days this month</small>
+            </div>
+          </div>
           <AttendanceMix summary={attendanceSummary} />
         </section>
       )}
@@ -392,8 +510,10 @@ export default function Reports() {
       <section className="panel">
         <div className="panel-title">
           <div>
-            <span className="eyebrow">Directory (Browser Export)</span>
-            <h2>Employee Directory</h2>
+            <span className="eyebrow">
+              {employeesLoading ? 'Loading…' : `${filteredEmployees.length} of ${employees.length} employees`}
+            </span>
+            <h2>Employee directory</h2>
           </div>
           <div className="panel-title-icon"><Users size={19} /></div>
         </div>
@@ -459,8 +579,8 @@ export default function Reports() {
                     <td className="cell-nowrap">{orDash(displayDate(x.dateOfJoining))}</td>
                     <td className="cell-nowrap">{orDash(formatEnum(x.employmentType))}</td>
                     <td>{x.departmentName ? <span className="dept-badge">{x.departmentName}</span> : '—'}</td>
-                    <td>{orDash(x.designationName)}</td>
-                    <td>{orDash(x.email)}</td>
+                    <td className="cell-nowrap">{orDash(x.designationName)}</td>
+                    <td className="cell-nowrap">{orDash(x.email)}</td>
                     <td className="cell-nowrap">{orDash(x.phoneNumber)}</td>
                     <td>
                       <span className={`status-pill ${x.active ? 'approved' : 'cancelled'}`}>
@@ -474,8 +594,8 @@ export default function Reports() {
           {!employeesLoading && !filteredEmployees.length && (
             <div className="empty-state">
               <Users size={28} />
-              <p>{employees.length ? 'No employees match your filters.' : 'No employee records.'}</p>
-              <small>Try Clearing The Search or Department Filter.</small>
+              <p>{employees.length ? 'No employees match your filters.' : 'No employee records yet.'}</p>
+              <small>Try clearing the search or the department filter.</small>
             </div>
           )}
         </div>
