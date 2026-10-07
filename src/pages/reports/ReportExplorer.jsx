@@ -58,7 +58,8 @@ const CONFIG = {
       {
         icon: Percent, tone: 'teal', label: 'Present-Day Share',
         value: s.attendanceShare == null ? '—' : `${s.attendanceShare.toFixed(1)}%`,
-        desc: '((Present + Half Days / 2 + Late + Missed Checkouts) / All Rows) × 100',
+        desc: 'Of all person-days',
+        hint: '((Present + Half Days / 2 + Late + Missed Checkouts) / All Rows) × 100',
       },
     ],
     note: null,
@@ -303,7 +304,7 @@ export default function ReportExplorer({ kind }) {
         <section className="panel rx-panel rx-stats-panel">
           <div className="rx-stats" data-count={cards.length}>
             {cards.map((card) => (
-              <div key={card.label} className={`rx-stat tone-${card.tone}`}>
+              <div key={card.label} className={`rx-stat tone-${card.tone}`} title={card.hint}>
                 <div className="kpi-icon"><card.icon size={17} /></div>
                 <div className="rx-stat-text">
                   <strong>{card.value ?? 0}</strong>
