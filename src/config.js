@@ -50,7 +50,6 @@ export const ROLE_MENUS = {
     ['/employees', 'Employees'],
     ['/reports', 'Reports'],
     ['/payroll', 'My Salary'],
-    ['/form16', 'Form 16'],
     ['/profile', 'Profile'],
   ],
 
@@ -162,7 +161,7 @@ export const ROUTE_ROLES = {
   ],
   // Managers are employees too: this route renders their own read-only salary view.
   '/payroll': ['EMPLOYEE', 'HR_ADMIN', 'MANAGER'],
-  '/form16': ['HR_ADMIN', 'MANAGER', 'SUPER_ADMIN'],
+  '/form16': ['HR_ADMIN', 'SUPER_ADMIN'],
   '/settings': [
     'HR_ADMIN',
     'MANAGER',
