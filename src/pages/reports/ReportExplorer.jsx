@@ -1,15 +1,15 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
   Users, UserCheck, UserX, Clock3, CalendarDays, Percent, CheckCircle2, Hourglass,
-  XCircle, Ban, Timer, ArrowUp, ArrowDown, ChevronsUpDown, AlertTriangle, Info, Search, RotateCcw,
+  XCircle, Ban, Timer, ArrowUp, ArrowDown, ChevronsUpDown, AlertTriangle, Info, RotateCcw,
 } from 'lucide-react';
 import DatePicker, { MonthPicker } from '../../components/DatePicker';
 import ExportMenu from '../../components/ExportMenu';
 import AttendanceMix from './AttendanceMix';
+import EmployeePicker from './EmployeePicker';
 import Pagination from '../../components/Pagination';
 import { useToast } from '../../context/ToastContext';
 import { daysInMonth, formatDate, makeISO, pad } from '../../utils/dateUtils';
-import { INPUT_LIMITS } from '../../utils/inputLimits';
 import {
   ATTENDANCE_STATUSES, LEAVE_STATUSES, PAGE_SIZES, EMPTY,
   calculateAttendanceShare, defaultReportFilters, validateReportFilters, fetchReport, downloadReportFile,
@@ -110,7 +110,6 @@ export default function ReportExplorer({ kind }) {
 
   const [departments, setDepartments] = useState([]);
   const [employees, setEmployees] = useState([]);
-  const [empSearch, setEmpSearch] = useState('');
 
   const validation = validateReportFilters(filters);
 
@@ -194,16 +193,6 @@ export default function ReportExplorer({ kind }) {
     }
   }
 
-  const employeeOptions = useMemo(() => {
-    const term = empSearch.trim().toLowerCase();
-    const matches = employees.filter((e) => !term
-      || (e.employeeName || '').toLowerCase().includes(term)
-      || (e.employeeCode || '').toLowerCase().includes(term)).slice(0, 200);
-    const selected = employees.find((e) => String(e.id) === String(filters.employeeId));
-    if (selected && !matches.some((e) => e.id === selected.id)) matches.unshift(selected);
-    return matches;
-  }, [employees, empSearch, filters.employeeId]);
-
   const rows = data?.content || [];
   const attendanceShare = kind === 'attendance'
     ? calculateAttendanceShare(data?.summary, missedCheckoutCount)
@@ -221,7 +210,6 @@ export default function ReportExplorer({ kind }) {
     .some((key) => String(filters[key]) !== String(defaults[key]));
 
   function resetFilters() {
-    setEmpSearch('');
     setFilters({ ...defaults, size: filters.size, sortBy: filters.sortBy, sortDir: filters.sortDir });
   }
 
@@ -247,24 +235,11 @@ export default function ReportExplorer({ kind }) {
 
           <div className="rx-field rx-field-wide">
             <span>Employee</span>
-            <div className="rx-employee-pick">
-              <div className="rx-search">
-                <Search size={14} />
-                <input
-                  type="text"
-                  maxLength={INPUT_LIMITS.SEARCH}
-                  placeholder="Find by name or code…"
-                  value={empSearch}
-                  onChange={(e) => setEmpSearch(e.target.value)}
-                />
-              </div>
-              <select className="compact-select" value={filters.employeeId} onChange={(e) => change({ employeeId: e.target.value })}>
-                <option value="">All employees</option>
-                {employeeOptions.map((e) => (
-                  <option key={e.id} value={e.id}>{(e.employeeName || '').trim()} ({e.employeeCode})</option>
-                ))}
-              </select>
-            </div>
+            <EmployeePicker
+              employees={employees}
+              value={filters.employeeId}
+              onChange={(id) => change({ employeeId: id })}
+            />
           </div>
         </div>
 

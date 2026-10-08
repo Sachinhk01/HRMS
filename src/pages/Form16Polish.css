@@ -1,0 +1,188 @@
+/* =====================================================================
+   Form 16 — professional polish layer (visual only, no logic touched)
+   Import AFTER Form16.css. Every rule is scoped to .form16-page.
+   ===================================================================== */
+
+/* ---------- Hero ---------- */
+.form16-page .f16-hero {
+  position: relative; display: flex; align-items: center; justify-content: space-between;
+  gap: 24px; min-height: 150px; padding: 24px 30px; border-radius: 22px; overflow: hidden;
+  background: linear-gradient(135deg, #f4f8ff 0%, #eaf1ff 55%, #f1f0ff 100%);
+  border: 1px solid rgba(191, 219, 254, .6);
+  box-shadow: 0 12px 32px rgba(30, 55, 90, .08);
+}
+.form16-page .f16-hero::before {
+  content: ''; position: absolute; top: -70px; right: -30px; width: 220px; height: 220px;
+  background: radial-gradient(circle, rgba(37, 99, 235, .13), transparent 70%);
+  animation: f16-aurora 9s ease-in-out infinite alternate; pointer-events: none;
+}
+.form16-page .f16-hero-text { position: relative; z-index: 1; max-width: 62%; }
+.form16-page .f16-hero-text .eyebrow {
+  display: block; margin-bottom: 8px; font-size: 12px; font-weight: 700; color: #2563eb;
+  text-transform: uppercase; letter-spacing: .06em;
+}
+.form16-page .f16-hero-text h1 {
+  margin: 0 0 8px; font-size: clamp(24px, 2.6vw, 30px); font-weight: 800;
+  color: #0f172a; letter-spacing: -.02em; line-height: 1.15;
+}
+.form16-page .f16-hero-text p { margin: 0; font-size: 13.5px; line-height: 1.55; color: #64748b; }
+.form16-page .f16-hero-art { position: relative; z-index: 1; flex-shrink: 0; width: 200px; max-width: 34%; }
+.form16-page .f16-hero-art svg { width: 100%; height: auto; display: block; }
+.f16-float { animation: f16-float 4.5s ease-in-out infinite; }
+.f16-float-2 { animation: f16-float 5.5s ease-in-out -2s infinite; }
+.f16-draw { stroke-dasharray: 70; stroke-dashoffset: 70; animation: f16-draw 1.1s ease forwards .4s; }
+.f16-draw-2 { animation-delay: .6s; }
+.f16-draw-3 { animation-delay: .8s; }
+.f16-tick { stroke-dasharray: 30; stroke-dashoffset: 30; animation: f16-draw .7s ease forwards 1.1s; }
+
+/* ---------- Entrance (pure CSS, so no logic changes) ---------- */
+.form16-page .form16-toolbar { animation: f16-rise .5s cubic-bezier(.16, 1, .3, 1) both .05s; }
+.form16-page .f16-grid > :nth-child(1) { animation: f16-rise .5s cubic-bezier(.16, 1, .3, 1) both .12s; }
+.form16-page .f16-grid > :nth-child(2) { animation: f16-rise .5s cubic-bezier(.16, 1, .3, 1) both .2s; }
+.form16-page .f16-form { animation: f16-fade .3s ease both; }
+
+/* ---------- Panels ---------- */
+.form16-page .form16-toolbar,
+.form16-page .f16-panel {
+  border-radius: 18px; border-color: #e8eef7;
+  box-shadow: 0 6px 20px rgba(30, 55, 90, .06);
+  transition: box-shadow .25s ease, border-color .25s ease;
+}
+.form16-page .form16-toolbar { padding: 18px 20px; gap: 12px 16px; }
+.form16-page .f16-panel:hover { box-shadow: 0 12px 28px rgba(30, 55, 90, .09); }
+.form16-page .f16-panel-head { padding: 13px 16px; background: linear-gradient(180deg, #fff, #fbfcfe); }
+.form16-page .f16-panel-head h3 { font-size: 13.5px; font-weight: 700; letter-spacing: -.01em; }
+
+/* ---------- Fields ---------- */
+.form16-page .f16-field > label,
+.form16-page label.f16-field > span:first-child {
+  font-size: 11.5px; font-weight: 600; color: #475569; letter-spacing: .01em;
+}
+.form16-page .f16-field input:not([type="checkbox"]),
+.form16-page .f16-field select,
+.form16-page .f16-field textarea,
+.form16-page .f16-readonly {
+  border: 1px solid #dfe6f1; background: #fff; border-radius: 12px;
+  box-shadow: none; color: #0f172a; font-size: 12.5px; font-weight: 500;
+  transition: border-color .18s ease, box-shadow .18s ease, background .18s ease;
+}
+.form16-page .f16-readonly { background: #f8fafc; color: #334155; }
+.form16-page .f16-field input:not([type="checkbox"]):hover,
+.form16-page .f16-field select:hover,
+.form16-page .f16-field textarea:hover { border-color: #c3d0e4; }
+.form16-page .f16-field input:not([type="checkbox"]):focus,
+.form16-page .f16-field select:focus,
+.form16-page .f16-field textarea:focus {
+  outline: none; border-color: #2563eb; background: #fff;
+  box-shadow: 0 0 0 4px rgba(37, 99, 235, .12);
+}
+.form16-page .f16-toggle {
+  display: inline-flex; align-items: center; gap: 9px; padding: 10px 14px;
+  background: #f8fafc; border: 1px solid #e8eef7; border-radius: 12px;
+  font-weight: 600; color: #334155; cursor: pointer; width: fit-content;
+  transition: background .18s ease, border-color .18s ease;
+}
+.form16-page .f16-toggle:hover { background: #f1f6ff; border-color: #cfe0fb; }
+.form16-page .f16-toggle input { accent-color: #2563eb; }
+
+/* ---------- Action buttons ---------- */
+.form16-page .form16-actions .btn {
+  border-radius: 12px; font-weight: 600; letter-spacing: .005em;
+  transition: transform .15s ease, box-shadow .2s ease, background .2s ease;
+}
+.form16-page .form16-actions .btn-secondary { background: #f3f6fb; border: 1px solid #e6ecf5; }
+.form16-page .form16-actions .btn-secondary:not(:disabled):hover { background: #eaf1fc; border-color: #cfe0fb; }
+.form16-page .form16-actions .btn-primary {
+  background: linear-gradient(135deg, #2f6df0, #2257d6);
+  box-shadow: 0 8px 18px rgba(37, 99, 235, .25);
+}
+.form16-page .form16-actions .btn-primary:not(:disabled):hover { box-shadow: 0 12px 24px rgba(37, 99, 235, .32); }
+.form16-page .form16-actions .btn:not(:disabled):active { transform: translateY(0) scale(.98); }
+.form16-page .form16-actions .btn:disabled { opacity: .5; cursor: not-allowed; box-shadow: none; transform: none; }
+
+/* ---------- Tabs (sliding pill) ---------- */
+.form16-page .f16-tabs { padding: 9px 12px; gap: 4px; background: #f6f9fd; }
+.form16-page .f16-tab {
+  position: relative; padding: 8px 12px; border-radius: 10px; border-color: transparent;
+  font-size: 11.8px; font-weight: 600; color: #64748b;
+}
+.form16-page .f16-tab:hover { background: rgba(255, 255, 255, .7); color: #0f172a; }
+.form16-page .f16-tab.active { background: transparent; border-color: transparent; box-shadow: none; color: #2563eb; }
+.form16-page .f16-tab > span:not(.f16-tab-pill) { position: relative; z-index: 1; }
+.form16-page .f16-tab-pill {
+  position: absolute; inset: 0; z-index: 0; background: #fff; border-radius: 10px;
+  border: 1px solid #dbe7ff; box-shadow: 0 3px 10px rgba(37, 99, 235, .10);
+}
+.form16-page .f16-tab:focus-visible { outline: 2px solid #2563eb; outline-offset: 1px; }
+
+/* ---------- Section headings & notes ---------- */
+.form16-page .f16-form { padding: 18px 20px; }
+.form16-page .f16-section-heading h4 {
+  position: relative; padding-left: 12px; font-size: 14px; font-weight: 700; color: #0f172a;
+}
+.form16-page .f16-section-heading h4::before {
+  content: ''; position: absolute; left: 0; top: 2px; bottom: 2px; width: 4px;
+  border-radius: 4px; background: linear-gradient(180deg, #3b82f6, #6366f1);
+}
+.form16-page .f16-note { color: #64748b; line-height: 1.6; }
+.form16-page .f16-section-separator { border: 0; border-top: 1px dashed #e2e8f0; margin: 16px 0; }
+
+/* ---------- Tables, challans, employee card ---------- */
+.form16-page .f16-quarter-table { border-collapse: separate; border-spacing: 0; width: 100%; }
+.form16-page .f16-quarter-table th {
+  background: #f6f9fd; color: #475569; font-size: 10.5px; text-transform: uppercase; letter-spacing: .04em;
+}
+.form16-page .f16-quarter-table tbody tr { transition: background .18s ease; }
+.form16-page .f16-quarter-table tbody tr:hover { background: #f8fbff; }
+.form16-page .f16-quarter-total td { background: #f1f6ff; }
+.form16-page .f16-challan-row {
+  border-radius: 14px; border: 1px solid #e8eef7; background: #fff;
+  transition: transform .18s ease, box-shadow .2s ease, border-color .2s ease;
+}
+.form16-page .f16-challan-row:hover { transform: translateY(-2px); box-shadow: 0 10px 22px rgba(30, 55, 90, .08); border-color: #cfe0fb; }
+.form16-page .f16-icon-btn { border-radius: 10px; transition: transform .15s ease, background .15s ease; }
+.form16-page .f16-icon-btn:hover { transform: translateY(-2px); }
+.form16-page .f16-employee-card > div { border-radius: 14px; background: #f8fbff; border: 1px solid #e4edfb; }
+
+/* ---------- Status pill ---------- */
+.form16-page .f16-status { display: inline-flex; align-items: center; gap: 6px; border-radius: 999px; font-weight: 700; letter-spacing: .04em; }
+.form16-page .f16-status::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+.form16-page .f16-status.active::before { animation: f16-pulse 2s ease-in-out infinite; }
+
+/* ---------- Preview side ---------- */
+.form16-page .f16-viewfull-btn {
+  border-radius: 10px; font-weight: 600;
+  transition: transform .15s ease, box-shadow .2s ease;
+}
+.form16-page .f16-viewfull-btn:not(:disabled):hover { transform: translateY(-1px); box-shadow: 0 8px 18px rgba(37, 99, 235, .25); }
+.form16-page .f16-empty { padding: 44px 20px; }
+.form16-page .f16-empty svg { color: #93a7c6; animation: f16-float 4.5s ease-in-out infinite; }
+.form16-page .f16-empty strong { font-size: 13px; }
+.form16-page .form16-paper { border-radius: 12px; box-shadow: 0 10px 28px rgba(30, 55, 90, .10); }
+
+/* ---------- Alerts ---------- */
+.form16-page .f16-alert { border-radius: 14px; animation: f16-rise .35s cubic-bezier(.16, 1, .3, 1) both; }
+
+/* ---------- Full-page preview modal ---------- */
+.f16-fullview { animation: f16-fade .2s ease both; backdrop-filter: blur(3px); }
+.f16-fullview-card { animation: f16-pop .28s cubic-bezier(.16, 1, .3, 1) both; border-radius: 20px; }
+
+/* ---------- Keyframes ---------- */
+@keyframes f16-aurora { from { transform: translate(0, 0) scale(1); } to { transform: translate(-40px, 22px) scale(1.15); } }
+@keyframes f16-float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
+@keyframes f16-draw { to { stroke-dashoffset: 0; } }
+@keyframes f16-rise { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: none; } }
+@keyframes f16-fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes f16-pop { from { opacity: 0; transform: translateY(14px) scale(.96); } to { opacity: 1; transform: none; } }
+@keyframes f16-pulse { 0%, 100% { opacity: 1; } 50% { opacity: .3; } }
+
+@media (max-width: 760px) {
+  .form16-page .f16-hero { flex-direction: column; text-align: center; padding: 20px; }
+  .form16-page .f16-hero-text { max-width: 100%; }
+  .form16-page .f16-hero-art { width: 150px; max-width: 55%; }
+  .form16-page .f16-form { padding: 14px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .form16-page *, .form16-page *::before, .f16-fullview, .f16-fullview-card { animation: none !important; }
+  .f16-draw, .f16-tick { stroke-dashoffset: 0; }
+}

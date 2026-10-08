@@ -3,6 +3,7 @@ import {
   Plus,
   Pencil,
   Power,
+  Trash2,
   X,
   Loader2,
   AlertTriangle,
@@ -16,6 +17,7 @@ import {
   updateLeaveType,
   activateLeaveType,
   deactivateLeaveType,
+  deleteLeaveType,
   syncLeaveTypeBalances,
 } from '../../services/leaveService';
 // Reuses the table / modal / form styles from the Master Data settings.
@@ -126,6 +128,29 @@ export default function LeaveTypesSettings({ canManage = false }) {
       await load();
     } catch (err) {
       showToast(errMsg(err, 'Failed to update status.'), 'error');
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  async function removeType(item) {
+    if (busyId) return;
+
+    const ok = await confirm({
+      title: 'Delete leave type',
+      message: `Permanently delete "${item.name}"? This also removes every leave request, approval, transaction and employee balance recorded under it. This cannot be undone. If you only want to stop employees from applying, deactivate it instead.`,
+      confirmText: 'Delete permanently',
+      danger: true,
+    });
+    if (!ok) return;
+
+    setBusyId(item.id);
+    try {
+      await deleteLeaveType(item.id);
+      showToast(`${item.name} deleted.`, 'success');
+      await load();
+    } catch (err) {
+      showToast(errMsg(err, 'Failed to delete leave type.'), 'error');
     } finally {
       setBusyId(null);
     }
@@ -255,6 +280,15 @@ export default function LeaveTypesSettings({ canManage = false }) {
                     <div className="mdm-row-actions">
                       <button type="button" title="Edit Leave Type" onClick={() => setModal({ mode: 'edit', item })}>
                         <Pencil size={15} />
+                      </button>
+                      <button
+                        type="button"
+                        className="danger"
+                        title="Delete Leave Type"
+                        onClick={() => removeType(item)}
+                        disabled={busyId === item.id}
+                      >
+                        <Trash2 size={15} />
                       </button>
                     </div>
                   </td>

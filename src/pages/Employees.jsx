@@ -18,6 +18,8 @@ import {
   getProfilePhotoUrl,
 } from '../services/employeeService';
 import './Employees.css';
+import './EmployeesPolish.css';
+import { AnimatedCount, ActiveFilters } from './EmployeesExtras';
 import { capitalizeName } from '../utils/formatName';
 import { listJobTitles } from '../services/masterDataService';
 import { INPUT_LIMITS } from '../utils/inputLimits';
@@ -407,6 +409,11 @@ export default function Employees() {
           <span className="eyebrow">Organization</span>
           <h1>Employees</h1>
           <p>Browse Your Organization And View Employee Information.</p>
+          <div className="emp-stats">
+            <div className="emp-stat"><strong><AnimatedCount value={rows.length} /></strong><span>Total</span></div>
+            <div className="emp-stat tone-green"><strong><AnimatedCount value={rows.filter((e) => e.active).length} /></strong><span>Active</span></div>
+            <div className="emp-stat tone-violet"><strong><AnimatedCount value={departmentNames.length} /></strong><span>Departments</span></div>
+          </div>
           {canCreate && (
             <button className="btn btn-primary emp-add-btn" onClick={openAddModal}>
               <UserPlus size={16} /> Add Employee
@@ -449,21 +456,21 @@ export default function Employees() {
           <Search size={15} />
           <input maxLength={INPUT_LIMITS.SEARCH} type="text" placeholder="Search name, email or employee code..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
         </label>
-        <select className="compact-select" value={deptFilter} onChange={(e) => setDeptFilter(e.target.value)}>
+        <select className="compact-select" data-active={deptFilter !== 'ALL'} value={deptFilter} onChange={(e) => setDeptFilter(e.target.value)}>
           <option value="ALL">All Departments</option>
           {departmentNames.map((d) => <option key={d} value={d}>{d}</option>)}
         </select>
-        <select className="compact-select" value={desigFilter} onChange={(e) => setDesigFilter(e.target.value)}>
+        <select className="compact-select" data-active={desigFilter !== 'ALL'} value={desigFilter} onChange={(e) => setDesigFilter(e.target.value)}>
           <option value="ALL">All Designations</option>
           {designationNames.map((d) => <option key={d} value={d}>{d}</option>)}
         </select>
         {canFilterByJobTitle && (
-          <select className="compact-select" value={jobTitleFilter} onChange={(e) => setJobTitleFilter(e.target.value)}>
+          <select className="compact-select" data-active={jobTitleFilter !== 'ALL'} value={jobTitleFilter} onChange={(e) => setJobTitleFilter(e.target.value)}>
             <option value="ALL">All Job Titles</option>
             {jobTitleNames.map((t) => <option key={t} value={t}>{t}</option>)}
           </select>
         )}
-        <select className="compact-select" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+        <select className="compact-select" data-active={statusFilter !== 'ALL'} value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
           <option value="ALL">All Status</option>
           <option value="ACTIVE">Active</option>
           <option value="INACTIVE">Inactive</option>
@@ -473,6 +480,20 @@ export default function Employees() {
           <button className={view === 'list' ? 'active' : ''} onClick={() => setView('list')} title="List view"><List size={16} /></button>
         </div>
       </motion.div>
+
+      <ActiveFilters
+        loading={loading}
+        shown={filtered.length}
+        total={rows.length}
+        chips={[
+          searchQuery.trim() && { key: 'q', label: `Search: “${searchQuery.trim()}”`, onRemove: () => setSearchQuery('') },
+          deptFilter !== 'ALL' && { key: 'dept', label: deptFilter, onRemove: () => setDeptFilter('ALL') },
+          desigFilter !== 'ALL' && { key: 'desig', label: desigFilter, onRemove: () => setDesigFilter('ALL') },
+          canFilterByJobTitle && jobTitleFilter !== 'ALL' && { key: 'title', label: jobTitleFilter, onRemove: () => setJobTitleFilter('ALL') },
+          statusFilter !== 'ALL' && { key: 'status', label: statusFilter === 'ACTIVE' ? 'Active' : 'Inactive', onRemove: () => setStatusFilter('ALL') },
+        ].filter(Boolean)}
+        onClearAll={() => { setSearchQuery(''); setDeptFilter('ALL'); setDesigFilter('ALL'); setJobTitleFilter('ALL'); setStatusFilter('ALL'); }}
+      />
 
       {/* ---------- Grid view ---------- */}
       <AnimatePresence mode="wait">
@@ -485,10 +506,21 @@ export default function Employees() {
                 <div className="skeleton-bar" style={{ width: '50%' }} />
               </div>
             ))}
+            <AnimatePresence mode="popLayout">
             {!loading && pageItems.map((emp) => (
-              <motion.article className="panel emp-card" key={emp.id} variants={fadeUp} whileHover={{ y: -6 }}>
+              <motion.article
+                className="panel emp-card"
+                key={emp.id}
+                layout
+                variants={fadeUp}
+                exit={{ opacity: 0, scale: 0.94, transition: { duration: 0.18 } }}
+                whileHover={{ y: -6 }}
+              >
                 <div className="emp-card-top">
-                  <EmpAvatar emp={emp} size="lg" photoUrl={photoUrls[emp.id]} />
+                  <span className="emp-avatar-wrap">
+                    <EmpAvatar emp={emp} size="lg" photoUrl={photoUrls[emp.id]} />
+                    <i className={`emp-dot ${emp.active ? 'on' : 'off'}`} title={emp.active ? 'Active' : 'Inactive'} />
+                  </span>
                   <span className="dept-badge" style={{ background: `${deptColor(emp.departmentName)}1a`, color: deptColor(emp.departmentName) }}>{emp.departmentName || '—'}</span>
                 </div>
                 <strong className="emp-card-name">{capitalizeName(emp.firstName)} {capitalizeName(emp.lastName)}</strong>
@@ -502,6 +534,7 @@ export default function Employees() {
                 </div>
               </motion.article>
             ))}
+            </AnimatePresence>
             {!loading && !err && !filtered.length && (
               <div className="empty-state" style={{ gridColumn: '1 / -1' }}>
                 <Users size={32} />
@@ -519,8 +552,8 @@ export default function Employees() {
                   {loading && Array.from({ length: 5 }).map((_, i) => (
                     <tr key={`lsk-${i}`} className="skeleton-row"><td colSpan={8}><div className="skeleton-bar" /></td></tr>
                   ))}
-                  {!loading && pageItems.map((emp) => (
-                    <motion.tr key={emp.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, ease: easeOut }}>
+                  {!loading && pageItems.map((emp, index) => (
+                    <motion.tr key={emp.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, delay: Math.min(index, 10) * 0.035, ease: easeOut }}>
                       <td><span className="emp-cell"><EmpAvatar emp={emp} photoUrl={photoUrls[emp.id]} /><span className="emp-name">{capitalizeName(emp.firstName)} {capitalizeName(emp.lastName)}</span></span></td>
                       <td>{emp.employeeCode || '—'}</td>
                       <td>{emp.departmentName ? <span className="dept-badge" style={{ background: `${deptColor(emp.departmentName)}1a`, color: deptColor(emp.departmentName) }}>{emp.departmentName}</span> : '—'}</td>

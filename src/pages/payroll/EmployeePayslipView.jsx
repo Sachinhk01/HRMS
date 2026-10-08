@@ -88,8 +88,11 @@ export default function EmployeePayslipView() {
 
   useEffect(() => { load(); }, [load]);
 
+  // Employees only see payslips that have been PAID (approved, cancelled and superseded ones are hidden).
   const sorted = useMemo(
-    () => [...payslips].sort((a, b) => new Date(b.payrollMonth) - new Date(a.payrollMonth)),
+    () => payslips
+      .filter((item) => item.status === "PAID")
+      .sort((a, b) => new Date(b.payrollMonth) - new Date(a.payrollMonth)),
     [payslips],
   );
 
@@ -101,10 +104,8 @@ export default function EmployeePayslipView() {
   useEffect(() => { setSelectedId(null); }, [sorted.length]);
 
   const latest = sorted[0] || null;
-  const paidCount = sorted.filter((item) => item.status === "PAID").length;
-  const totalPaid = sorted
-    .filter((item) => item.status === "PAID")
-    .reduce((sum, item) => sum + Number(item.netPayable || 0), 0);
+  const paidCount = sorted.length;
+  const totalPaid = sorted.reduce((sum, item) => sum + Number(item.netPayable || 0), 0);
 
   async function handleDownload(item) {
     if (!item || downloading) return;
@@ -144,24 +145,18 @@ export default function EmployeePayslipView() {
         <div className="panel">
           <EmptyState
             icon={FileText}
-            title="No payslips yet"
-            note="Once your salary is processed, your salary slips will appear here."
+            title="No paid payslips yet"
+            note="Your salary slip appears here once your salary has been paid."
           />
         </div>
       ) : (
         <>
-          <div className="payroll-summary-grid">
+          <div className="payroll-summary-grid" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))" }}>
             <div className="panel payroll-summary-card tone-blue">
               <span className="summary-icon"><Banknote size={20} /></span>
-              <span>Latest Net Pay</span>
+              <span>Latest Paid Salary</span>
               <strong>{formatINR(latest?.netPayable)}</strong>
               <small>{latest ? payrollMonthLabel(latest.payrollMonth) : "—"}</small>
-            </div>
-            <div className="panel payroll-summary-card tone-green">
-              <span className="summary-icon"><WalletCards size={20} /></span>
-              <span>Payslips Issued</span>
-              <strong>{sorted.length}</strong>
-              <small>All payroll records</small>
             </div>
             <div className="panel payroll-summary-card tone-orange">
               <span className="summary-icon"><CreditCard size={20} /></span>

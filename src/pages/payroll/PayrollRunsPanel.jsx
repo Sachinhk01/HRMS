@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
+import { motion } from "framer-motion";
+import { EASE_OUT, fadeUp, staggerGrid } from "../../components/Motion";
 import {
   Banknote,
   CheckCircle2,
@@ -32,7 +34,7 @@ import {
   updateDraftPayroll,
   updatePayrollStatus,
 } from "../../services/payrollService";
-import { AttendanceSection, DeductionsSection, EarningsSection, EmptyState, PayrollBadge } from "./payrollUi";
+import { AttendanceSection, DeductionsSection, EarningsSection, EmptyState, PayrollBadge, AnimatedNumber } from "./payrollUi";
 import { useConfirm } from "../../context/ConfirmContext";
 import { useToast } from "../../context/ToastContext";
 import { INPUT_LIMITS } from '../../utils/inputLimits';
@@ -544,31 +546,31 @@ export default function PayrollRunsPanel() {
       {message && <div className="success-alert">{message}</div>}
 
       {/* Summary */}
-      <div className="payroll-summary-grid">
-        <section className="panel payroll-summary-card tone-blue">
+      <motion.div className="payroll-summary-grid" initial="hidden" animate="show" variants={staggerGrid}>
+        <motion.section variants={fadeUp} whileHover={{ y: -5 }} className="panel payroll-summary-card tone-blue">
           <div className="summary-icon"><FileText size={20} /></div>
           <span>Records · {payrollMonthLabel(`${month}-01`)}</span>
-          <strong>{summary.total}</strong>
-        </section>
-        <section className="panel payroll-summary-card tone-green">
+          <strong><AnimatedNumber value={summary.total} /></strong>
+        </motion.section>
+        <motion.section variants={fadeUp} whileHover={{ y: -5 }} className="panel payroll-summary-card tone-green">
           <div className="summary-icon"><IndianRupee size={20} /></div>
           <span>Total Net Payable</span>
-          <strong>{formatINR(summary.net)}</strong>
+          <strong><AnimatedNumber value={summary.net} format={formatINR} /></strong>
           <small>Paid records only, for this month</small>
-        </section>
-        <section className="panel payroll-summary-card tone-orange">
+        </motion.section>
+        <motion.section variants={fadeUp} whileHover={{ y: -5 }} className="panel payroll-summary-card tone-orange">
           <div className="summary-icon"><WalletCards size={20} /></div>
           <span>Approved</span>
-          <strong>{summary.approved}</strong>
+          <strong><AnimatedNumber value={summary.approved} /></strong>
           <small>Ready to be paid</small>
-        </section>
-        <section className="panel payroll-summary-card tone-pink">
+        </motion.section>
+        <motion.section variants={fadeUp} whileHover={{ y: -5 }} className="panel payroll-summary-card tone-pink">
           <div className="summary-icon"><Banknote size={20} /></div>
           <span>Paid</span>
-          <strong>{summary.paid}</strong>
+          <strong><AnimatedNumber value={summary.paid} /></strong>
           <small>Marked as disbursed</small>
-        </section>
-      </div>
+        </motion.section>
+      </motion.div>
 
       {/* Generate */}
       <section className="panel">
@@ -772,8 +774,13 @@ export default function PayrollRunsPanel() {
                   </td>
                 </tr>
               )}
-              {!loading && filtered.map((item) => (
-                <tr key={item.id}>
+              {!loading && filtered.map((item, index) => (
+                <motion.tr
+                  key={item.id}
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.3, delay: Math.min(index, 12) * 0.035, ease: EASE_OUT }}
+                >
                   <td>
                     <strong>{item.payrollNumber}</strong>
                   </td>
@@ -824,7 +831,7 @@ export default function PayrollRunsPanel() {
                       )}
                     </div>
                   </td>
-                </tr>
+                </motion.tr>
               ))}
             </tbody>
           </table>

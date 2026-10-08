@@ -2,16 +2,7 @@ import api from './api';
 import { getDepartments } from './employeeService';
 import { todayISO } from '../utils/dateUtils';
 
-/**
- * Reports & Analytics — GET /api/v1/reports/{attendance|leave}
- *
- * Rules taken from the backend guide:
- *  - JSON success bodies are NOT wrapped in ApiResponse -> use `data`, never `data.data`.
- *  - Send month+year OR startDate+endDate, never both.
- *  - startDate > endDate answers 500 (not 400) -> validate before calling.
- *  - Only the sort fields below are safe; anything else 500s.
- *  - page/size are ignored for excel/pdf (the whole filtered set is exported).
- */
+
 
 export const ATTENDANCE_STATUSES = [
   'PRESENT', 'LATE', 'HALF_DAY', 'ABSENT', 'LEAVE', 'HOLIDAY', 'WEEKEND', 'MISSED_CHECKOUT',

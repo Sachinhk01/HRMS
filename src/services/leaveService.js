@@ -66,6 +66,13 @@ export async function deactivateLeaveType(leaveTypeId) {
   return data.data;
 }
 
+// DELETE — HR_ADMIN, MANAGER. HARD delete: the backend also removes every
+// leave request, approval, transaction and balance for this leave type.
+export async function deleteLeaveType(leaveTypeId) {
+  const { data } = await api.delete(`/leave-types/${leaveTypeId}`);
+  return data.data; // null on success
+}
+
 export async function syncLeaveTypeBalances(leaveTypeId) {
   const { data } = await api.post(`/leave-allocation/leave-type/${leaveTypeId}`);
   return data.data;

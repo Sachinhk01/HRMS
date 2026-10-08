@@ -1,4 +1,29 @@
+import { useEffect, useRef, useState } from "react";
+import { animate } from "framer-motion";
 import { formatINR } from "../../services/payrollService";
+
+// Counts up to `value` (respects reduced-motion). `format` renders each frame.
+export function AnimatedNumber({ value, format = (n) => String(n) }) {
+  const target = Number(value) || 0;
+  const [shown, setShown] = useState(0);
+  const from = useRef(0);
+
+  useEffect(() => {
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      from.current = target;
+      setShown(target);
+      return undefined;
+    }
+    const controls = animate(from.current, target, {
+      duration: 0.9,
+      ease: [0.16, 1, 0.3, 1],
+      onUpdate: (v) => { from.current = v; setShown(v); },
+    });
+    return () => controls.stop();
+  }, [target]);
+
+  return <>{format(Math.round(shown))}</>;
+}
 
 export function PayrollBadge({ status }) {
   const label = status || "—";
