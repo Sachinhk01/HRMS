@@ -114,9 +114,9 @@ function CertHeader({ part, base }) {
         </thead>
         <tbody>
           <tr>
-            <td colSpan={6} className="l">{base.deductorPan || '—'}</td>
-            <td colSpan={6} className="l">{base.deductorTan || '—'}</td>
-            <td colSpan={12} className="r">{base.employeePan || '—'}</td>
+            <td colSpan={6} className="c">{base.deductorPan || '—'}</td>
+            <td colSpan={6} className="c">{base.deductorTan || '—'}</td>
+            <td colSpan={12} className="c">{base.employeePan || '—'}</td>
           </tr>
         </tbody>
       </table>
