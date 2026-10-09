@@ -601,7 +601,7 @@ export default function PayrollRunsPanel() {
                       maxLength={200}
                       value={genRemarks}
                       onChange={(event) => setGenRemarks(event.target.value)}
-                      placeholder="e.g. August 2026 payroll"
+                      placeholder="Enter remarks"
                     />
                     <span className="gen-count">{genRemarks.length}/200</span>
                   </label>

@@ -667,7 +667,7 @@ useEffect(() => {
               <div className="editor-fields">
                 <label className="ef-field ef-full">
                   <span>Title</span>
-                  <input maxLength={INPUT_LIMITS.TITLE} name="title" defaultValue={magazine?.title || ''} placeholder="e.g. MyHourly Times — August Edition" required />
+                  <input maxLength={INPUT_LIMITS.TITLE} name="title" defaultValue={magazine?.title || ''} placeholder="Enter a title" required />
                 </label>
                 <label className="ef-field ef-full">
                   <span>

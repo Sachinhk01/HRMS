@@ -172,7 +172,7 @@ export default function SalaryStructuresPanel() {
             </label>
             <label>Effective from<DatePicker id="salary-effective-from" value={form.effectiveFrom} onChange={(event) => setForm({ ...form, effectiveFrom: event.target.value })} required /></label>
             <label>Effective to (optional)<DatePicker id="salary-effective-to" value={form.effectiveTo} onChange={(event) => setForm({ ...form, effectiveTo: event.target.value })} /></label>
-            <label>Remarks<input maxLength={INPUT_LIMITS.SHORT_TEXT} value={form.remarks} onChange={(event) => setForm({ ...form, remarks: event.target.value })} placeholder="e.g. Annual revision" /></label>
+            <label>Remarks<input maxLength={INPUT_LIMITS.SHORT_TEXT} value={form.remarks} onChange={(event) => setForm({ ...form, remarks: event.target.value })} placeholder="Enter remarks" /></label>
             <div className="full-span payroll-form-actions">
               <button type="button" className="btn btn-secondary" onClick={resetForm}>Cancel</button>
               <button type="submit" className="btn btn-primary" disabled={saving}>

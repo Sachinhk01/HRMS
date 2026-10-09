@@ -204,21 +204,21 @@ export default function Profile() {
           {activeTab === 'Personal Info' && (
             isOwnProfile ? (
               <form className="form-grid" onSubmit={save}>
-                <label>First Name<input maxLength={INPUT_LIMITS.NAME} name="firstName" defaultValue={profile.firstName} required /></label>
-                <label>Last Name<input maxLength={INPUT_LIMITS.NAME} name="lastName" defaultValue={profile.lastName} /></label>
-                <label>Email<input value={profile.email} disabled /></label>
-                <label>Phone Number<input maxLength={INPUT_LIMITS.PHONE} name="phoneNumber" defaultValue={profile.phoneNumber} /></label>
-                <label>Date of Birth<DatePicker id="profile-dob" name="dateOfBirth" defaultValue={profile.dateOfBirth} /></label>
+                <label>First Name<input maxLength={INPUT_LIMITS.NAME} name="firstName" defaultValue={profile.firstName} placeholder="Enter your first name" required /></label>
+                <label>Last Name<input maxLength={INPUT_LIMITS.NAME} name="lastName" defaultValue={profile.lastName} placeholder="Enter your last name" /></label>
+                <label>Email<input value={profile.email} placeholder="Enter your email" disabled /></label>
+                <label>Phone Number<input maxLength={INPUT_LIMITS.PHONE} name="phoneNumber" defaultValue={profile.phoneNumber} placeholder="Enter your phone number" /></label>
+                <label>Date of Birth<DatePicker id="profile-dob" name="dateOfBirth" defaultValue={profile.dateOfBirth} placeholder="Select date of birth" /></label>
                 <label>
                   Gender
                   <select name="gender" defaultValue={profile.gender || ''}>
-                    <option value="">Select</option>
+                    <option value="">Select gender</option>
                     <option value="MALE">Male</option>
                     <option value="FEMALE">Female</option>
                   </select>
                 </label>
-                <label>Employee Code<input value={profile.employeeCode || ''} disabled /></label>
-                <label>Age<input value={calcAge(profile.dateOfBirth) || 'Not provided'} disabled /></label>
+                <label>Employee Code<input value={profile.employeeCode || ''} placeholder="Employee code" disabled /></label>
+                <label>Age<input value={calcAge(profile.dateOfBirth) || 'Not provided'} placeholder="Age" disabled /></label>
                 <button className="btn btn-primary full-span" type="submit" disabled={saving}>
                   <Save size={18} />{saving ? 'Saving…' : 'Save Changes'}
                 </button>
@@ -256,9 +256,9 @@ export default function Profile() {
 
           {activeTab === 'Change Password' && isOwnProfile && (
             <form className="form-grid" onSubmit={changePassword}>
-              <label className="full-span">Current Password<input maxLength={INPUT_LIMITS.LOGIN_PASSWORD} name="oldPassword" type="password" required /></label>
-              <label>New Password<input name="newPassword" type="password" required minLength={8} maxLength={20} /></label>
-              <label>Confirm New Password<input name="confirmPassword" type="password" required minLength={8} maxLength={20} /></label>
+              <label className="full-span">Current Password<input maxLength={INPUT_LIMITS.LOGIN_PASSWORD} name="oldPassword" type="password" placeholder="Enter your current password" required /></label>
+              <label>New Password<input name="newPassword" type="password" required minLength={8} maxLength={20} placeholder="Enter your new password" /></label>
+              <label>Confirm New Password<input name="confirmPassword" type="password" required minLength={8} maxLength={20} placeholder="Re-enter your new password" /></label>
               <button className="btn btn-primary full-span"><KeyRound size={18} />Update Password</button>
             </form>
           )}

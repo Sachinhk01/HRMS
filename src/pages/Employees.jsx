@@ -681,20 +681,20 @@ export default function Employees() {
                     <div className="emp-form-grid">
                       <label className="form-field">
                         <span>Username</span>
-                        <input maxLength={INPUT_LIMITS.USERNAME} type="text" value={form.username} onChange={updateField('username')} placeholder="e.g. anagha.k" required />
+                        <input maxLength={INPUT_LIMITS.USERNAME} type="text" value={form.username} onChange={updateField('username')} placeholder="Enter a username" required />
                       </label>
                       <label className="form-field">
                         <span>Email</span>
-                        <input maxLength={INPUT_LIMITS.EMAIL} type="email" value={form.email} onChange={updateField('email')} placeholder="name@company.com" required />
+                        <input maxLength={INPUT_LIMITS.EMAIL} type="email" value={form.email} onChange={updateField('email')} placeholder="Enter an email" required />
                       </label>
                       <label className="form-field">
                         <span>Temporary Password</span>
-                        <input maxLength={INPUT_LIMITS.PASSWORD} type="password" value={form.password} onChange={updateField('password')} placeholder="Min. 6 characters" required />
+                        <input maxLength={INPUT_LIMITS.PASSWORD} type="password" value={form.password} onChange={updateField('password')} placeholder="Enter a temporary password" required />
                       </label>
                       <label className="form-field">
                         <span>Role</span>
                         <select value={form.role} onChange={updateField('role')} required>
-                          <option value="">Select Role</option>
+                          <option value="">Select role</option>
                           {ROLE_OPTIONS.map((r) => <option key={r} value={r}>{r.replace('_', ' ')}</option>)}
                         </select>
                       </label>
@@ -705,35 +705,35 @@ export default function Employees() {
                     <div className="emp-form-grid">
                       <label className="form-field">
                         <span>First Name</span>
-                        <input maxLength={INPUT_LIMITS.NAME} type="text" value={form.firstName} onChange={updateField('firstName')} required />
+                        <input maxLength={INPUT_LIMITS.NAME} type="text" value={form.firstName} onChange={updateField('firstName')} placeholder="Enter first name" required />
                       </label>
                       <label className="form-field">
                         <span>Last Name</span>
-                        <input maxLength={INPUT_LIMITS.NAME} type="text" value={form.lastName} onChange={updateField('lastName')} />
+                        <input maxLength={INPUT_LIMITS.NAME} type="text" value={form.lastName} onChange={updateField('lastName')} placeholder="Enter last name" />
                       </label>
                       <label className="form-field">
                         <span>Phone Number</span>
-                        <input maxLength={INPUT_LIMITS.PHONE} type="tel" value={form.phoneNumber} onChange={updateField('phoneNumber')} placeholder="10-digit mobile" required />
+                        <input maxLength={INPUT_LIMITS.PHONE} type="tel" value={form.phoneNumber} onChange={updateField('phoneNumber')} placeholder="Enter 10-digit phone number" required />
                       </label>
                       <label className="form-field">
                         <span>Gender</span>
                         <select value={form.gender} onChange={updateField('gender')} required>
-                          <option value="">Select</option>
+                          <option value="">Select gender</option>
                           {GENDER_OPTIONS.map((g) => <option key={g} value={g}>{g[0] + g.slice(1).toLowerCase()}</option>)}
                         </select>
                       </label>
                       <label className="form-field">
                         <span>Date of Birth</span>
-                        <DatePicker id="employee-dob" value={form.dateOfBirth} onChange={updateField('dateOfBirth')} required />
+                        <DatePicker id="employee-dob" value={form.dateOfBirth} onChange={updateField('dateOfBirth')} placeholder="Select date of birth" required />
                       </label>
                       <label className="form-field">
                         <span>Date of Joining</span>
-                        <DatePicker id="employee-doj" value={form.dateOfJoining} onChange={updateField('dateOfJoining')} required />
+                        <DatePicker id="employee-doj" value={form.dateOfJoining} onChange={updateField('dateOfJoining')} placeholder="Select date of joining" required />
                       </label>
                       <label className="form-field">
                         <span>Employment Type</span>
                         <select value={form.employmentType} onChange={updateField('employmentType')} required>
-                          <option value="">Select</option>
+                          <option value="">Select employment type</option>
                           {EMPLOYMENT_TYPE_OPTIONS.map((t) => <option key={t} value={t}>{t.replace('_', ' ')}</option>)}
                         </select>
                       </label>
@@ -745,7 +745,7 @@ export default function Employees() {
                           disabled={deptLoading}
                           required
                         >
-                          <option value="">{deptLoading ? 'Loading…' : departments.length ? 'Select' : 'No departments found'}</option>
+                          <option value="">{deptLoading ? 'Loading…' : departments.length ? 'Select department' : 'No departments found'}</option>
                           {departments.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
                         </select>
                       </label>
@@ -758,7 +758,7 @@ export default function Employees() {
                           required
                         >
                           <option value="">
-                            {!form.departmentId ? 'Select a department first' : desigLoading ? 'Loading…' : designations.length ? 'Select' : 'No designations found'}
+                            {!form.departmentId ? 'Select a department first' : desigLoading ? 'Loading…' : designations.length ? 'Select designation' : 'No designations found'}
                           </option>
                           {designations.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
                         </select>
@@ -772,7 +772,7 @@ export default function Employees() {
                           required
                         >
                           <option value="">
-                            {!form.designationId ? 'Select a designation first' : titleLoading ? 'Loading…' : jobTitles.length ? 'Select' : 'No job titles found'}
+                            {!form.designationId ? 'Select a designation first' : titleLoading ? 'Loading…' : jobTitles.length ? 'Select job title' : 'No job titles found'}
                           </option>
                           {jobTitles.map((j) => <option key={j.id} value={j.id}>{j.name}</option>)}
                         </select>

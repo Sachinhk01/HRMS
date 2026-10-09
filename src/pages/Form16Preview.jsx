@@ -98,8 +98,8 @@ function CertHeader({ part, base }) {
         </thead>
         <tbody>
           <tr>
-            <td colSpan={12} className="l pre">{[base.employerName, base.employerAddress, base.employerPhone, base.employerEmail].filter(Boolean).join('\n') || '—'}</td>
-            <td colSpan={12} className="l pre">{[base.employeeName, base.employeeAddress].filter(Boolean).join('\n') || '—'}</td>
+            <td colSpan={12} className="pre">{[base.employerName, base.employerAddress, base.employerPhone, base.employerEmail].filter(Boolean).join('\n') || '—'}</td>
+            <td colSpan={12} className="pre">{[base.employeeName, base.employeeAddress].filter(Boolean).join('\n') || '—'}</td>
           </tr>
         </tbody>
       </table>
