@@ -221,7 +221,7 @@ export default function Holidays() {
                   setForm({ ...form, holidayName: event.target.value });
                   if (formErrors.holidayName) setFormErrors({ ...formErrors, holidayName: undefined });
                 }}
-                placeholder="e.g. Republic Day"
+                placeholder="Enter holiday name"
               />
               {formErrors.holidayName && <p className="field-error">{formErrors.holidayName}</p>}
             </label>
@@ -255,7 +255,7 @@ export default function Holidays() {
             </label>
             <label>
               Description
-              <input maxLength={INPUT_LIMITS.HOLIDAY_NOTE} value={form.description} onChange={(event) => setForm({ ...form, description: event.target.value })} placeholder="Optional Note" />
+              <input maxLength={INPUT_LIMITS.HOLIDAY_NOTE} value={form.description} onChange={(event) => setForm({ ...form, description: event.target.value })} placeholder="Enter a description" />
             </label>
           </form>
         </section>

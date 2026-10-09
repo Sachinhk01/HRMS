@@ -974,6 +974,7 @@
 .f16-pt .norm { font-weight: 400; }
 .f16-pt .l { text-align: left; }
 .f16-pt .r { text-align: right; }
+.f16-pt .c { text-align: center; }
 .f16-pt .pre { white-space: pre-line; }
 .f16-pt .just { text-align: justify; }
 .f16-pt .grey { background: #cfcfcf; }

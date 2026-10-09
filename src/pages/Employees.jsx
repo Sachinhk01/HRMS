@@ -669,6 +669,7 @@ export default function Employees() {
                 <button type="button" className="emp-modal-close" onClick={closeAddModal} aria-label="Close"><X size={18} /></button>
               </div>
 
+<<<<<<< HEAD
               <ol className="ef-steps" aria-label="Progress">
                 <li className={`ef-step ${addStep === 1 ? 'is-current' : 'is-done'}`}>
                   <span className="ef-step-dot">{addStep > 1 ? <Check size={13} strokeWidth={3} /> : 1}</span>
@@ -829,6 +830,121 @@ export default function Employees() {
                       </>
                     )}
                   </motion.div>
+=======
+              <form onSubmit={addStep === 1 ? (e) => { e.preventDefault(); goNext(); } : handleSubmit}>
+                <div className="emp-modal-body emp-form-body">
+                  {addStep === 1 && (
+                    <div className="emp-form-grid">
+                      <label className="form-field">
+                        <span>Username</span>
+                        <input maxLength={INPUT_LIMITS.USERNAME} type="text" value={form.username} onChange={updateField('username')} placeholder="Enter a username" required />
+                      </label>
+                      <label className="form-field">
+                        <span>Email</span>
+                        <input maxLength={INPUT_LIMITS.EMAIL} type="email" value={form.email} onChange={updateField('email')} placeholder="Enter an email" required />
+                      </label>
+                      <label className="form-field">
+                        <span>Temporary Password</span>
+                        <input maxLength={INPUT_LIMITS.PASSWORD} type="password" value={form.password} onChange={updateField('password')} placeholder="Enter a temporary password" required />
+                      </label>
+                      <label className="form-field">
+                        <span>Role</span>
+                        <select value={form.role} onChange={updateField('role')} required>
+                          <option value="">Select role</option>
+                          {ROLE_OPTIONS.map((r) => <option key={r} value={r}>{r.replace('_', ' ')}</option>)}
+                        </select>
+                      </label>
+                    </div>
+                  )}
+
+                  {addStep === 2 && (
+                    <div className="emp-form-grid">
+                      <label className="form-field">
+                        <span>First Name</span>
+                        <input maxLength={INPUT_LIMITS.NAME} type="text" value={form.firstName} onChange={updateField('firstName')} placeholder="Enter first name" required />
+                      </label>
+                      <label className="form-field">
+                        <span>Last Name</span>
+                        <input maxLength={INPUT_LIMITS.NAME} type="text" value={form.lastName} onChange={updateField('lastName')} placeholder="Enter last name" />
+                      </label>
+                      <label className="form-field">
+                        <span>Phone Number</span>
+                        <input maxLength={INPUT_LIMITS.PHONE} type="tel" value={form.phoneNumber} onChange={updateField('phoneNumber')} placeholder="Enter 10-digit phone number" required />
+                      </label>
+                      <label className="form-field">
+                        <span>Gender</span>
+                        <select value={form.gender} onChange={updateField('gender')} required>
+                          <option value="">Select gender</option>
+                          {GENDER_OPTIONS.map((g) => <option key={g} value={g}>{g[0] + g.slice(1).toLowerCase()}</option>)}
+                        </select>
+                      </label>
+                      <label className="form-field">
+                        <span>Date of Birth</span>
+                        <DatePicker id="employee-dob" value={form.dateOfBirth} onChange={updateField('dateOfBirth')} placeholder="Select date of birth" required />
+                      </label>
+                      <label className="form-field">
+                        <span>Date of Joining</span>
+                        <DatePicker id="employee-doj" value={form.dateOfJoining} onChange={updateField('dateOfJoining')} placeholder="Select date of joining" required />
+                      </label>
+                      <label className="form-field">
+                        <span>Employment Type</span>
+                        <select value={form.employmentType} onChange={updateField('employmentType')} required>
+                          <option value="">Select employment type</option>
+                          {EMPLOYMENT_TYPE_OPTIONS.map((t) => <option key={t} value={t}>{t.replace('_', ' ')}</option>)}
+                        </select>
+                      </label>
+                      <label className="form-field">
+                        <span>Department {deptLoading && <small>(loading…)</small>}</span>
+                        <select
+                          value={form.departmentId}
+                          onChange={(e) => setForm((f) => ({ ...f, departmentId: e.target.value, designationId: '', jobTitleId: '' }))}
+                          disabled={deptLoading}
+                          required
+                        >
+                          <option value="">{deptLoading ? 'Loading…' : departments.length ? 'Select department' : 'No departments found'}</option>
+                          {departments.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
+                        </select>
+                      </label>
+                      <label className="form-field">
+                        <span>Designation {desigLoading && <small>(loading…)</small>}</span>
+                        <select
+                          value={form.designationId}
+                          onChange={(e) => setForm((f) => ({ ...f, designationId: e.target.value, jobTitleId: '' }))}
+                          disabled={!form.departmentId || desigLoading}
+                          required
+                        >
+                          <option value="">
+                            {!form.departmentId ? 'Select a department first' : desigLoading ? 'Loading…' : designations.length ? 'Select designation' : 'No designations found'}
+                          </option>
+                          {designations.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
+                        </select>
+                      </label>
+                      <label className="form-field">
+                        <span>Job Title {titleLoading && <small>(loading…)</small>}</span>
+                        <select
+                          value={form.jobTitleId}
+                          onChange={updateField('jobTitleId')}
+                          disabled={!form.designationId || titleLoading}
+                          required
+                        >
+                          <option value="">
+                            {!form.designationId ? 'Select a designation first' : titleLoading ? 'Loading…' : jobTitles.length ? 'Select job title' : 'No job titles found'}
+                          </option>
+                          {jobTitles.map((j) => <option key={j.id} value={j.id}>{j.name}</option>)}
+                        </select>
+                      </label>
+                      <label className="form-field">
+                        <span>Reporting Manager</span>
+                        <select value={form.reportingManagerId} onChange={updateField('reportingManagerId')}>
+                          <option value="">None</option>
+                          {managerOptions.map((m) => (
+                            <option key={m.id} value={m.id}>Anagha Pothi ({m.employeeCode})</option>
+                          ))}
+                        </select>
+                      </label>
+                    </div>
+                  )}
+>>>>>>> 3420b0effd3ae8d4b4cc39b655575f02e0836e21
                 </div>
 
                 <div className="ef-footer">
