@@ -6,6 +6,7 @@ import {
   Search, LayoutGrid, List, Phone, Mail, Eye, X,
   Briefcase, Building2, CalendarDays, IdCard, Users, AlertTriangle, RotateCw,
   UserPlus, CheckCircle2, Loader2, ChevronRight, ChevronLeft,
+  User, Lock, ShieldCheck, Check, EyeOff,
 } from 'lucide-react';
 import PageHeader from '../components/PageHeader';
 import Pagination from '../components/Pagination';
@@ -19,11 +20,13 @@ import {
 } from '../services/employeeService';
 import './Employees.css';
 import './EmployeesPolish.css';
+import './AddEmployeeModal.css';
 import { AnimatedCount, ActiveFilters } from './EmployeesExtras';
 import { capitalizeName } from '../utils/formatName';
 import { listJobTitles } from '../services/masterDataService';
 import { INPUT_LIMITS } from '../utils/inputLimits';
 import DatePicker from '../components/DatePicker';
+import EmployeesHeroArt from '../components/EmployeesHeroArt';
 
 const DEPT_COLORS = {
   Engineering: '#2563eb', Sales: '#16a34a', HR: '#d97706', Marketing: '#db2777',
@@ -116,6 +119,8 @@ export default function Employees() {
   const [addStep, setAddStep] = useState(1); // 1 = account, 2 = profile
   const [form, setForm] = useState(EMPTY_FORM);
   const [submitting, setSubmitting] = useState(false);
+  const [showPw, setShowPw] = useState(false);
+  useEffect(() => { if (!showAdd) setShowPw(false); }, [showAdd]);
 
   // Each lookup list is fetched and tracked independently, so one failing
   // request (e.g. a 403 on a role-gated endpoint) doesn't blank out the others.
@@ -421,18 +426,7 @@ export default function Employees() {
           )}
         </div>
         <div className="emp-hero-illustration" aria-hidden="true">
-          <svg viewBox="0 0 320 200" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <circle cx="250" cy="55" r="56" fill="#dbeafe" opacity="0.5" />
-            <circle cx="60" cy="155" r="40" fill="#bfdbfe" opacity="0.4" />
-            <rect x="100" y="50" width="140" height="120" rx="18" fill="#fff" stroke="#bfdbfe" strokeWidth="2" />
-            <circle cx="140" cy="90" r="14" fill="#2563eb" />
-            <rect x="126" y="102" width="28" height="18" rx="9" fill="#2563eb" />
-            <circle cx="200" cy="90" r="14" fill="#0891b2" />
-            <rect x="186" y="102" width="28" height="18" rx="9" fill="#0891b2" />
-            <circle cx="170" cy="130" r="14" fill="#16a34a" />
-            <rect x="156" y="142" width="28" height="18" rx="9" fill="#16a34a" />
-            <rect x="120" y="150" width="100" height="14" rx="4" fill="#e0edff" />
-          </svg>
+          <EmployeesHeroArt />
         </div>
       </motion.section>
 
@@ -661,147 +655,197 @@ export default function Employees() {
           <motion.div className="emp-modal-overlay" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
             <motion.div
               className="emp-modal-card emp-add-card"
-              initial={{ opacity: 0, scale: 0.94, y: 16 }}
+              initial={{ opacity: 0, scale: 0.96, y: 16 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.94, y: 16 }}
+              exit={{ opacity: 0, scale: 0.96, y: 16 }}
               transition={{ duration: 0.25, ease: easeOut }}
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="emp-modal-head">
+              <div className="ef-head">
                 <div>
-                  <span className="eyebrow">Step {addStep} of 2 · {addStep === 1 ? 'Account Details' : 'Employee Profile'}</span>
                   <h2>Add Employee</h2>
+                  <p>{addStep === 1 ? 'Set up the login this person will use to sign in.' : 'Add their personal and employment details.'}</p>
                 </div>
-                <button className="emp-modal-close" onClick={closeAddModal}><X size={18} /></button>
+                <button type="button" className="emp-modal-close" onClick={closeAddModal} aria-label="Close"><X size={18} /></button>
               </div>
 
-              <form onSubmit={addStep === 1 ? (e) => { e.preventDefault(); goNext(); } : handleSubmit}>
-                <div className="emp-modal-body emp-form-body">
-                  {addStep === 1 && (
-                    <div className="emp-form-grid">
-                      <label className="form-field">
-                        <span>Username</span>
-                        <input maxLength={INPUT_LIMITS.USERNAME} type="text" value={form.username} onChange={updateField('username')} placeholder="e.g. anagha.k" required />
-                      </label>
-                      <label className="form-field">
-                        <span>Email</span>
-                        <input maxLength={INPUT_LIMITS.EMAIL} type="email" value={form.email} onChange={updateField('email')} placeholder="name@company.com" required />
-                      </label>
-                      <label className="form-field">
-                        <span>Temporary Password</span>
-                        <input maxLength={INPUT_LIMITS.PASSWORD} type="password" value={form.password} onChange={updateField('password')} placeholder="Min. 6 characters" required />
-                      </label>
-                      <label className="form-field">
-                        <span>Role</span>
-                        <select value={form.role} onChange={updateField('role')} required>
-                          <option value="">Select Role</option>
-                          {ROLE_OPTIONS.map((r) => <option key={r} value={r}>{r.replace('_', ' ')}</option>)}
-                        </select>
-                      </label>
-                    </div>
-                  )}
+              <ol className="ef-steps" aria-label="Progress">
+                <li className={`ef-step ${addStep === 1 ? 'is-current' : 'is-done'}`}>
+                  <span className="ef-step-dot">{addStep > 1 ? <Check size={13} strokeWidth={3} /> : 1}</span>
+                  <span className="ef-step-label">Account</span>
+                </li>
+                <li className="ef-step-line" aria-hidden="true">
+                  <motion.span initial={false} animate={{ scaleX: addStep === 2 ? 1 : 0 }} transition={{ duration: 0.45, ease: easeOut }} />
+                </li>
+                <li className={`ef-step ${addStep === 2 ? 'is-current' : ''}`}>
+                  <span className="ef-step-dot">2</span>
+                  <span className="ef-step-label">Profile</span>
+                </li>
+              </ol>
 
-                  {addStep === 2 && (
-                    <div className="emp-form-grid">
-                      <label className="form-field">
-                        <span>First Name</span>
-                        <input maxLength={INPUT_LIMITS.NAME} type="text" value={form.firstName} onChange={updateField('firstName')} required />
-                      </label>
-                      <label className="form-field">
-                        <span>Last Name</span>
-                        <input maxLength={INPUT_LIMITS.NAME} type="text" value={form.lastName} onChange={updateField('lastName')} />
-                      </label>
-                      <label className="form-field">
-                        <span>Phone Number</span>
-                        <input maxLength={INPUT_LIMITS.PHONE} type="tel" value={form.phoneNumber} onChange={updateField('phoneNumber')} placeholder="10-digit mobile" required />
-                      </label>
-                      <label className="form-field">
-                        <span>Gender</span>
-                        <select value={form.gender} onChange={updateField('gender')} required>
-                          <option value="">Select</option>
-                          {GENDER_OPTIONS.map((g) => <option key={g} value={g}>{g[0] + g.slice(1).toLowerCase()}</option>)}
-                        </select>
-                      </label>
-                      <label className="form-field">
-                        <span>Date of Birth</span>
-                        <DatePicker id="employee-dob" value={form.dateOfBirth} onChange={updateField('dateOfBirth')} required />
-                      </label>
-                      <label className="form-field">
-                        <span>Date of Joining</span>
-                        <DatePicker id="employee-doj" value={form.dateOfJoining} onChange={updateField('dateOfJoining')} required />
-                      </label>
-                      <label className="form-field">
-                        <span>Employment Type</span>
-                        <select value={form.employmentType} onChange={updateField('employmentType')} required>
-                          <option value="">Select</option>
-                          {EMPLOYMENT_TYPE_OPTIONS.map((t) => <option key={t} value={t}>{t.replace('_', ' ')}</option>)}
-                        </select>
-                      </label>
-                      <label className="form-field">
-                        <span>Department {deptLoading && <small>(loading…)</small>}</span>
-                        <select
-                          value={form.departmentId}
-                          onChange={(e) => setForm((f) => ({ ...f, departmentId: e.target.value, designationId: '', jobTitleId: '' }))}
-                          disabled={deptLoading}
-                          required
-                        >
-                          <option value="">{deptLoading ? 'Loading…' : departments.length ? 'Select' : 'No departments found'}</option>
-                          {departments.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
-                        </select>
-                      </label>
-                      <label className="form-field">
-                        <span>Designation {desigLoading && <small>(loading…)</small>}</span>
-                        <select
-                          value={form.designationId}
-                          onChange={(e) => setForm((f) => ({ ...f, designationId: e.target.value, jobTitleId: '' }))}
-                          disabled={!form.departmentId || desigLoading}
-                          required
-                        >
-                          <option value="">
-                            {!form.departmentId ? 'Select a department first' : desigLoading ? 'Loading…' : designations.length ? 'Select' : 'No designations found'}
-                          </option>
-                          {designations.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
-                        </select>
-                      </label>
-                      <label className="form-field">
-                        <span>Job Title {titleLoading && <small>(loading…)</small>}</span>
-                        <select
-                          value={form.jobTitleId}
-                          onChange={updateField('jobTitleId')}
-                          disabled={!form.designationId || titleLoading}
-                          required
-                        >
-                          <option value="">
-                            {!form.designationId ? 'Select a designation first' : titleLoading ? 'Loading…' : jobTitles.length ? 'Select' : 'No job titles found'}
-                          </option>
-                          {jobTitles.map((j) => <option key={j.id} value={j.id}>{j.name}</option>)}
-                        </select>
-                      </label>
-                      <label className="form-field">
-                        <span>Reporting Manager</span>
-                        <select value={form.reportingManagerId} onChange={updateField('reportingManagerId')}>
-                          <option value="">None</option>
-                          {managerOptions.map((m) => (
-                            <option key={m.id} value={m.id}>Anagha Pothi ({m.employeeCode})</option>
-                          ))}
-                        </select>
-                      </label>
-                    </div>
-                  )}
+              <form onSubmit={addStep === 1 ? (e) => { e.preventDefault(); goNext(); } : handleSubmit}>
+                <div className="ef-body">
+                  <motion.div
+                    key={addStep}
+                    initial={{ opacity: 0, x: addStep === 2 ? 22 : -22 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ duration: 0.28, ease: easeOut }}
+                  >
+                    {addStep === 1 && (
+                      <div className="ef-grid ef-grid--2">
+                        <label className="form-field">
+                          <span>Username</span>
+                          <div className="ef-control">
+                            <User size={16} className="ef-icon" />
+                            <input maxLength={INPUT_LIMITS.USERNAME} type="text" value={form.username} onChange={updateField('username')} placeholder="e.g. anagha.k" required />
+                          </div>
+                        </label>
+                        <label className="form-field">
+                          <span>Email</span>
+                          <div className="ef-control">
+                            <Mail size={16} className="ef-icon" />
+                            <input maxLength={INPUT_LIMITS.EMAIL} type="email" value={form.email} onChange={updateField('email')} placeholder="name@company.com" required />
+                          </div>
+                        </label>
+                        <label className="form-field">
+                          <span>Temporary Password</span>
+                          <div className="ef-control">
+                            <Lock size={16} className="ef-icon" />
+                            <input maxLength={INPUT_LIMITS.PASSWORD} className="ef-has-eye" type={showPw ? 'text' : 'password'} value={form.password} onChange={updateField('password')} placeholder="Min. 6 characters" required />
+                            <button type="button" className="ef-eye" tabIndex={-1} onClick={() => setShowPw((v) => !v)} aria-label={showPw ? 'Hide password' : 'Show password'}>
+                              {showPw ? <EyeOff size={16} /> : <Eye size={16} />}
+                            </button>
+                          </div>
+                        </label>
+                        <label className="form-field">
+                          <span>Role</span>
+                          <div className="ef-control">
+                            <ShieldCheck size={16} className="ef-icon" />
+                            <select value={form.role} onChange={updateField('role')} required>
+                              <option value="">Select role</option>
+                              {ROLE_OPTIONS.map((r) => <option key={r} value={r}>{r.replace('_', ' ')}</option>)}
+                            </select>
+                          </div>
+                        </label>
+                      </div>
+                    )}
+
+                    {addStep === 2 && (
+                      <>
+                        <section className="ef-section">
+                          <h3 className="ef-section-title">Personal details</h3>
+                          <div className="ef-grid ef-grid--3">
+                            <label className="form-field">
+                              <span>First Name</span>
+                              <input maxLength={INPUT_LIMITS.NAME} type="text" value={form.firstName} onChange={updateField('firstName')} required />
+                            </label>
+                            <label className="form-field">
+                              <span>Last Name</span>
+                              <input maxLength={INPUT_LIMITS.NAME} type="text" value={form.lastName} onChange={updateField('lastName')} />
+                            </label>
+                            <label className="form-field">
+                              <span>Gender</span>
+                              <select value={form.gender} onChange={updateField('gender')} required>
+                                <option value="">Select</option>
+                                {GENDER_OPTIONS.map((g) => <option key={g} value={g}>{g[0] + g.slice(1).toLowerCase()}</option>)}
+                              </select>
+                            </label>
+                            <label className="form-field ef-span-2">
+                              <span>Phone Number</span>
+                              <input maxLength={INPUT_LIMITS.PHONE} type="tel" value={form.phoneNumber} onChange={updateField('phoneNumber')} placeholder="10-digit mobile" required />
+                            </label>
+                            <label className="form-field">
+                              <span>Date of Birth</span>
+                              <DatePicker id="employee-dob" value={form.dateOfBirth} onChange={updateField('dateOfBirth')} required />
+                            </label>
+                          </div>
+                        </section>
+
+                        <section className="ef-section">
+                          <h3 className="ef-section-title">Employment</h3>
+                          <div className="ef-grid ef-grid--3">
+                            <label className="form-field">
+                              <span>Date of Joining</span>
+                              <DatePicker id="employee-doj" value={form.dateOfJoining} onChange={updateField('dateOfJoining')} required />
+                            </label>
+                            <label className="form-field">
+                              <span>Employment Type</span>
+                              <select value={form.employmentType} onChange={updateField('employmentType')} required>
+                                <option value="">Select</option>
+                                {EMPLOYMENT_TYPE_OPTIONS.map((t) => <option key={t} value={t}>{t.replace('_', ' ')}</option>)}
+                              </select>
+                            </label>
+                            <label className="form-field">
+                              <span>Reporting Manager</span>
+                              <select value={form.reportingManagerId} onChange={updateField('reportingManagerId')}>
+                                <option value="">None</option>
+                                {managerOptions.map((m) => (
+                                  <option key={m.id} value={m.id}>Anagha Pothi ({m.employeeCode})</option>
+                                ))}
+                              </select>
+                            </label>
+                            <label className="form-field">
+                              <span>Department {deptLoading && <small>(loading…)</small>}</span>
+                              <select
+                                value={form.departmentId}
+                                onChange={(e) => setForm((f) => ({ ...f, departmentId: e.target.value, designationId: '', jobTitleId: '' }))}
+                                disabled={deptLoading}
+                                required
+                              >
+                                <option value="">{deptLoading ? 'Loading…' : departments.length ? 'Select' : 'No departments found'}</option>
+                                {departments.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
+                              </select>
+                            </label>
+                            <label className="form-field">
+                              <span>Designation {desigLoading && <small>(loading…)</small>}</span>
+                              <select
+                                value={form.designationId}
+                                onChange={(e) => setForm((f) => ({ ...f, designationId: e.target.value, jobTitleId: '' }))}
+                                disabled={!form.departmentId || desigLoading}
+                                required
+                              >
+                                <option value="">
+                                  {!form.departmentId ? 'Select department first' : desigLoading ? 'Loading…' : designations.length ? 'Select' : 'No designations found'}
+                                </option>
+                                {designations.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
+                              </select>
+                            </label>
+                            <label className="form-field">
+                              <span>Job Title {titleLoading && <small>(loading…)</small>}</span>
+                              <select
+                                value={form.jobTitleId}
+                                onChange={updateField('jobTitleId')}
+                                disabled={!form.designationId || titleLoading}
+                                required
+                              >
+                                <option value="">
+                                  {!form.designationId ? 'Select designation first' : titleLoading ? 'Loading…' : jobTitles.length ? 'Select' : 'No job titles found'}
+                                </option>
+                                {jobTitles.map((j) => <option key={j.id} value={j.id}>{j.name}</option>)}
+                              </select>
+                            </label>
+                          </div>
+                        </section>
+                      </>
+                    )}
+                  </motion.div>
                 </div>
 
-                <div className="emp-modal-footer emp-form-footer">
+                <div className="ef-footer">
                   {addStep === 2 ? (
                     <>
-                      <button key="back" type="button" formNoValidate className="btn btn-soft" onClick={handleBackClick} disabled={submitting}><ChevronLeft size={15} /> Back</button>
-                      <button key="create" type="submit" className="btn btn-primary" disabled={submitting}>
-                        {submitting ? <><Loader2 className="spin" size={15} /> Creating…</> : <>Create Employee</>}
+                      <button key="back" type="button" formNoValidate className="ef-btn ef-btn--ghost" onClick={handleBackClick} disabled={submitting}><ChevronLeft size={16} /> Back</button>
+                      <button key="create" type="submit" className="ef-btn ef-btn--primary" disabled={submitting}>
+                        {submitting ? <><Loader2 className="spin" size={16} /> Creating…</> : <>Create Employee</>}
                       </button>
                     </>
                   ) : (
-                    <button key="continue" type="submit" className="btn btn-primary" style={{ width: '100%' }}>
-                      Continue <ChevronRight size={15} />
-                    </button>
+                    <>
+                      <button key="cancel" type="button" formNoValidate className="ef-btn ef-btn--ghost" onClick={closeAddModal}>Cancel</button>
+                      <button key="continue" type="submit" className="ef-btn ef-btn--primary">
+                        Continue <ChevronRight size={16} />
+                      </button>
+                    </>
                   )}
                 </div>
               </form>

@@ -24,20 +24,6 @@
 .emp-stat.tone-green strong { color: #15803d; }
 .emp-stat.tone-violet strong { color: #6d28d9; }
 
-/* animated illustration (targets the existing SVG, no markup change) */
-.employees-page .emp-hero-illustration svg { animation: emp-float 5s ease-in-out infinite; }
-.employees-page .emp-hero-illustration svg > * { transform-box: fill-box; transform-origin: center; }
-.employees-page .emp-hero-illustration svg > circle:nth-of-type(1) { animation: emp-drift 7s ease-in-out infinite alternate; }
-.employees-page .emp-hero-illustration svg > circle:nth-of-type(2) { animation: emp-drift 8s ease-in-out -3s infinite alternate-reverse; }
-.employees-page .emp-hero-illustration svg > circle:nth-of-type(n+3),
-.employees-page .emp-hero-illustration svg > rect:nth-of-type(n+2):nth-of-type(-n+4) {
-  animation: emp-bob 3.6s ease-in-out infinite;
-}
-.employees-page .emp-hero-illustration svg > circle:nth-of-type(4),
-.employees-page .emp-hero-illustration svg > rect:nth-of-type(3) { animation-delay: -1.2s; }
-.employees-page .emp-hero-illustration svg > circle:nth-of-type(5),
-.employees-page .emp-hero-illustration svg > rect:nth-of-type(4) { animation-delay: -2.4s; }
-
 /* ---------- Toolbar ---------- */
 .employees-page .emp-toolbar {
   padding: 12px; gap: 10px; background: #fff; border: 1px solid #e8eef7;

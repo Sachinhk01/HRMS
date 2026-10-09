@@ -1,8 +1,7 @@
-import { Award, BookOpen, ChevronRight, ExternalLink, Star } from 'lucide-react';
+import { Award, Star } from 'lucide-react';
 import { capitalizeName } from '../utils/formatName';
-import { openPdfDocument } from '../utils/openPdf';
+import MagazineCard from './MagazineCard';
 
-const MAGAZINE_PHOTO = "https://images.unsplash.com/photo-1769794371055-54436b54577e?fm=jpg&q=80&w=800&auto=format&fit=crop";
 const EOM_PHOTO = "https://images.unsplash.com/photo-1758691737584-a8f17fb34475?fm=jpg&q=80&w=800&auto=format&fit=crop";
 
 // The Employee of the Month form saves month as a raw "YYYY-MM" string
@@ -27,29 +26,7 @@ export default function HighlightCards({ magazine, employeeOfMonth }) {
   return (
     <div className="highlights-grid">
       {/* ---------- Monthly Magazine ---------- */}
-      <article className="hl-card hl-magazine">
-        <div className="hl-magazine-cover">
-          <img src={MAGAZINE_PHOTO} alt="Monthly magazine cover" />
-        </div>
-        <div className="hl-content">
-          <div className="hl-badge hl-badge--blue">
-            <BookOpen size={15} /> Monthly Magazine
-            {magazine?.month && <span className="hl-badge-dot" />}
-            {magazine?.month && magazine.month}
-          </div>
-          <h3 className="hl-title">{magazine?.title || 'No Magazine Published Yet'}</h3>
-          <p className="hl-desc">{magazine?.description || 'HR or Manager Can Publish The Company Magazine Here For Everyone to Read.'}</p>
-          {magazine?.documentUrl && (
-            <button
-              type="button"
-              className="hl-cta"
-              onClick={() => openPdfDocument(magazine.documentUrl)}
-            >
-              Read This Edition <ExternalLink size={14} />
-            </button>
-          )}
-        </div>
-      </article>
+      <MagazineCard magazine={magazine} />
 
       {/* ---------- Employee of the Month ---------- */}
       <article className="hl-card hl-employee">

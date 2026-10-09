@@ -1,0 +1,218 @@
+/* ============================================================
+   ADD EMPLOYEE MODAL — two-step form
+   Everything is scoped to .emp-add-card so no other form changes.
+   ============================================================ */
+.emp-add-card {
+  max-width: 760px;
+  border-radius: 16px;
+  box-shadow: 0 30px 80px rgba(15, 23, 42, .28), 0 0 0 1px rgba(15, 23, 42, .05);
+}
+
+/* ---------- header ---------- */
+.emp-add-card .ef-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 24px 28px 6px;
+}
+.emp-add-card .ef-head h2 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: -.015em;
+  color: #0f172a;
+}
+.emp-add-card .ef-head p {
+  margin: 4px 0 0;
+  font-size: 13.5px;
+  color: #64748b;
+  line-height: 1.5;
+}
+
+/* ---------- stepper ---------- */
+.ef-steps {
+  display: flex;
+  align-items: center;
+  list-style: none;
+  margin: 0;
+  padding: 16px 28px 18px;
+  border-bottom: 1px solid #eef2f7;
+}
+.ef-step { display: flex; align-items: center; gap: 10px; }
+.ef-step-dot {
+  width: 24px; height: 24px; border-radius: 50%;
+  display: grid; place-items: center;
+  font-size: 12px; font-weight: 700;
+  background: #f1f5f9; color: #94a3b8;
+  transition: background-color .3s ease, color .3s ease, box-shadow .3s ease;
+}
+.ef-step-label { font-size: 13px; font-weight: 600; color: #94a3b8; transition: color .3s ease; }
+.ef-step.is-current .ef-step-dot { background: #2563eb; color: #fff; box-shadow: 0 0 0 4px rgba(37, 99, 235, .15); }
+.ef-step.is-current .ef-step-label { color: #0f172a; }
+.ef-step.is-done .ef-step-dot { background: #16a34a; color: #fff; }
+.ef-step.is-done .ef-step-label { color: #475569; }
+.ef-step-line {
+  flex: 1; height: 2px; margin: 0 14px;
+  background: #e2e8f0; border-radius: 2px; overflow: hidden;
+}
+.ef-step-line > span {
+  display: block; height: 100%;
+  background: #16a34a;
+  transform-origin: left center;
+}
+
+/* ---------- body ---------- */
+.emp-add-card .ef-body {
+  padding: 22px 28px 10px;
+  max-height: calc(100vh - 310px);
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 transparent;
+}
+.ef-body::-webkit-scrollbar { width: 8px; }
+.ef-body::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 8px; border: 2px solid #fff; }
+
+.ef-section + .ef-section { margin-top: 22px; padding-top: 20px; border-top: 1px solid #eef2f7; }
+.ef-section-title {
+  margin: 0 0 14px;
+  font-size: 13px; font-weight: 700; color: #0f172a;
+}
+
+.ef-grid { display: grid; gap: 16px; }
+.ef-grid--2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.ef-grid--3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.ef-span-2 { grid-column: span 2; }
+
+/* fields rise in one after another each time a step opens */
+.ef-grid > * { animation: efRise .45s cubic-bezier(.16, 1, .3, 1) both; }
+.ef-grid > *:nth-child(1) { animation-delay: .02s; }
+.ef-grid > *:nth-child(2) { animation-delay: .06s; }
+.ef-grid > *:nth-child(3) { animation-delay: .10s; }
+.ef-grid > *:nth-child(4) { animation-delay: .14s; }
+.ef-grid > *:nth-child(5) { animation-delay: .18s; }
+.ef-grid > *:nth-child(6) { animation-delay: .22s; }
+@keyframes efRise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+/* ---------- fields ---------- */
+.emp-add-card .form-field {
+  gap: 7px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #334155;
+  min-width: 0;
+}
+.emp-add-card .form-field input,
+.emp-add-card .form-field select {
+  width: 100%;
+  height: 42px;
+  padding: 0 12px;
+  border: 1px solid #d5dce8;
+  border-radius: 9px;
+  background-color: #fff;
+  font-size: 14px;
+  font-weight: 500;
+  color: #0f172a;
+  outline: none;
+  transition: border-color .16s ease, box-shadow .16s ease, background-color .16s ease;
+}
+.emp-add-card .form-field input::placeholder { color: #94a3b8; font-weight: 400; }
+.emp-add-card .form-field input:hover:not(:disabled),
+.emp-add-card .form-field select:hover:not(:disabled) { border-color: #b6c2d4; }
+.emp-add-card .form-field input:focus,
+.emp-add-card .form-field select:focus {
+  border-color: #2563eb;
+  background-color: #fff;
+  box-shadow: 0 0 0 4px rgba(37, 99, 235, .14);
+}
+
+/* custom select arrow instead of the browser default */
+.emp-add-card .form-field select {
+  appearance: none;
+  -webkit-appearance: none;
+  padding-right: 36px;
+  cursor: pointer;
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  background-size: 16px 16px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+}
+.emp-add-card .form-field select:invalid { color: #94a3b8; font-weight: 400; }
+.emp-add-card .form-field select option { color: #0f172a; font-weight: 500; }
+.emp-add-card .form-field select:disabled {
+  background-color: #f4f6fa;
+  color: #94a3b8;
+  cursor: not-allowed;
+  border-style: dashed;
+}
+
+/* leading icon (and password toggle) inside a control */
+.ef-control { position: relative; display: block; }
+.ef-control .ef-icon {
+  position: absolute; left: 12px; top: 50%; transform: translateY(-50%);
+  color: #94a3b8; pointer-events: none;
+  transition: color .16s ease;
+}
+.emp-add-card .form-field .ef-control input,
+.emp-add-card .form-field .ef-control select { padding-left: 38px; }
+.ef-control:focus-within .ef-icon { color: #2563eb; }
+.ef-eye {
+  position: absolute; right: 6px; top: 50%; transform: translateY(-50%);
+  width: 30px; height: 30px; border: none; border-radius: 7px;
+  display: grid; place-items: center;
+  background: transparent; color: #94a3b8; cursor: pointer;
+  transition: background-color .15s ease, color .15s ease;
+}
+.ef-eye:hover { background: #f1f5f9; color: #334155; }
+.emp-add-card .form-field .ef-control input[type='password'],
+.emp-add-card .form-field .ef-control input.ef-has-eye { padding-right: 42px; }
+
+.emp-add-card .form-field small { font-weight: 400; color: #94a3b8; margin-left: 4px; }
+
+/* ---------- footer ---------- */
+.ef-footer {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 16px 28px 22px;
+  margin-top: 8px;
+  border-top: 1px solid #eef2f7;
+  background: #fbfcfe;
+  border-radius: 0 0 16px 16px;
+}
+.ef-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+  height: 42px; padding: 0 20px;
+  border-radius: 9px;
+  font: inherit; font-size: 14px; font-weight: 600;
+  cursor: pointer;
+  transition: background-color .16s ease, border-color .16s ease, box-shadow .16s ease, transform .16s ease;
+}
+.ef-btn svg { transition: transform .2s ease; }
+.ef-btn:disabled { opacity: .6; cursor: not-allowed; }
+.ef-btn:focus-visible { outline: 3px solid rgba(37, 99, 235, .35); outline-offset: 2px; }
+.ef-btn--ghost { background: #fff; border: 1px solid #d5dce8; color: #334155; }
+.ef-btn--ghost:hover:not(:disabled) { background: #f8fafc; border-color: #b6c2d4; }
+.ef-btn--ghost:hover:not(:disabled) svg { transform: translateX(-2px); }
+.ef-btn--primary {
+  min-width: 168px;
+  border: 1px solid #1d4ed8;
+  background: #2563eb; color: #fff;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, .12), 0 8px 18px rgba(37, 99, 235, .22);
+}
+.ef-btn--primary:hover:not(:disabled) {
+  background: #1d4ed8;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, .14), 0 10px 22px rgba(37, 99, 235, .3);
+  transform: translateY(-1px);
+}
+.ef-btn--primary:hover:not(:disabled) svg { transform: translateX(2px); }
+.ef-btn--primary:active:not(:disabled) { transform: translateY(0); }
+
+/* ---------- responsive ---------- */
+@media (max-width: 720px) {
+  .ef-grid--2, .ef-grid--3 { grid-template-columns: 1fr; }
+  .ef-span-2 { grid-column: auto; }
+  .emp-add-card .ef-head, .ef-steps, .emp-add-card .ef-body, .ef-footer { padding-left: 18px; padding-right: 18px; }
+  .emp-add-card .ef-body { max-height: calc(100vh - 290px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ef-grid > * { animation: none; }
+}
