@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
-import { ClipboardCopy, KeyRound, Trash2, UserPlus } from 'lucide-react';
-import PageHeader from '../components/PageHeader';
+import { Briefcase, Building2, ClipboardCopy, KeyRound, Trash2, UserPlus, Users } from 'lucide-react';
+import PageHero from '../components/PageHero';
+import StatCards from '../components/StatCards';
 import Pagination from '../components/Pagination';
 import usePagination, { sortRecent } from '../hooks/usePagination';
 import { useAuth } from '../context/AuthContext';
@@ -56,8 +57,13 @@ export default function Candidates() {
     await navigator.clipboard?.writeText(`Email: ${credentials.email}\nTemporary password: ${credentials.password}`);
   };
 
-  return <div className="page-stack">
-    <PageHeader eyebrow="Manager Workspace" title="Candidates" description="Add Candidates, Capture Required DOB Details, And Generate Their Temporary Login Credentials." />
+  return <div className="page-stack page-reveal">
+    <PageHero eyebrow="Manager workspace" title="Candidates" description="Add candidates, capture their date of birth and generate temporary login credentials." icon={UserPlus} />
+    <StatCards items={[
+      { label: 'Total candidates', value: rows.length, icon: Users, tone: 'blue', note: 'In your pipeline' },
+      { label: 'Departments', value: new Set(rows.map((r) => r.department).filter(Boolean)).size, icon: Building2, tone: 'amber', note: 'Being hired for' },
+      { label: 'Open positions', value: new Set(rows.map((r) => r.position).filter(Boolean)).size, icon: Briefcase, tone: 'violet', note: 'Unique roles' },
+    ]} />
     <section className="panel">
       <div className="panel-title"><h2>Add Candidate</h2><UserPlus size={20} /></div>
       <form className="form-grid compact-form" onSubmit={submit}>

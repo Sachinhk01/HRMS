@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { CalendarDays, Edit3, Plus, Search, Trash2 } from 'lucide-react';
-import PageHeader from '../components/PageHeader';
+import PageHero from '../components/PageHero';
 import Pagination from '../components/Pagination';
 import usePagination from '../hooks/usePagination';
 import { useAuth } from '../context/AuthContext';
@@ -17,6 +17,7 @@ import './Holidays.css';
 import { CalendarHeart, Flag, Gift, Sparkles } from 'lucide-react';
 import { INPUT_LIMITS } from '../utils/inputLimits';
 import DatePicker from '../components/DatePicker';
+import CountUp from '../components/CountUp';
 
 const HOLIDAY_TYPE_META = {
   HOLIDAY: { label: 'Company Holiday', icon: CalendarHeart, cls: 'type-company' },
@@ -43,6 +44,16 @@ const DEFAULT_FLAGS = { attendanceAllowed: false, recurring: false };
 function formatDate(value, options = {}) {
   if (!value) return '—';
   return new Date(`${value}T00:00:00`).toLocaleDateString([], options);
+}
+
+function HolidayEta({ date }) {
+  const days = Math.round((new Date(`${String(date).slice(0, 10)}T00:00:00`) - new Date().setHours(0, 0, 0, 0)) / 86400000);
+  if (Number.isNaN(days) || days < 0) return null;
+  return (
+    <span className="holiday-eta">
+      {days === 0 ? 'Today' : days === 1 ? 'Tomorrow' : <>In <CountUp value={days} />&nbsp;days</>}
+    </span>
+  );
 }
 
 export default function Holidays() {
@@ -188,7 +199,7 @@ export default function Holidays() {
 
   return (
     <div className="page-stack holidays-page page-reveal">
-      <PageHeader eyebrow="Organisation calendar" title="Holiday List" description="View Company Holidays And Plan Attendance And Leave In Advance." />
+      <PageHero eyebrow="Organisation calendar" title="Holiday list" description="View company holidays and plan attendance and leave in advance." icon={CalendarDays} />
 
       <div className="holiday-overview-grid">
         <section className="panel holiday-upcoming-card">
@@ -196,11 +207,11 @@ export default function Holidays() {
           <div>
             <span className="eyebrow">Next Upcoming Holiday</span>
             {upcoming
-              ? <><h2>{upcoming.holidayName}</h2><p>{formatDate(upcoming.holidayDate, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</p></>
+              ? <><h2>{upcoming.holidayName}</h2><p>{formatDate(upcoming.holidayDate, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</p><HolidayEta date={upcoming.holidayDate} /></>
               : <><h2>{loading ? 'Loading…' : 'No Upcoming Holiday'}</h2><p>HR or Manager Can Add The Holiday Calendar.</p></>}
           </div>
         </section>
-        <section className="panel holiday-count-card"><strong>{filtered.length}</strong><span>Holidays in {year}</span></section>
+        <section className="panel holiday-count-card"><strong><CountUp value={filtered.length} /></strong><span>Holidays in {year}</span></section>
       </div>
 
       {canManage && (

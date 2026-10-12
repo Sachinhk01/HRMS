@@ -95,7 +95,7 @@ export default function MagazineCard({ magazine }) {
           transition={{ duration: 5, repeat: Infinity, ease: 'easeInOut' }}
         >
           <motion.div
-            className={`mg-book${hasMagazine ? '' : ' mg-book--empty'}`}
+            className="mg-book"
             style={reduceMotion ? undefined : { rotateX, rotateY }}
             initial={reduceMotion ? false : { opacity: 0, rotateY: -40, x: -24 }}
             whileInView={{ opacity: 1, rotateY: 0, x: 0 }}
@@ -105,25 +105,17 @@ export default function MagazineCard({ magazine }) {
             <span className="mg-spine" aria-hidden="true" />
             <span className="mg-pages" aria-hidden="true" />
             <div className="mg-cover">
-              {hasMagazine ? (
-                <>
-                  <img src={MAGAZINE_PHOTO} alt="Monthly magazine cover" />
-                  <div className="mg-cover-shade" />
-                  <div className="mg-cover-label">
-                    <span>Monthly</span>
-                    <strong>{magazine.month || 'Edition'}</strong>
-                  </div>
-                  <motion.span
-                    className="mg-shine"
-                    aria-hidden="true"
-                    style={reduceMotion ? undefined : { left: shineX }}
-                  />
-                </>
-              ) : (
-                <div className="mg-cover-empty">
-                  <BookOpen size={34} strokeWidth={1.6} />
-                </div>
-              )}
+              <img src={MAGAZINE_PHOTO} alt="Monthly magazine cover" />
+              <div className="mg-cover-shade" />
+              <div className="mg-cover-label">
+                <span>Monthly</span>
+                <strong>{hasMagazine ? (magazine.month || 'Edition') : 'Coming soon'}</strong>
+              </div>
+              <motion.span
+                className="mg-shine"
+                aria-hidden="true"
+                style={reduceMotion ? undefined : { left: shineX }}
+              />
             </div>
           </motion.div>
           <span className="mg-shadow" aria-hidden="true" />

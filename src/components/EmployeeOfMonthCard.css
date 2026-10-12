@@ -1,0 +1,216 @@
+/* ============================================================
+   EMPLOYEE OF THE MONTH — dark "awards night" card, gold accents.
+   Scoped to .eom-card so the generic .hl-card styles stay intact.
+   ============================================================ */
+.hl-card.eom-card {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  gap: 8px;
+  min-height: 240px;
+  border: 1px solid rgba(251, 191, 36, 0.18);
+  background: linear-gradient(135deg, #17100a 0%, #33200f 55%, #5c3612 100%);
+  box-shadow: 0 18px 40px rgba(40, 22, 6, 0.32);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+.hl-card.eom-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 26px 52px rgba(40, 22, 6, 0.42);
+}
+
+/* ---------- spotlight ---------- */
+.eom-beam {
+  position: absolute; z-index: -1; pointer-events: none;
+  top: -30%; left: -4%; width: 300px; height: 150%;
+  background: radial-gradient(ellipse 55% 60% at 50% 0%, rgba(253, 224, 138, 0.34), transparent 72%);
+  animation: eomBeam 6s ease-in-out infinite alternate;
+}
+@keyframes eomBeam {
+  from { opacity: 0.65; transform: translateX(-10px); }
+  to   { opacity: 1;    transform: translateX(14px); }
+}
+
+/* ---------- confetti ---------- */
+.eom-confetti { position: absolute; inset: 0; z-index: -1; pointer-events: none; overflow: hidden; }
+.eom-confetti i {
+  position: absolute; top: -12px; left: var(--x);
+  width: 6px; height: 10px; border-radius: 2px;
+  background: var(--c); opacity: 0;
+  animation: eomFall var(--d) linear var(--delay) infinite;
+}
+@keyframes eomFall {
+  0%   { transform: translateY(0) rotate(0); opacity: 0; }
+  10%  { opacity: 0.85; }
+  85%  { opacity: 0.7; }
+  100% { transform: translateY(290px) rotate(var(--r)); opacity: 0; }
+}
+
+/* ---------- portrait ---------- */
+.eom-stage {
+  position: relative;
+  flex: 0 0 200px;
+  align-self: stretch;
+  display: grid; place-items: center;
+  padding: 30px 0 24px 28px;
+}
+.eom-sparkle { position: absolute; color: #fde68a; pointer-events: none; }
+
+.eom-portrait-wrap { position: relative; isolation: isolate; width: 156px; height: 156px; }
+.eom-glow {
+  position: absolute; inset: -22px; border-radius: 50%; z-index: -1;
+  background: radial-gradient(circle, rgba(251, 191, 36, 0.5), transparent 68%);
+  animation: eomGlow 3.2s ease-in-out infinite;
+}
+@keyframes eomGlow {
+  0%, 100% { transform: scale(0.92); opacity: 0.7; }
+  50%      { transform: scale(1.08); opacity: 1; }
+}
+
+.eom-ring {
+  position: absolute; inset: 0; border-radius: 50%;
+  background: conic-gradient(from 0deg, #fde68a, #f59e0b, #92400e, #fde68a, #f59e0b, #fde68a);
+  animation: eomSpin 7s linear infinite;
+}
+@keyframes eomSpin { to { transform: rotate(360deg); } }
+
+.eom-portrait {
+  position: absolute; inset: 6px; border-radius: 50%;
+  overflow: hidden;
+  background: #2a1a0c;
+  border: 4px solid #2a1a0c;
+  box-shadow: inset 0 0 0 1px rgba(253, 224, 138, 0.25);
+  display: grid; place-items: center;
+}
+.eom-portrait img { width: 100%; height: 100%; object-fit: cover; display: block; transition: transform 0.6s ease; }
+.hl-card.eom-card:hover .eom-portrait img { transform: scale(1.07); }
+.eom-initials {
+  width: 100%; height: 100%;
+  display: grid; place-items: center;
+  font-size: 40px; font-weight: 800; letter-spacing: 0.02em;
+  color: #3b2205;
+  background: linear-gradient(135deg, #fde68a, #f59e0b);
+}
+.eom-crown {
+  position: absolute; top: -16px; left: 50%; z-index: 3;
+  margin-left: -17px; width: 34px; height: 34px; border-radius: 50%;
+  display: grid; place-items: center;
+  color: #4a2a05;
+  background: linear-gradient(135deg, #fef3c7, #fbbf24);
+  border: 2px solid #33200f;
+  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.35);
+}
+
+/* ---------- content ---------- */
+.eom-content {
+  flex: 1; min-width: 0;
+  display: flex; flex-direction: column; justify-content: center;
+  gap: 12px;
+  padding: 26px 28px 26px 14px;
+  color: #fff;
+}
+.eom-badges { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.eom-badge {
+  display: inline-flex; align-items: center; gap: 7px;
+  padding: 7px 13px; border-radius: 999px;
+  font-size: 12px; font-weight: 700;
+  color: #4a2a05;
+  background: linear-gradient(135deg, #fde68a, #fbbf24);
+}
+.eom-badge--soft {
+  color: #fde9c4;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(253, 224, 138, 0.25);
+}
+
+.eom-name {
+  margin: 0;
+  font-size: clamp(24px, 2.2vw, 31px);
+  font-weight: 800;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  overflow-wrap: anywhere;
+  color: transparent;
+  background: linear-gradient(100deg, #fff 0%, #fde68a 25%, #fff 50%, #fde68a 75%, #fff 100%);
+  background-size: 250% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  animation: eomShimmer 6s linear infinite;
+}
+.eom-name--empty { animation: none; background: none; color: #fff; -webkit-text-fill-color: #fff; }
+@keyframes eomShimmer { from { background-position: 100% 0; } to { background-position: -150% 0; } }
+
+.eom-desc { margin: 0; font-size: 14px; line-height: 1.7; color: rgba(253, 233, 196, 0.8); }
+
+.eom-meta { display: flex; flex-wrap: wrap; gap: 8px; }
+.eom-chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 5px 11px; border-radius: 999px;
+  font-size: 12px; font-weight: 600;
+  color: #fde9c4;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.eom-quote {
+  position: relative;
+  margin: 0;
+  padding: 12px 14px 12px 42px;
+  border-left: 3px solid #fbbf24;
+  border-radius: 4px 12px 12px 4px;
+  background: rgba(255, 255, 255, 0.07);
+  font-size: 13.5px; font-style: italic; line-height: 1.65;
+  color: #fde9c4;
+  display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
+}
+.eom-quote-icon { position: absolute; left: 14px; top: 13px; color: #fbbf24; }
+
+.eom-stars { display: flex; align-items: center; gap: 4px; }
+.eom-stars span { display: inline-flex; }
+.eom-stars em {
+  margin-left: 8px; font-style: normal;
+  font-size: 12px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase;
+  color: #fde68a;
+}
+
+/* ---------- responsive ---------- */
+@media (max-width: 900px) {
+  .hl-card.eom-card { flex-direction: column; align-items: center; text-align: center; }
+  .eom-stage { flex: none; padding: 34px 0 0; }
+  .eom-content { align-items: center; padding: 10px 22px 26px; }
+  .eom-badges, .eom-meta { justify-content: center; }
+  .eom-quote { text-align: left; }
+}
+
+/* ---------- accessibility ---------- */
+@media (prefers-reduced-motion: reduce) {
+  .eom-beam, .eom-glow, .eom-ring, .eom-name { animation: none; }
+}
+
+/* ---------- 3D trophy empty state ---------- */
+.eom-trophy {
+  position: relative;
+  width: 170px; height: 190px;
+  display: grid; place-items: center;
+  perspective: 800px;
+}
+.eom-trophy-glow {
+  position: absolute; inset: 6px -6px; border-radius: 50%; z-index: 0;
+  background: radial-gradient(circle, rgba(251, 191, 36, 0.42), transparent 66%);
+  animation: eomGlow 3.2s ease-in-out infinite;
+}
+.eom-trophy-float, .eom-trophy-3d { position: relative; z-index: 1; }
+.eom-trophy-3d { transform-style: preserve-3d; filter: drop-shadow(0 14px 18px rgba(0, 0, 0, 0.4)); }
+.eom-trophy-3d svg { display: block; }
+
+.eom-orbit { position: absolute; inset: -6px -14px; pointer-events: none; }
+.eom-orbit i {
+  position: absolute; width: 8px; height: 8px; margin: -4px 0 0 -4px;
+  background: #fde68a;
+  clip-path: polygon(50% 0, 62% 38%, 100% 50%, 62% 62%, 50% 100%, 38% 62%, 0 50%, 38% 38%);
+  filter: drop-shadow(0 0 4px rgba(253, 224, 138, 0.9));
+}
+.eom-orbit i:nth-child(2) { width: 6px; height: 6px; }
+.eom-orbit i:nth-child(3) { width: 10px; height: 10px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .eom-trophy-glow { animation: none; }
+}

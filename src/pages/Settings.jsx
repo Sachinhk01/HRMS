@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { motion } from 'framer-motion';
 import {
   Pencil,
   Save,
@@ -590,6 +591,7 @@ export default function Settings() {
             className={`settings-tab accent-${g.accent}${isActive ? ' is-active' : ''}`}
             onClick={() => selectTab(g.key)}
           >
+            {isActive && <motion.span layoutId="settings-pill" className="settings-pill" transition={{ type: 'spring', stiffness: 400, damping: 32 }} />}
             <GIcon size={16} />
             <span>{g.label}</span>
           </button>

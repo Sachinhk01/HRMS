@@ -126,7 +126,7 @@ export default function SalaryStructuresPanel() {
   }
 
   return (
-    <div className="payroll-stack">
+    <div className="payroll-stack page-reveal">
       {error && <div className="form-alert">{error}</div>}
       {message && <div className="success-alert">{message}</div>}
       <section className="panel">

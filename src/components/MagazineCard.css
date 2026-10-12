@@ -125,19 +125,6 @@
   filter: blur(4px);
 }
 
-/* empty state: dashed placeholder cover */
-.mg-book--empty .mg-cover {
-  background: rgba(255, 255, 255, 0.08);
-  border: 1.5px dashed rgba(255, 255, 255, 0.4);
-  box-shadow: none;
-}
-.mg-cover-empty {
-  height: 100%; display: grid; place-items: center;
-  color: rgba(255, 255, 255, 0.85);
-}
-.mg-book--empty .mg-pages,
-.mg-book--empty .mg-spine { display: none; }
-
 /* ---------- content ---------- */
 .mg-content {
   flex: 1;

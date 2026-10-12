@@ -1,0 +1,143 @@
+/* Salary page (employee view) — every selector is sal-* so HR payroll screens are untouched. */
+.sal-page { display: flex; flex-direction: column; gap: 18px; }
+.sal-title h1 { margin: 0; font-size: 26px; font-weight: 800; letter-spacing: -.02em; color: var(--navy); }
+.sal-title p { margin: 4px 0 0; font-size: 14px; color: var(--muted); }
+.sal-error { padding: 11px 14px; border-radius: 12px; font-size: 13px; font-weight: 600; color: #b91c1c; background: #fee2e2; border: 1px solid #fecaca; }
+
+.sal-panel { background: #fff; border: 1px solid var(--line); border-radius: 20px; padding: 22px 24px 24px; box-shadow: var(--shadow-sm); }
+.sal-panel > h2 { display: flex; align-items: center; gap: 10px; margin: 0 0 16px; font-size: 16px; font-weight: 800; color: var(--navy); }
+.sal-panel > h2 small { font-size: 12px; font-weight: 500; color: var(--muted); }
+
+/* ---------- Net pay (the one bold element) ---------- */
+.sal-top { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); gap: 18px; }
+.sal-net {
+  position: relative; isolation: isolate; overflow: hidden; padding: 26px 28px 24px; border-radius: 22px; color: #fff;
+  background:
+    radial-gradient(rgba(255, 255, 255, .09) 1.2px, transparent 1.2px) 0 0 / 18px 18px,
+    linear-gradient(135deg, #0a1f63 0%, #1747c9 58%, #4f46e5 100%);
+  box-shadow: 0 18px 40px rgba(23, 71, 201, .28);
+}
+.sal-net::before {
+  content: ''; position: absolute; z-index: -1; top: -120px; right: -60px; width: 340px; height: 340px; border-radius: 50%;
+  background: radial-gradient(circle, rgba(125, 211, 252, .38), transparent 65%); animation: sal-aurora 11s ease-in-out infinite alternate;
+}
+@keyframes sal-aurora { from { transform: translate(0, 0) scale(1); } to { transform: translate(-36px, 26px) scale(1.15); } }
+.sal-net-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.sal-net-head > span { font-size: 14px; font-weight: 600; color: rgba(255, 255, 255, .78); }
+.sal-net-head select {
+  padding: 8px 32px 8px 12px; border-radius: 10px; border: 1px solid rgba(255, 255, 255, .28); color: #fff; font-size: 13px; font-weight: 600;
+  background: rgba(255, 255, 255, .12); appearance: none; cursor: pointer;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='none' stroke='white' stroke-width='2'%3E%3Cpath d='m2 4 4 4 4-4'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 11px center;
+}
+.sal-net-head select option { color: var(--ink); }
+.sal-net-head select:focus-visible { outline: 3px solid rgba(255, 255, 255, .45); outline-offset: 2px; }
+.sal-net-amount { display: block; margin: 10px 0 4px; font-size: 46px; font-weight: 800; letter-spacing: -.03em; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.sal-net p { margin: 0 0 22px; font-size: 13px; color: rgba(255, 255, 255, .72); }
+
+.sal-split-bar { display: flex; height: 10px; border-radius: 999px; overflow: hidden; background: rgba(255, 255, 255, .14); }
+.sal-split-bar i { display: block; height: 100%; }
+.sal-split-bar .is-net { background: linear-gradient(90deg, #5eead4, #7dd3fc); }
+.sal-split-bar .is-ded { background: #fda4af; margin-left: 3px; border-radius: 0 999px 999px 0; }
+.sal-split-legend { display: flex; gap: 18px; margin: 10px 0 20px; font-size: 12px; font-weight: 600; color: rgba(255, 255, 255, .8); }
+.sal-split-legend span { display: inline-flex; align-items: center; gap: 7px; }
+.sal-split-legend b { width: 9px; height: 9px; border-radius: 50%; }
+.sal-split-legend .is-net { background: #5eead4; }
+.sal-split-legend .is-ded { background: #fda4af; }
+
+.sal-download {
+  display: inline-flex; align-items: center; gap: 8px; padding: 11px 18px; border: 0; border-radius: 12px;
+  font-size: 14px; font-weight: 700; color: #1747c9; background: #fff; box-shadow: 0 8px 20px rgba(7, 22, 77, .25);
+}
+.sal-download:disabled { opacity: .7; cursor: wait; }
+.sal-download:focus-visible { outline: 3px solid rgba(255, 255, 255, .6); outline-offset: 2px; }
+.sal-spin { animation: sal-spin .7s linear infinite; }
+@keyframes sal-spin { to { transform: rotate(360deg); } }
+
+/* ---------- Stats (plain, so the net card stays the star) ---------- */
+.sal-stats { display: flex; flex-direction: column; gap: 12px; }
+.sal-stat {
+  --c: #2563eb; --s: #eaf1ff;
+  flex: 1; display: flex; align-items: center; gap: 16px; padding: 16px 20px; border-radius: 18px;
+  background: #fff; border: 1px solid var(--line); border-left: 4px solid var(--c); box-shadow: var(--shadow-sm);
+}
+.sal-stat[data-tone="amber"] { --c: #f59e0b; --s: #fff4dc; }
+.sal-stat[data-tone="violet"] { --c: #7c3aed; --s: #f0e9ff; }
+.sal-stat-icon { display: grid; place-items: center; width: 42px; height: 42px; border-radius: 13px; color: var(--c); background: var(--s); flex-shrink: 0; }
+.sal-stat small { display: block; font-size: 12px; font-weight: 600; color: var(--muted); }
+.sal-stat strong { display: block; margin: 1px 0; font-size: 22px; font-weight: 800; color: var(--navy); font-variant-numeric: tabular-nums; }
+.sal-stat em { font-size: 12px; font-style: normal; color: var(--muted); }
+
+/* ---------- Earnings / deductions ---------- */
+.sal-split { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
+.sal-breakdown { --bar: linear-gradient(90deg, #2563eb, #6366f1); }
+.sal-breakdown.sal-ded { --bar: linear-gradient(90deg, #fb7185, #f59e0b); }
+.sal-breakdown ul { list-style: none; margin: 0; padding: 0; }
+.sal-line { display: grid; grid-template-columns: 1fr auto; gap: 6px 12px; align-items: baseline; padding: 11px 0; border-bottom: 1px solid #f0f3f9; }
+.sal-line span { font-size: 13px; color: #55617a; }
+.sal-line strong { font-size: 14px; font-weight: 700; color: var(--navy); font-variant-numeric: tabular-nums; }
+.sal-line.is-zero span, .sal-line.is-zero strong { color: #a3adc1; font-weight: 500; }
+.sal-line-bar { grid-column: 1 / -1; height: 4px; border-radius: 999px; background: #eef2f9; overflow: hidden; }
+.sal-line-bar b { display: block; height: 100%; border-radius: inherit; background: var(--bar); }
+.sal-total { display: flex; justify-content: space-between; align-items: baseline; padding: 16px 0 0; }
+.sal-total span { font-size: 14px; font-weight: 700; color: var(--navy); }
+.sal-total strong { font-size: 18px; font-weight: 800; color: var(--navy); font-variant-numeric: tabular-nums; }
+.sal-netrow { display: flex; justify-content: space-between; align-items: center; margin-top: 14px; padding: 14px 18px; border-radius: 14px; background: linear-gradient(120deg, #eaf1ff, #eef0ff); border: 1px solid #d3e0fb; }
+.sal-netrow span { font-size: 13px; font-weight: 700; color: var(--blue); }
+.sal-netrow strong { font-size: 22px; font-weight: 800; color: var(--navy); font-variant-numeric: tabular-nums; }
+
+/* ---------- Attendance ---------- */
+.sal-attendance { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; }
+.sal-att { display: flex; flex-direction: column; gap: 2px; padding: 14px 16px; border-radius: 14px; background: #f8faff; border: 1px solid #edf1fa; }
+.sal-att svg { color: var(--blue); margin-bottom: 6px; }
+.sal-att strong { font-size: 22px; font-weight: 800; color: var(--navy); font-variant-numeric: tabular-nums; }
+.sal-att span { font-size: 12px; font-weight: 600; color: var(--muted); }
+
+/* ---------- Payment details ---------- */
+.sal-details { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+.sal-detail { display: flex; align-items: center; gap: 12px; padding: 14px 16px; border-radius: 14px; background: #f8faff; border: 1px solid #edf1fa; transition: border-color .2s ease, background-color .2s ease; }
+.sal-detail:hover { background: #f1f6ff; border-color: #c7d9fb; }
+.sal-detail-icon { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 10px; color: var(--blue); background: #dbeafe; flex-shrink: 0; transition: transform .25s cubic-bezier(.34, 1.56, .64, 1); }
+.sal-detail:hover .sal-detail-icon { transform: scale(1.12) rotate(-6deg); }
+.sal-detail small { display: block; font-size: 12px; font-weight: 600; color: var(--muted); }
+.sal-detail strong { display: block; font-size: 14px; font-weight: 700; color: var(--navy); overflow-wrap: anywhere; }
+
+/* ---------- History ---------- */
+.sal-table-wrap { overflow-x: auto; }
+.sal-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.sal-table th { padding: 10px 14px; text-align: left; font-size: 12px; font-weight: 600; color: var(--muted); border-bottom: 1px solid var(--line); white-space: nowrap; }
+.sal-table td { padding: 13px 14px; color: #3f4c66; border-bottom: 1px solid #f0f3f9; white-space: nowrap; }
+.sal-table td strong { color: var(--navy); }
+.sal-table tbody tr { cursor: pointer; transition: background-color .15s ease, box-shadow .15s ease; }
+.sal-table tbody tr:hover { background: #f3f7ff; }
+.sal-table tbody tr.is-active { background: #eaf1ff; box-shadow: inset 3px 0 0 var(--blue); }
+.sal-table tbody tr:focus-visible { outline: 2px solid var(--blue); outline-offset: -2px; }
+.sal-right { text-align: right; }
+.sal-pdf { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 9px; border: 1px solid #d3e0fb; background: #fff; color: var(--blue); font-size: 12px; font-weight: 700; transition: background-color .15s ease, transform .15s ease; }
+.sal-pdf:hover:not(:disabled) { background: #eaf1ff; transform: translateY(-1px); }
+
+/* ---------- Loading ---------- */
+.sal-skeleton { border-radius: 20px; background: linear-gradient(90deg, #eef2f9 25%, #f7f9fd 50%, #eef2f9 75%) 0 0 / 200% 100%; animation: sal-shimmer 1.4s infinite; }
+@keyframes sal-shimmer { to { background-position: -200% 0; } }
+.sal-page .sal-top:has(.sal-skeleton), .sal-page .sal-split:has(.sal-skeleton) { grid-template-columns: 1.5fr 1fr; }
+
+/* ---------- Responsive ---------- */
+@media (max-width: 1100px) {
+  .sal-details { grid-template-columns: repeat(2, 1fr); }
+  .sal-attendance { grid-template-columns: repeat(3, 1fr); }
+}
+@media (max-width: 860px) {
+  .sal-top, .sal-split { grid-template-columns: 1fr; }
+  .sal-stats { flex-direction: row; flex-wrap: wrap; }
+  .sal-stat { flex: 1 1 220px; }
+}
+@media (max-width: 560px) {
+  .sal-net { padding: 22px 18px 20px; }
+  .sal-net-amount { font-size: 36px; }
+  .sal-details { grid-template-columns: 1fr; }
+  .sal-attendance { grid-template-columns: repeat(2, 1fr); }
+  .sal-panel { padding: 18px 16px 20px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .sal-net::before, .sal-skeleton, .sal-spin { animation: none; }
+}

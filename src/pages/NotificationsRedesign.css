@@ -1,0 +1,101 @@
+/* Notifications redesign — nt-* only. Keep Notifications.css: it also defines the shared .empty-state. */
+.nt-page { display: flex; flex-direction: column; gap: 16px; }
+
+.nt-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+.nt-head h1 { margin: 0; font-size: 26px; font-weight: 800; letter-spacing: -.02em; color: var(--navy); }
+.nt-head p { margin: 4px 0 0; font-size: 14px; color: var(--muted); }
+.nt-head-actions { display: flex; align-items: center; gap: 10px; min-height: 40px; }
+
+.nt-pill { display: inline-flex; align-items: center; gap: 7px; padding: 7px 13px; border-radius: 999px; font-size: 13px; font-weight: 600; color: #1d4ed8; background: #eaf1ff; border: 1px solid #cfe0fc; }
+.nt-pill b { display: inline-block; font-variant-numeric: tabular-nums; }
+.nt-pill-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--blue); }
+.nt-pill.is-clear { color: #15803d; background: #e7f8f0; border-color: #bbf7d0; }
+.nt-markall {
+  display: inline-flex; align-items: center; gap: 8px; padding: 9px 15px; border-radius: 12px; border: 1px solid #d3e0fb;
+  background: #fff; color: var(--blue); font-size: 13px; font-weight: 700; box-shadow: var(--shadow-xs);
+}
+.nt-markall:hover { background: #f3f7ff; }
+.nt-markall:focus-visible, .nt-retry:focus-visible, .nt-filters button:focus-visible, .nt-row:focus-visible { outline: 3px solid rgba(37, 99, 235, .35); outline-offset: 2px; }
+
+/* ---------- Filter (same spring pill as Attendance) ---------- */
+.nt-filters { display: inline-flex; align-self: flex-start; gap: 2px; padding: 4px; border-radius: 13px; background: #eef2f9; }
+.nt-filters button { position: relative; display: inline-flex; align-items: center; gap: 7px; padding: 7px 16px; border: 0; border-radius: 10px; background: transparent; font-size: 13px; font-weight: 600; color: var(--muted); transition: color .18s ease; }
+.nt-filters button.is-active { color: var(--navy); }
+.nt-filters button > span, .nt-filters button > em { position: relative; z-index: 1; }
+.nt-filters em { display: inline-grid; place-items: center; min-width: 20px; height: 20px; padding: 0 6px; border-radius: 999px; font-size: 11px; font-style: normal; font-weight: 700; color: #fff; background: var(--blue); }
+.nt-filters em b { font-weight: 700; }
+.nt-filter-pill { position: absolute; inset: 0; z-index: 0; border-radius: 10px; background: #fff; box-shadow: 0 1px 3px rgba(15, 23, 42, .12); }
+
+/* ---------- Panel + groups ---------- */
+.nt-panel { background: #fff; border: 1px solid var(--line); border-radius: 20px; padding: 8px 14px 14px; box-shadow: var(--shadow-sm); min-height: 220px; }
+.nt-group + .nt-group { margin-top: 6px; }
+.nt-group h2 { display: flex; align-items: center; gap: 8px; margin: 0; padding: 16px 12px 8px; font-size: 13px; font-weight: 700; color: #55617a; }
+.nt-group h2 span { padding: 1px 8px; border-radius: 999px; font-size: 11px; font-weight: 600; color: var(--muted); background: #f1f5f9; }
+.nt-group ul { list-style: none; margin: 0; padding: 0; }
+.nt-li { overflow: hidden; }
+
+/* ---------- Row ---------- */
+.nt-row {
+  position: relative; display: grid; grid-template-columns: auto 1fr auto; align-items: start; gap: 14px;
+  margin: 2px 0; padding: 13px 14px; border-radius: 14px; background: transparent; cursor: default;
+  transition: background-color .35s ease, transform .2s ease;
+}
+.nt-row::before {
+  content: ''; position: absolute; left: 0; top: 12px; bottom: 12px; width: 3px; border-radius: 3px; background: var(--blue);
+  transform: scaleY(0); transition: transform .35s var(--ease-in-out-soft);
+}
+.nt-row:hover { background: #f6f8fd; }
+.nt-row.is-unread { background: #f3f7ff; cursor: pointer; }
+.nt-row.is-unread::before { transform: scaleY(1); }
+.nt-row.is-unread:hover { background: #eaf1ff; }
+.nt-row.is-unread:active { transform: scale(.995); }
+
+.nt-icon { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 12px; transition: transform .25s cubic-bezier(.34, 1.56, .64, 1); }
+.nt-row:hover .nt-icon { transform: scale(1.08) rotate(-5deg); }
+.nt-icon.tone-blue { background: #eaf2fe; color: var(--blue); }
+.nt-icon.tone-green { background: #e7f8f0; color: var(--green); }
+.nt-icon.tone-orange { background: #fef3e3; color: var(--orange); }
+.nt-icon.tone-pink { background: #fdeaf3; color: var(--pink); }
+.nt-icon.tone-red { background: #fdeaee; color: var(--red); }
+.nt-icon.tone-teal { background: #e5f7f5; color: var(--teal); }
+.nt-icon.tone-purple { background: #f1eafe; color: #7c3aed; }
+.nt-icon.tone-slate { background: #eef2f7; color: #64748b; }
+
+.nt-body { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.nt-body strong { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 600; color: #55617a; transition: color .3s ease; }
+.nt-row.is-unread .nt-body strong { font-weight: 700; color: var(--navy); }
+.nt-dot { flex-shrink: 0; width: 8px; height: 8px; border-radius: 50%; background: var(--blue); }
+.nt-text { font-size: 13px; line-height: 1.5; color: var(--muted); overflow-wrap: anywhere; max-width: 78ch; }
+.nt-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 3px; }
+.nt-chips em { display: inline-flex; align-items: center; gap: 5px; padding: 2px 9px; border-radius: 999px; font-size: 11px; font-style: normal; font-weight: 600; color: #475569; background: #f1f5f9; border: 1px solid #e5eaf2; }
+.nt-time { padding-top: 2px; font-size: 12px; font-weight: 500; color: #8a95ac; white-space: nowrap; }
+
+/* ---------- States ---------- */
+.nt-state { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 56px 16px; text-align: center; }
+.nt-state strong { font-size: 16px; font-weight: 700; color: var(--navy); }
+.nt-state p { margin: 0; font-size: 13px; color: var(--muted); }
+.nt-empty-icon { position: relative; display: grid; place-items: center; width: 68px; height: 68px; margin-bottom: 8px; border-radius: 50%; color: var(--blue); background: #eaf1ff; }
+.nt-empty-icon i { position: absolute; right: -2px; bottom: -2px; display: grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; color: #fff; background: var(--green); border: 2px solid #fff; }
+.nt-error { color: #b91c1c; font-weight: 600; }
+.nt-retry { display: inline-flex; align-items: center; gap: 7px; margin-top: 8px; padding: 8px 14px; border-radius: 10px; border: 1px solid #d3e0fb; background: #fff; color: var(--blue); font-size: 13px; font-weight: 700; }
+.nt-retry:hover { background: #f3f7ff; }
+
+.nt-skeletons { display: flex; flex-direction: column; gap: 6px; padding: 10px 0 4px; }
+.nt-skel { display: flex; align-items: center; gap: 14px; padding: 13px 14px; }
+.nt-skel > div { flex: 1; display: flex; flex-direction: column; gap: 9px; }
+.nt-skel i, .nt-skel-icon { display: block; height: 11px; border-radius: 6px; background: linear-gradient(90deg, #eef2f9 25%, #f7f9fd 50%, #eef2f9 75%) 0 0 / 200% 100%; animation: nt-shimmer 1.4s infinite; }
+.nt-skel-icon { width: 40px; height: 40px; border-radius: 12px; }
+@keyframes nt-shimmer { to { background-position: -200% 0; } }
+
+@media (max-width: 640px) {
+  .nt-panel { padding: 4px 8px 10px; }
+  .nt-row { grid-template-columns: auto 1fr; padding: 12px 10px; }
+  .nt-time { grid-column: 2; padding-top: 0; }
+  .nt-head-actions { width: 100%; justify-content: space-between; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .nt-skel i, .nt-skel-icon { animation: none; }
+  .nt-row, .nt-row::before, .nt-icon { transition: none; }
+}
+
+.nt-page .ph-action .nt-head-actions { flex-wrap: wrap; }

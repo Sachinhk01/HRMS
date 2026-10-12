@@ -1,0 +1,52 @@
+/* Shared motion kit. Elements already animated by framer-motion carry an inline
+   style attribute, so every selector uses :not([style]) to avoid double animation. */
+
+:root { --mk-ease: cubic-bezier(.16, 1, .3, 1); }
+
+/* ---- Table rows rise in one after another ---- */
+.table tbody tr:not([style]),
+.mdm-table tbody tr:not([style]),
+.rx-table tbody tr:not([style]) {
+  animation: mk-row .42s var(--mk-ease) backwards;
+}
+.table tbody tr:nth-child(1), .mdm-table tbody tr:nth-child(1), .rx-table tbody tr:nth-child(1) { animation-delay: .02s; }
+.table tbody tr:nth-child(2), .mdm-table tbody tr:nth-child(2), .rx-table tbody tr:nth-child(2) { animation-delay: .06s; }
+.table tbody tr:nth-child(3), .mdm-table tbody tr:nth-child(3), .rx-table tbody tr:nth-child(3) { animation-delay: .10s; }
+.table tbody tr:nth-child(4), .mdm-table tbody tr:nth-child(4), .rx-table tbody tr:nth-child(4) { animation-delay: .14s; }
+.table tbody tr:nth-child(5), .mdm-table tbody tr:nth-child(5), .rx-table tbody tr:nth-child(5) { animation-delay: .18s; }
+.table tbody tr:nth-child(6), .mdm-table tbody tr:nth-child(6), .rx-table tbody tr:nth-child(6) { animation-delay: .22s; }
+.table tbody tr:nth-child(7), .mdm-table tbody tr:nth-child(7), .rx-table tbody tr:nth-child(7) { animation-delay: .26s; }
+.table tbody tr:nth-child(8), .mdm-table tbody tr:nth-child(8), .rx-table tbody tr:nth-child(8) { animation-delay: .30s; }
+.table tbody tr:nth-child(n+9), .mdm-table tbody tr:nth-child(n+9), .rx-table tbody tr:nth-child(n+9) { animation-delay: .34s; }
+@keyframes mk-row { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+
+/* ---- Modals: fade the backdrop, pop the card ---- */
+.modal-overlay:not([style]), .emp-modal-overlay:not([style]) { animation: mk-fade .2s ease; }
+.modal-card:not([style]), .emp-modal-card:not([style]), .mdm-modal-card:not([style]) {
+  animation: mk-pop .3s var(--mk-ease);
+}
+@keyframes mk-fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes mk-pop { from { opacity: 0; transform: translateY(12px) scale(.95); } to { opacity: 1; transform: none; } }
+
+/* ---- Settings tabs: sliding pill ---- */
+.settings-tabs .settings-tab { position: relative; }
+.settings-tabs .settings-tab.is-active { background: transparent; box-shadow: none; }
+.settings-pill {
+  position: absolute; inset: 0; z-index: 0; border-radius: 999px;
+  background: linear-gradient(135deg, var(--accent), color-mix(in srgb, var(--accent) 70%, #fff));
+  box-shadow: 0 8px 18px color-mix(in srgb, var(--accent) 36%, transparent);
+}
+.settings-tab > svg, .settings-tab > span:not(.settings-pill) { position: relative; z-index: 1; }
+
+/* ---- Holidays: "in N days" chip ---- */
+.holiday-eta {
+  display: inline-flex; align-items: center; margin-top: 10px; padding: 4px 12px; border-radius: 999px;
+  font-size: 12px; font-weight: 700; color: #1d4ed8; background: #eaf1ff; border: 1px solid #cfe0fc;
+  font-variant-numeric: tabular-nums;
+}
+.holiday-count-card strong { font-variant-numeric: tabular-nums; }
+
+@media (prefers-reduced-motion: reduce) {
+  .table tbody tr, .mdm-table tbody tr, .rx-table tbody tr,
+  .modal-overlay, .emp-modal-overlay, .modal-card, .emp-modal-card, .mdm-modal-card { animation: none !important; }
+}

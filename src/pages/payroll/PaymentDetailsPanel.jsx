@@ -186,7 +186,7 @@ export default function PaymentDetailsPanel() {
   const selectedEmployee = employees.find((item) => item.id === Number(selectedId));
 
   return (
-    <div className="payroll-stack">
+    <div className="payroll-stack page-reveal">
       {error && <div className="form-alert">{error}</div>}
       {message && <div className="success-alert">{message}</div>}
       <section className="panel">
