@@ -23,6 +23,7 @@ import Candidates from './pages/Candidates';
 import Regularization from './pages/Regularization';
 import RegularizationApprovals from './pages/RegularizationApprovals';
 import LeaveApprovals from './pages/LeaveApprovals';
+import LeaveRequestDetails from './pages/LeaveRequestDetails';
 import Announcements from './pages/Announcements';
 import Events from './pages/Events';
 import AccessDenied from './pages/AccessDenied';
@@ -39,7 +40,7 @@ function RoleRoute({ children }) {
   const { user } = useAuth();
   const { pathname } = useLocation();
 
-  const allowed = ROUTE_ROLES[pathname] || [];
+  const allowed = ROUTE_ROLES[pathname] || ROUTE_ROLES[pathname.replace(/\/[^/]+$/, '')] || [];
   const userRole = user?.role || user?.roles?.[0];
 
   return allowed.includes(userRole)
@@ -78,6 +79,7 @@ export default function App() {
         <Route path="/attendance" element={<RoleRoute><Attendance /></RoleRoute>} />
         <Route path="/holidays" element={<RoleRoute><Holidays /></RoleRoute>} />
         <Route path="/leave" element={<RoleRoute><Leave /></RoleRoute>} />
+        <Route path="/leave/:id" element={<RoleRoute><LeaveRequestDetails /></RoleRoute>} />
         <Route path="/celebrations" element={<RoleRoute><CelebrationWall /></RoleRoute>} />
         <Route path="/payroll" element={<RoleRoute><Payroll /></RoleRoute>} />
         <Route path="/profile" element={<RoleRoute><Profile /></RoleRoute>} />

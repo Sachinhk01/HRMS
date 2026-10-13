@@ -26,6 +26,7 @@ export const ROLE_MENUS = {
     ['/employees', 'Employees'],
     ['/attendance', 'Attendance'],
     ['/leave', 'Leave'],
+    ['/leave-approvals', 'Team Requests'],
     ['/regularization', 'Regularization'],
     ['/celebrations', 'Celebration Wall'],
     ['/announcements', 'Announcements'],
@@ -38,8 +39,8 @@ export const ROLE_MENUS = {
 
   MANAGER: [
     ['/dashboard', 'Dashboard'],
-    ['/leave', 'My Leave'],
-    ['/leave-approvals', 'Leave Approvals'],
+    ['/leave', 'My Requests'],
+    ['/leave-approvals', 'Team Requests'],
     ['/regularization', 'My Regularization'],
     ['/regularization-approvals', 'Regularization Approvals'],
     ['/attendance', 'Attendance'],
@@ -62,7 +63,7 @@ export const ROLE_MENUS = {
     ['/announcements', 'Announcements'],
     ['/events', 'Events'],
     ['/leave', 'Leave'],
-    ['/leave-approvals', 'Leave Approvals'],
+    ['/leave-approvals', 'Team Requests'],
     ['/performance', 'Performance'],
     ['/candidates', 'Candidates'],
     ['/form16', 'Form 16'],
@@ -148,6 +149,7 @@ export const ROUTE_ROLES = {
 
   '/leave-approvals': [
     'MANAGER',
+    'HR_ADMIN',
     'SUPER_ADMIN',
   ],
   '/regularization': [

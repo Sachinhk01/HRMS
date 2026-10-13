@@ -99,8 +99,15 @@ export async function getLeaveRequest(leaveRequestId) {
   return data.data;
 }
 
-export async function getMyLeaveRequests() {
-  const { data } = await api.get("/leave-requests/my");
+function monthYearParams({ month, year } = {}) {
+  const params = {};
+  if (month) params.month = month;
+  if (year) params.year = year;
+  return params;
+}
+
+export async function getMyLeaveRequests(filters = {}) {
+  const { data } = await api.get("/leave-requests/my", { params: monthYearParams(filters) });
   return data.data;
 }
 
@@ -109,8 +116,8 @@ export async function getTeamLeaveRequests() {
   return data.data;
 }
 
-export async function getAllLeaveRequests() {
-  const { data } = await api.get("/leave-requests");
+export async function getAllLeaveRequests(filters = {}) {
+  const { data } = await api.get("/leave-requests", { params: monthYearParams(filters) });
   return data.data;
 }
 
@@ -147,6 +154,11 @@ export async function getAllLeaveBalances() {
 // ---- Leave Transactions ----
 export async function getMyLeaveTransactions() {
   const { data } = await api.get("/leave-transactions/my");
+  return data.data;
+}
+
+export async function getLeaveRequestTransactions(leaveRequestId) {
+  const { data } = await api.get(`/leave-transactions/leave-request/${leaveRequestId}`);
   return data.data;
 }
 

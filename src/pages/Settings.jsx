@@ -96,10 +96,13 @@ const GROUPS = [
       { name: 'monthlyGuideline', label: 'Monthly Guideline (days)', type: 'number', min: 0, required: true, unit: 'days' },
       { name: 'annualPaidLeave', label: 'Annual Paid Leave (days)', type: 'number', min: 0, required: true, unit: 'days' },
       { name: 'carryForwardAllowed', label: 'Carry Forward Allowed', type: 'boolean', hint: 'Let unused leave roll over into the next year.' },
+      { name: 'sandwichLeaveMondayEnabled', label: 'Monday Sandwich Leave', type: 'boolean', hint: 'Count a Monday leave together with the preceding weekend.' },
+      { name: 'sandwichLeaveFridayEnabled', label: 'Friday Sandwich Leave', type: 'boolean', hint: 'Count a Friday leave together with the following weekend.' },
+      { name: 'sandwichLeaveFridayMondayEnabled', label: 'Friday–Monday Sandwich Leave', type: 'boolean', hint: 'Count leave on Friday and Monday together with the weekend.' },
     ],
     sections: [
       { title: 'Leave Allowances', subtitle: 'Monthly and annual leave quotas', icon: Gauge, fields: ['monthlyGuideline', 'annualPaidLeave'] },
-      { title: 'Leave Rules', subtitle: 'Carry-forward policy', icon: Repeat2, fields: ['carryForwardAllowed'] },
+      { title: 'Leave Rules', subtitle: 'Carry-forward and sandwich leave policy', icon: Repeat2, fields: ['carryForwardAllowed', 'sandwichLeaveMondayEnabled', 'sandwichLeaveFridayEnabled', 'sandwichLeaveFridayMondayEnabled'] },
     ],
   },
   {
@@ -123,17 +126,17 @@ const GROUPS = [
       { name: 'companyName', label: 'Company Name', type: 'text', required: true, maxLength: 150, wide: true },
       { name: 'companyCode', label: 'Company Code', type: 'text', required: true, maxLength: 30 },
       { name: 'email', label: 'Company Email', type: 'email', required: true, maxLength: 150 },
-      { name: 'phoneNumber', label: 'Phone Number', type: 'text', pattern: '^[0-9]{10,15}$', title: '10 to 15 digits, numbers only' },
-      { name: 'website', label: 'Website', type: 'text', maxLength: 150 },
-      { name: 'addressLine1', label: 'Address Line 1', type: 'text', maxLength: 255, wide: true },
+      { name: 'phoneNumber', label: 'Phone Number', type: 'tel', required: true, pattern: '^[6-9][0-9]{9}$', title: 'Enter a 10-digit phone number starting with 6, 7, 8, or 9' },
+      { name: 'website', label: 'Website', type: 'url', maxLength: 150 },
+      { name: 'addressLine1', label: 'Address Line 1', type: 'text', required: true, maxLength: 255, wide: true },
       { name: 'addressLine2', label: 'Address Line 2', type: 'text', maxLength: 255, wide: true },
-      { name: 'city', label: 'City', type: 'text', maxLength: 100 },
-      { name: 'state', label: 'State', type: 'text', maxLength: 100 },
-      { name: 'country', label: 'Country', type: 'text', maxLength: 100 },
-      { name: 'postalCode', label: 'Postal Code', type: 'text', maxLength: 20 },
+      { name: 'city', label: 'City', type: 'text', required: true, maxLength: 100 },
+      { name: 'state', label: 'State', type: 'text', required: true, maxLength: 100 },
+      { name: 'country', label: 'Country', type: 'text', required: true, maxLength: 100 },
+      { name: 'postalCode', label: 'Postal Code', type: 'text', required: true, maxLength: 20 },
       { name: 'timeZone', label: 'Time Zone', type: 'text', required: true },
       { name: 'currency', label: 'Currency', type: 'text', required: true, maxLength: 10 },
-      { name: 'workingDaysPerWeek', label: 'Working Days per Week', type: 'number', min: 1, max: 7, unit: 'days / week' },
+      { name: 'workingDaysPerWeek', label: 'Working Days per Week', type: 'number', min: 1, max: 7, required: true, unit: 'days / week' },
     ],
     sections: [
       { title: 'Company Identity', subtitle: 'Name, code and contact details', icon: Building2, fields: ['companyName', 'companyCode', 'email', 'phoneNumber', 'website'] },
@@ -161,6 +164,16 @@ function toTimeInputValue(value) {
 function fromTimeInputValue(value) {
   if (!value) return null;
   return value.length === 5 ? `${value}:00` : value;
+}
+
+function minutesToHuman(value) {
+  const minutes = Number(value);
+  if (!Number.isFinite(minutes) || minutes < 0) return '';
+  const hours = Math.floor(minutes / 60);
+  const remainder = minutes % 60;
+  if (!hours) return `${remainder} minutes`;
+  if (!remainder) return `${hours} ${hours === 1 ? 'hour' : 'hours'}`;
+  return `${hours} ${hours === 1 ? 'hour' : 'hours'} ${remainder} minutes`;
 }
 
 // ---------- Display helpers (read-only cards) ----------
@@ -532,20 +545,87 @@ export default function Settings() {
     if (!editing) return;
     const { section, draft } = editing;
 
-    // Start from the full group so the PUT still carries every field.
-    const payload = { ...data };
-    for (const name of section.fields) {
-      const field = fieldByName(name);
-      const raw = draft[name];
-      if (field.type === 'time') payload[name] = fromTimeInputValue(raw);
-      else if (field.type === 'number') payload[name] = raw === '' ? null : Number(raw);
-      else if (field.type === 'boolean') payload[name] = !!raw;
-      else payload[name] = raw;
-    }
-
     setSaving(true);
     setSaveError('');
     try {
+      const latest = await group.get();
+      const payload = { ...latest };
+      for (const name of section.fields) {
+        const field = fieldByName(name);
+        const raw = draft[name];
+        if (field.type === 'time') payload[name] = fromTimeInputValue(raw);
+        else if (field.type === 'number') payload[name] = raw === '' ? null : Number(raw);
+        else if (field.type === 'boolean') payload[name] = !!raw;
+        else payload[name] = raw;
+      }
+      group.fields
+        .filter((field) => field.type === 'boolean')
+        .forEach((field) => { payload[field.name] = Boolean(payload[field.name]); });
+
+      if (
+        group.key === 'leave' &&
+        section.fields.includes('monthlyGuideline') &&
+        Number(payload.monthlyGuideline) !== Number(latest.monthlyGuideline) &&
+        !window.confirm('Changing the monthly paid leave guideline affects future leave requests. Continue?')
+      ) return;
+
+      const validationError = group.fields
+        .filter((field) => field.required && (payload[field.name] === null || payload[field.name] === undefined || String(payload[field.name]).trim() === ''))
+        .map((field) => `${field.label} is required.`)[0];
+      if (validationError) throw new Error(validationError);
+      const invalidNumber = group.fields.find((field) => {
+        if (field.type !== 'number' || payload[field.name] === null || payload[field.name] === undefined || payload[field.name] === '') return false;
+        const value = Number(payload[field.name]);
+        return !Number.isFinite(value) ||
+          (field.min !== undefined && value < field.min) ||
+          (field.max !== undefined && value > field.max);
+      });
+      if (invalidNumber) {
+        throw new Error(`${invalidNumber.label} must be between ${invalidNumber.min ?? 'the minimum'} and ${invalidNumber.max ?? 'the maximum'} allowed value.`);
+      }
+      const invalidLength = group.fields.find((field) => (
+        field.maxLength &&
+        payload[field.name] != null &&
+        String(payload[field.name]).length > field.maxLength
+      ));
+      if (invalidLength) throw new Error(`${invalidLength.label} must be ${invalidLength.maxLength} characters or fewer.`);
+      const invalidPattern = group.fields.find((field) => (
+        field.pattern &&
+        payload[field.name] &&
+        !new RegExp(field.pattern).test(String(payload[field.name]))
+      ));
+      if (invalidPattern) throw new Error(`${invalidPattern.label} has an invalid format.`);
+      const invalidEmail = group.fields.find((field) => (
+        field.type === 'email' &&
+        payload[field.name] &&
+        !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(payload[field.name]).trim())
+      ));
+      if (invalidEmail) throw new Error(`${invalidEmail.label} must be a valid email address.`);
+
+      if (group.key === 'company') {
+        if (!/^[6-9]\d{9}$/.test(String(payload.phoneNumber || ''))) {
+          throw new Error('Phone Number must be 10 digits and start with 6–9.');
+        }
+        if (payload.website) {
+          let website;
+          try {
+            website = new URL(payload.website);
+          } catch {
+            throw new Error('Enter a valid website URL.');
+          }
+          if (!['http:', 'https:'].includes(website.protocol)) {
+            throw new Error('Website URL must start with http:// or https://.');
+          }
+        }
+        const workingDays = Number(payload.workingDaysPerWeek);
+        if (!Number.isInteger(workingDays) || workingDays < 1 || workingDays > 7) {
+          throw new Error('Working Days per Week must be a whole number from 1 to 7.');
+        }
+      }
+
+      delete payload.id;
+      delete payload.active;
+      delete payload.logoUrl;
       const saved = await group.save(payload);
       setData(saved || payload);
       setEditing(null);
