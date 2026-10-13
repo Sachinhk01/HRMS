@@ -1,13 +1,14 @@
 import { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import {
-  Megaphone, Plus, X, Send,
+  Megaphone, Plus, X, Send, ImagePlus,
 } from 'lucide-react';
 import Pagination from '../components/Pagination';
 import usePagination, { sortRecent } from '../hooks/usePagination';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
-import { getNotifications, parseNotificationContent, isMagazineNotification, isCelebrationOrEventNotification, createAnnouncement } from '../services/notificationService';
+import PostAttachments from '../components/PostAttachments';
+import { getAllNotifications, selectAnnouncements, createAnnouncement, PHOTO_ACCEPT, validatePhotos } from '../services/notificationService';
 import { getFriendlyError, validatePostText, POST_TITLE_MAX, POST_MESSAGE_MAX } from '../utils/postValidation';
 import './Announcements.css';
 
@@ -42,8 +43,7 @@ export default function Announcements() {
     setLoading(true);
     setError('');
     try {
-      const res = await getNotifications({ page: 0, size: 100 });
-      setNotifications(res?.content || []);
+      setNotifications(await getAllNotifications());
     } catch (err) {
       setError(getFriendlyError(err, 'Unable to load announcements right now. Please try again in a moment.'));
     } finally {
@@ -55,23 +55,7 @@ export default function Announcements() {
     loadData();
   }, []);
 
-  const announcements = useMemo(() => {
-    const items = (notifications || [])
-      .filter((n) => n.notificationType === 'ANNOUNCEMENT' && !isMagazineNotification(n) && !isCelebrationOrEventNotification(n))
-      .map((n) => {
-        const parsed = parseNotificationContent(n);
-        return {
-          id: n.id,
-          // title and message come directly from backend NotificationResponse
-          title: parsed.title || n.title || '',
-          message: parsed.message || n.message || '',
-          createdAt: n.createdAt,
-          attachmentUrls: n.attachmentUrls || [],
-          isRead: Boolean(n.isRead),
-        };
-      });
-    return sortRecent(items);
-  }, [notifications]);
+  const announcements = useMemo(() => sortRecent(selectAnnouncements(notifications)), [notifications]);
 
   const { page, setPage, pageItems, pageSize } = usePagination(announcements, 6);
 
@@ -80,6 +64,11 @@ export default function Announcements() {
     const validationError = validatePostText({ title: announcementForm.title, message: announcementForm.message });
     if (validationError) {
       showToast(validationError, 'error');
+      return;
+    }
+    const photoError = validatePhotos(announcementFiles);
+    if (photoError) {
+      showToast(photoError, 'error');
       return;
     }
     setCreating(true);
@@ -143,6 +132,24 @@ export default function Announcements() {
               <small className={`char-hint ${announcementForm.message.length >= POST_MESSAGE_MAX ? 'over' : ''}`}>
                 {announcementForm.message.length}/{POST_MESSAGE_MAX}
               </small>
+            </div>
+
+            <div className="ann-field full-span">
+              <label className="ann-attach">
+                <ImagePlus size={15} /> Add Photos (PNG or JPG)
+                <input
+                  type="file"
+                  accept={PHOTO_ACCEPT}
+                  multiple
+                  hidden
+                  onChange={(e) => setAnnouncementFiles(Array.from(e.target.files || []))}
+                />
+              </label>
+              {announcementFiles.length > 0 && (
+                <span className="empty-inline">
+                  {announcementFiles.length} Photo{announcementFiles.length > 1 ? 's' : ''} Selected
+                </span>
+              )}
             </div>
 
             <div className="ann-form-actions full-span">
@@ -225,15 +232,7 @@ export default function Announcements() {
                 <div className="ann-card-icon"><Megaphone size={20} /></div>
                 <h3>{item.title}</h3>
                 <p>{item.message}</p>
-                {item.attachmentUrls?.length > 0 && (
-                  <div className="ann-attachments">
-                    {item.attachmentUrls.map((url, i) => (
-                      <a key={i} href={url} target="_blank" rel="noreferrer" className="ann-attachment-link">
-                        Attachment {i + 1}
-                      </a>
-                    ))}
-                  </div>
-                )}
+                <PostAttachments urls={item.attachmentUrls} title={item.title} />
                 <div className="ann-card-foot">
                   <small>{item.createdAt ? new Date(item.createdAt).toLocaleString() : ''}</small>
                 </div>

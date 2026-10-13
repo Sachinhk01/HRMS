@@ -201,6 +201,10 @@
 .ev-card-body { padding: 18px; display: flex; flex-direction: column; gap: 10px; flex: 1; }
 .ev-card-body h3 { margin: 0; font-size: 16px; font-weight: 800; color: #0f172a; }
 .ev-card-body p { margin: 0; font-size: 13px; color: #64748b; line-height: 1.5; }
+.ev-tabs { display: flex; gap: 8px; margin: 4px 0 14px; }
+.ev-tabs button { padding: 8px 16px; border-radius: 999px; border: 1px solid #cbd5e1; background: transparent; font-size: 13px; font-weight: 600; color: #64748b; cursor: pointer; transition: background .18s, color .18s, border-color .18s; }
+.ev-tabs button:hover { background: #eaf2fe; color: #2563eb; border-color: #bfdbfe; }
+.ev-tabs button.active { background: #2563eb; color: #fff; border-color: #2563eb; }
 .ev-meta { display: flex; gap: 14px; flex-wrap: wrap; }
 .ev-meta span { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 600; color: #475569; }
 .ev-meta svg { color: #94a3b8; }

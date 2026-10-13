@@ -5,6 +5,17 @@ export async function getNotifications({ page = 0, size = 100 } = {}) {
   return data.data;
 }
 
+export async function getAllNotifications({ pageSize = 100 } = {}) {
+  const all = [];
+  for (let page = 0; ; page += 1) {
+    const result = await getNotifications({ page, size: pageSize });
+    const content = result?.content || [];
+    all.push(...content);
+    if (!result || result.last || !content.length) break;
+  }
+  return all;
+}
+
 export async function getCelebrationWallToday() {
   const { data } = await api.get('/notifications/celebration-wall/today');
   return data.data;
@@ -115,38 +126,37 @@ export function createAnnouncement({ title, message, uploadType = 'POST', attach
   return postAnnouncement({ title, message, uploadType, attachments });
 }
 
-export async function updateAnnouncement(announcementId, { title, message, uploadType = 'POST' }) {
-  const { data } = await api.put(`/notifications/announcement/${announcementId}`, { title, message, uploadType });
-  return data.data;
-}
+export const POST_KIND = { ANNOUNCEMENT: 'ANNOUNCEMENT', CELEBRATION: 'CELEBRATION', EVENT: 'EVENT' };
 
-export async function deleteAnnouncement(announcementId) {
-  const { data } = await api.delete(`/notifications/announcement/${announcementId}`);
-  return data.data;
-}
-
-// Celebrations/events are stored inside the announcement message, with the
-// type/date/tagged people appended as trailing lines.
-export function buildCelebrationMessage({ type = 'GENERAL', message = '', eventDate = '', taggedPeople = [] }) {
+export function buildCelebrationMessage({ kind = POST_KIND.CELEBRATION, type = 'GENERAL', message = '', eventDate = '', taggedPeople = [] }) {
   const taggedNames = taggedPeople.map((person) => person.name).filter(Boolean);
   return [
     (message || '').trim(),
     eventDate ? `Celebration date: ${eventDate}` : '',
     taggedNames.length ? `Tagged people: ${taggedNames.join(', ')}` : '',
+    `Post kind: ${kind}`,
     `Celebration type: ${type}`,
   ].filter(Boolean).join('\n\n');
 }
 
 // The backend caps the WHOLE stored message at 1000 characters, so the visible
-// message can only use what is left after the appended date/type/tag lines.
-export function getCelebrationMessageLimit({ type = 'GENERAL', eventDate = '', taggedPeople = [] } = {}, max = 1000) {
-  const extras = buildCelebrationMessage({ type, message: '', eventDate, taggedPeople }).length;
+// message can only use what is left after the appended kind/date/type/tag lines.
+export function getCelebrationMessageLimit({ kind = POST_KIND.CELEBRATION, type = 'GENERAL', eventDate = '', taggedPeople = [] } = {}, max = 1000) {
+  const extras = buildCelebrationMessage({ kind, type, message: '', eventDate, taggedPeople }).length;
   return Math.max(0, max - extras - 2); // 2 = the "\n\n" separating message from details
 }
 
-export function createCelebration({ type = 'GENERAL', title, message, eventDate = '', taggedPeople = [], attachments = [] }) {
-  const details = buildCelebrationMessage({ type, message, eventDate, taggedPeople });
+function postWithMeta({ kind, type, title, message, eventDate = '', taggedPeople = [], attachments = [] }) {
+  const details = buildCelebrationMessage({ kind, type, message, eventDate, taggedPeople });
   return postAnnouncement({ title: (title || '').trim(), message: details, uploadType: 'POST', attachments });
+}
+
+export function createCelebration({ type = 'GENERAL', title, message, eventDate = '', taggedPeople = [], attachments = [] }) {
+  return postWithMeta({ kind: POST_KIND.CELEBRATION, type, title, message, eventDate, taggedPeople, attachments });
+}
+
+export function createEvent({ title, message, eventDate = '', attachments = [] }) {
+  return postWithMeta({ kind: POST_KIND.EVENT, type: 'EVENT', title, message, eventDate, attachments });
 }
 
 export function parseNotificationContent(item = {}) {
@@ -171,9 +181,10 @@ export { EVENT_TYPES };
 // as trailing "\n\nLabel: value" lines inside the message body. Parse them
 // back out so these posts can be recognised as real events wherever
 // notifications are turned into events (Celebration Wall, Events page).
-const CELEBRATION_TYPE_RE = /\n\nCelebration type:\s*([A-Z_]+)\s*$/;
-const CELEBRATION_DATE_RE = /\n\nCelebration date:\s*([^\n]+)/;
-const TAGGED_PEOPLE_RE = /\n\nTagged people:\s*([^\n]+)/;
+const CELEBRATION_TYPE_RE = /(?:^|\n\n)Celebration type:\s*([A-Z_]+)\s*$/;
+const CELEBRATION_DATE_RE = /(?:^|\n\n)Celebration date:\s*([^\n]+)/;
+const TAGGED_PEOPLE_RE = /(?:^|\n\n)Tagged people:\s*([^\n]+)/;
+const POST_KIND_RE = /(?:^|\n\n)Post kind:\s*([A-Z_]+)/;
 
 export function parseCelebrationMeta(rawMessage = '') {
   const typeMatch = rawMessage.match(CELEBRATION_TYPE_RE);
@@ -181,14 +192,17 @@ export function parseCelebrationMeta(rawMessage = '') {
 
   const dateMatch = rawMessage.match(CELEBRATION_DATE_RE);
   const taggedMatch = rawMessage.match(TAGGED_PEOPLE_RE);
+  const kindMatch = rawMessage.match(POST_KIND_RE);
 
   const cleanMessage = rawMessage
     .replace(CELEBRATION_TYPE_RE, '')
+    .replace(POST_KIND_RE, '')
     .replace(CELEBRATION_DATE_RE, '')
     .replace(TAGGED_PEOPLE_RE, '')
     .trim();
 
   return {
+    kind: POST_KIND[kindMatch?.[1]] || POST_KIND.CELEBRATION,
     type: typeMatch[1],
     eventDate: dateMatch ? dateMatch[1].trim() : null,
     taggedPeople: taggedMatch
@@ -198,11 +212,147 @@ export function parseCelebrationMeta(rawMessage = '') {
   };
 }
 
-// True for announcements that were really posted as an Event / celebration
-// (Events page or Celebration Wall composer). Those carry a trailing
-// "Celebration type: ..." line, and must NOT appear on the Announcements page.
+export function getPostKind(item = {}) {
+  if (item.notificationType !== 'ANNOUNCEMENT') return null;
+  const meta = parseCelebrationMeta(item.message || '');
+  return meta ? meta.kind : POST_KIND.ANNOUNCEMENT;
+}
+
 export function isCelebrationOrEventNotification(item = {}) {
-  return item.notificationType === 'ANNOUNCEMENT' && parseCelebrationMeta(item.message || '') !== null;
+  const kind = getPostKind(item);
+  return kind === POST_KIND.CELEBRATION || kind === POST_KIND.EVENT;
+}
+
+const endOfToday = () => {
+  const now = new Date();
+  return new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+};
+
+const startOfToday = () => {
+  const now = new Date();
+  return new Date(now.getFullYear(), now.getMonth(), now.getDate());
+};
+
+export function selectAnnouncements(notifications = []) {
+  return (notifications || [])
+    .filter((item) => getPostKind(item) === POST_KIND.ANNOUNCEMENT && !isMagazineNotification(item))
+    .map((item) => ({
+      id: item.id,
+      title: item.title || '',
+      message: item.message || '',
+      createdAt: item.createdAt,
+      attachmentUrls: item.attachmentUrls || [],
+      isRead: Boolean(item.isRead),
+    }));
+}
+
+export function selectEvents(notifications = []) {
+  const today = startOfToday();
+  const upcoming = [];
+  const past = [];
+  (notifications || []).forEach((item) => {
+    if (getPostKind(item) !== POST_KIND.EVENT) return;
+    const meta = parseCelebrationMeta(item.message || '');
+    const event = {
+      id: item.id,
+      title: item.title || '',
+      message: meta.message,
+      eventDate: meta.eventDate,
+      createdAt: item.createdAt,
+      attachmentUrls: item.attachmentUrls || [],
+    };
+    const when = new Date(meta.eventDate || item.createdAt);
+    (when >= today ? upcoming : past).push(event);
+  });
+  const time = (event) => new Date(event.eventDate || event.createdAt).getTime();
+  upcoming.sort((a, b) => time(a) - time(b));
+  past.sort((a, b) => time(b) - time(a));
+  return { upcoming, past };
+}
+
+const WALL_SYSTEM_TYPES = ['BIRTHDAY', 'WORK_ANNIVERSARY'];
+
+export function selectCelebrations(notifications = []) {
+  const limit = endOfToday();
+  const feed = [];
+  const upcoming = [];
+
+  (notifications || []).forEach((item) => {
+    let post = null;
+    if (item.notificationType === 'ANNOUNCEMENT') {
+      const meta = parseCelebrationMeta(item.message || '');
+      if (!meta || meta.kind !== POST_KIND.CELEBRATION) return;
+      post = {
+        id: item.id,
+        type: meta.type,
+        title: item.title || '',
+        message: meta.message,
+        createdAt: item.createdAt || new Date().toISOString(),
+        eventDate: meta.eventDate,
+        images: item.attachmentUrls || [],
+        isRead: Boolean(item.isRead),
+        taggedPeople: meta.taggedPeople,
+        referenceType: 'ANNOUNCEMENT',
+        announcementId: item.referenceId,
+      };
+    } else if (WALL_SYSTEM_TYPES.includes(item.notificationType)) {
+      post = {
+        id: item.id,
+        type: item.notificationType,
+        title: item.title || '',
+        message: item.message || '',
+        createdAt: item.createdAt || new Date().toISOString(),
+        eventDate: null,
+        images: [],
+        isRead: Boolean(item.isRead),
+        taggedPeople: [],
+        referenceType: item.referenceType || null,
+        announcementId: null,
+      };
+    }
+    if (!post) return;
+    (new Date(post.eventDate || post.createdAt) > limit ? upcoming : feed).push(post);
+  });
+
+  return { feed, upcoming };
+}
+
+export const ALLOWED_PHOTO_TYPES = ['image/png', 'image/jpeg'];
+export const PHOTO_ACCEPT = '.png,.jpg,.jpeg,image/png,image/jpeg';
+export const MAX_PHOTO_BYTES = 25 * 1024 * 1024;
+export const MAX_PHOTOS = 5;
+
+export function validatePhotos(files = []) {
+  if (files.length > MAX_PHOTOS) return `You can attach up to ${MAX_PHOTOS} photos.`;
+  for (const file of files) {
+    const supportedType = ALLOWED_PHOTO_TYPES.includes(file.type) || /\.(png|jpe?g)$/i.test(file.name || '');
+    if (!supportedType) return `"${file.name}" is not supported. Only PNG and JPG photos can be uploaded.`;
+    if (file.size > MAX_PHOTO_BYTES) return `"${file.name}" is larger than 25 MB.`;
+    if (file.size === 0) return `"${file.name}" is empty. Please choose another file.`;
+  }
+  return '';
+}
+
+const DOC_EXT_RE = /\.(pdf|docx?|xlsx?|pptx?|txt|csv)$/i;
+const urlFileName = (url = '') => (url || '').split('?')[0].split('#')[0].split('/').pop() || '';
+
+export function isDocumentUrl(url = '') { return DOC_EXT_RE.test(urlFileName(url)); }
+export function getImageUrls(urls = []) { return (urls || []).filter((url) => url && !isDocumentUrl(url)); }
+export function getDocumentUrls(urls = []) { return (urls || []).filter((url) => url && isDocumentUrl(url)); }
+
+export function isUrlExpired(url = '') {
+  try {
+    const params = new URL(url).searchParams;
+    const stamp = params.get('X-Amz-Date');
+    const seconds = Number(params.get('X-Amz-Expires'));
+    if (!stamp || !seconds) return false;
+    const match = stamp.match(/^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})Z$/);
+    if (!match) return false;
+    const issued = Date.UTC(+match[1], +match[2] - 1, +match[3], +match[4], +match[5], +match[6]);
+    return Date.now() > issued + seconds * 1000;
+  } catch {
+    return false;
+  }
 }
 
 // Same "what counts as upcoming" logic as the Celebration Wall's sidebar

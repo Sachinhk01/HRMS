@@ -4,10 +4,11 @@ import {
   CalendarDays, Heart, Share2, Plus, X, ImagePlus, Send,
 } from 'lucide-react';
 import Pagination from '../components/Pagination';
-import usePagination, { sortRecent } from '../hooks/usePagination';
+import usePagination from '../hooks/usePagination';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
-import { getNotifications, buildUpcomingEvents, createCelebration } from '../services/notificationService';
+import PostAttachments from '../components/PostAttachments';
+import { getAllNotifications, selectEvents, createEvent, getCelebrationMessageLimit, PHOTO_ACCEPT, validatePhotos } from '../services/notificationService';
 import './Events.css';
 import DatePicker from '../components/DatePicker';
 
@@ -27,15 +28,16 @@ export default function Events() {
   const [error, setError] = useState('');
 
   // Events are posted through the same /notifications/announcement
-  // endpoint as celebrations (createCelebration encodes type/eventDate
-  // into the message), which the backend restricts to
+  // endpoint as celebrations (createEvent encodes kind and event date into
+  // the message), which the backend restricts to
   // SUPER_ADMIN/HR_ADMIN/MANAGER — but the "Add Event" button on this
   // page is surfaced for HR only.
   const canCreateEvent = ['HR_ADMIN', 'SUPER_ADMIN'].includes(user?.role || user?.roles?.[0]);
 
   const [composerOpen, setComposerOpen] = useState(false);
   const [creating, setCreating] = useState(false);
-  const [eventForm, setEventForm] = useState({ type: 'GENERAL', title: '', message: '', eventDate: '' });
+  const [eventForm, setEventForm] = useState({ title: '', message: '', eventDate: '' });
+  const [tab, setTab] = useState('UPCOMING');
   const [eventFiles, setEventFiles] = useState([]);
   const todayStr = new Date().toISOString().slice(0, 10);
 
@@ -48,8 +50,7 @@ export default function Events() {
     setLoading(true);
     setError('');
     try {
-      const notifResult = await getNotifications({ page: 0, size: 100 });
-      setNotifications(notifResult?.content || []);
+      setNotifications(await getAllNotifications());
     } catch (err) {
       setNotifications([]);
       setError(err?.message || 'Failed to load events.');
@@ -61,23 +62,23 @@ export default function Events() {
     loadData();
   }, []);
 
-  // Same celebration-type filtering the Celebration Wall's "Upcoming
-  // events" sidebar uses (birthdays, work anniversaries, general
-  // celebration posts) — just without holidays mixed in, since those
-  // aren't company-conducted events.
-  const eventsList = useMemo(
-    () => sortRecent(buildUpcomingEvents(notifications)),
-    [notifications]
-  );
+  const { upcoming, past } = useMemo(() => selectEvents(notifications), [notifications]);
+  const eventsList = tab === 'UPCOMING' ? upcoming : past;
+  const messageLimit = getCelebrationMessageLimit({ kind: 'EVENT', type: 'EVENT', eventDate: eventForm.eventDate || '0000-00-00' });
 
   const { page, pageItems, pageSize, setPage } = usePagination(eventsList, 6);
 
   const handleCreateEvent = async (event) => {
     event.preventDefault();
+    const photoError = validatePhotos(eventFiles);
+    if (photoError) {
+      showToast(photoError, 'error');
+      return;
+    }
     setCreating(true);
     try {
-      await createCelebration({ ...eventForm, attachments: eventFiles });
-      setEventForm({ type: 'GENERAL', title: '', message: '', eventDate: '' });
+      await createEvent({ ...eventForm, attachments: eventFiles });
+      setEventForm({ title: '', message: '', eventDate: '' });
       setEventFiles([]);
       setComposerOpen(false);
       showToast('Event Added Successfully.', 'success');
@@ -103,21 +104,9 @@ export default function Events() {
               <X size={18} />
             </button>
           </div>
-          <p className="panel-desc">Only Events Dated In The Future Will Appear In The Upcoming List.</p>
+          <p className="panel-desc">Events dated today or later appear under Upcoming; earlier ones move to Past.</p>
 
           <form className="ev-form-grid" onSubmit={handleCreateEvent}>
-            <div className="ev-field">
-              <span className="ev-label">Event Type</span>
-              <select
-                value={eventForm.type}
-                onChange={(e) => setEventForm((v) => ({ ...v, type: e.target.value }))}
-              >
-                <option value="GENERAL">General Event</option>
-                <option value="BIRTHDAY">Birthday</option>
-                <option value="WORK_ANNIVERSARY">Work Anniversary</option>
-              </select>
-            </div>
-
             <div className="ev-field">
               <span className="ev-label">Event Date</span>
               <DatePicker id="event-date"
@@ -132,7 +121,7 @@ export default function Events() {
               <span className="ev-label">Title</span>
               <input
                 value={eventForm.title}
-                maxLength={120}
+                maxLength={100}
                 onChange={(e) => setEventForm((v) => ({ ...v, title: e.target.value }))}
                 placeholder="Event Title"
                 required
@@ -144,7 +133,7 @@ export default function Events() {
               <textarea
                 rows={4}
                 value={eventForm.message}
-                maxLength={1000}
+                maxLength={messageLimit}
                 onChange={(e) => setEventForm((v) => ({ ...v, message: e.target.value }))}
                 placeholder="Write The Event Details..."
                 required
@@ -153,10 +142,10 @@ export default function Events() {
 
             <div className="ev-field full-span">
               <label className="ev-attach">
-                <ImagePlus size={15} /> Add Photos
+                <ImagePlus size={15} /> Add Photos (PNG or JPG)
                 <input
                   type="file"
-                  accept="image/*"
+                  accept={PHOTO_ACCEPT}
                   multiple
                   hidden
                   onChange={(e) => setEventFiles(Array.from(e.target.files || []))}
@@ -256,6 +245,11 @@ export default function Events() {
         </div>
       </motion.section>
 
+      <div className="ev-tabs" role="tablist">
+        <button type="button" role="tab" aria-selected={tab === 'UPCOMING'} className={tab === 'UPCOMING' ? 'active' : ''} onClick={() => { setTab('UPCOMING'); setPage(1); }}>Upcoming ({upcoming.length})</button>
+        <button type="button" role="tab" aria-selected={tab === 'PAST'} className={tab === 'PAST' ? 'active' : ''} onClick={() => { setTab('PAST'); setPage(1); }}>Past ({past.length})</button>
+      </div>
+
       {/* ---------- Event cards ---------- */}
       {loading && <p className="empty-inline">Loading Events...</p>}
       {!loading && error && <p className="form-error">{error}</p>}
@@ -276,6 +270,7 @@ export default function Events() {
                 <div className="ev-card-body">
                   <h3>{item.title}</h3>
                   <p>{item.message}</p>
+                  <PostAttachments urls={item.attachmentUrls} title={item.title} maxImages={2} />
                   <div className="ev-card-actions">
                     <button className="btn btn-small btn-gradient"><Heart size={14} /> Interested</button>
                     <button className="icon-btn" title="Share"><Share2 size={15} /></button>
@@ -288,8 +283,8 @@ export default function Events() {
           {!eventsList.length && (
             <section className="panel empty-state">
               <CalendarDays size={36} />
-              <p>No Events Scheduled.</p>
-              <small>Company Events And Celebration Milestones Will Appear Here.</small>
+              <p>{tab === 'UPCOMING' ? 'No Upcoming Events.' : 'No Past Events.'}</p>
+              <small>Events Published By HR Will Appear Here.</small>
             </section>
           )}
         </motion.div>

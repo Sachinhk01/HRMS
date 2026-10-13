@@ -1,0 +1,18 @@
+.post-attachments { display: flex; flex-direction: column; gap: 10px; margin-top: 12px; }
+.pa-grid { display: grid; gap: 6px; border-radius: 12px; overflow: hidden; }
+.pa-count-1 { grid-template-columns: 1fr; }
+.pa-count-2, .pa-count-3, .pa-count-4 { grid-template-columns: 1fr 1fr; }
+.pa-photo { position: relative; padding: 0; border: 0; background: rgba(120,120,140,.12); cursor: zoom-in; aspect-ratio: 4 / 3; overflow: hidden; }
+.pa-count-1 .pa-photo { aspect-ratio: 16 / 9; }
+.pa-photo img { width: 100%; height: 100%; object-fit: cover; display: block; transition: transform .25s ease; }
+.pa-photo:hover img { transform: scale(1.04); }
+.pa-expand { position: absolute; right: 8px; bottom: 8px; display: grid; place-items: center; width: 28px; height: 28px; border-radius: 50%; background: rgba(0,0,0,.55); color: #fff; opacity: 0; transition: opacity .2s; }
+.pa-photo:hover .pa-expand { opacity: 1; }
+.pa-more { position: absolute; inset: 0; display: grid; place-items: center; background: rgba(0,0,0,.5); color: #fff; font-size: 1.4rem; font-weight: 700; }
+.pa-fallback { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; aspect-ratio: 4 / 3; background: rgba(120,120,140,.12); color: #6b7280; font-size: .8rem; text-align: center; padding: 8px; }
+.pa-docs { display: flex; flex-wrap: wrap; gap: 8px; }
+.pa-doc { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 999px; background: rgba(37,99,235,.1); color: #2563eb; font-size: .82rem; font-weight: 600; text-decoration: none; }
+.pa-doc-expired { background: rgba(120,120,140,.12); color: #6b7280; }
+.pa-lightbox { position: fixed; inset: 0; z-index: 1000; display: grid; place-items: center; background: rgba(0,0,0,.82); padding: 24px; }
+.pa-lightbox img { max-width: min(96vw, 1100px); max-height: 90vh; border-radius: 10px; object-fit: contain; }
+.pa-lightbox-close { position: absolute; top: 16px; right: 16px; display: grid; place-items: center; width: 38px; height: 38px; border: 0; border-radius: 50%; background: rgba(255,255,255,.18); color: #fff; cursor: pointer; }

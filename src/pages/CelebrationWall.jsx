@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Heart, MessageCircle, PartyPopper, Share2, Bookmark,
-  Gift, Cake, Award, Sparkles, UserPlus, Megaphone, CalendarDays, Send, Plus, X, ImagePlus, Users, Pencil, Trash2, RefreshCw, Expand,
+  Gift, Cake, Award, Sparkles, UserPlus, Megaphone, CalendarDays, Send, Plus, X, ImagePlus, Users, EyeOff, RefreshCw, Expand,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import PageHeader from '../components/PageHeader';
@@ -11,7 +11,10 @@ import usePagination, { sortRecent } from '../hooks/usePagination';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import { useConfirm } from '../context/ConfirmContext';
-import { createCelebration, deleteAnnouncement, getNotifications, updateAnnouncement } from '../services/notificationService';
+import {
+  createCelebration, getAllNotifications, selectCelebrations, getCelebrationMessageLimit,
+  getImageUrls, isUrlExpired, PHOTO_ACCEPT, validatePhotos,
+} from '../services/notificationService';
 import { getEmployeeDropdown } from '../services/employeeService';
 import './CelebrationWall.css';
 import { INPUT_LIMITS } from '../utils/inputLimits';
@@ -21,18 +24,9 @@ import DatePicker from '../components/DatePicker';
 const types = ['ALL', 'BIRTHDAY', 'WORK_ANNIVERSARY', 'GENERAL'];
 const CELEBRATION_BANNER_PHOTO = 'https://images.unsplash.com/photo-1764175760157-d27ce39e7955?q=80&w=1170&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D';
 
-// Only these are genuine celebration/social content. Notifications like
-// LATE_CHECK_IN, ABSENT, MISSED_CHECKOUT, LEAVE_APPLIED, LEAVE_REJECTED etc.
-// are operational alerts, not celebration posts — they're excluded from the
-// wall entirely (they still show up normally in the notification bell /
-// Announcements page, just not here).
-const CELEBRATION_TYPES = ['BIRTHDAY', 'WORK_ANNIVERSARY', 'GENERAL'];
-
-// FRONTEND-ONLY FALLBACK: the real delete is a server call (deleteAnnouncement)
-// that removes the post for every user. If the backend doesn't yet have that
-// endpoint deployed (404 / NoResourceFoundException), we fall back to hiding
-// the post in this browser only, so the UI doesn't show a broken error. This
-// is explicitly NOT the same as a real delete — see deleteWallPost below.
+// The backend has no edit or delete endpoint for announcements/celebrations
+// (only create + read), so a post cannot be removed for everyone from the UI.
+// "Hide for me" removes it from this browser's view only, and says so plainly.
 const HIDDEN_POSTS_KEY = 'celebrationWall.locallyHiddenPostIds';
 
 // Keys match backend NotificationType enum exactly
@@ -61,73 +55,6 @@ function initials(name = '') {
   return name.split(' ').map((p) => p[0]).join('').slice(0, 2).toUpperCase();
 }
 
-// createCelebration() (the "Add Celebration" composer) posts through the
-// existing /notifications/announcement endpoint — there's no dedicated
-// celebration endpoint — and encodes the celebration type/date/tagged
-// people as trailing "\n\nLabel: value" lines inside the message body (see
-// notificationService.js). Parse them back out so these posts render as
-// celebration cards in the feed/filters instead of only in the sidebar
-// Announcements widget. Plain announcements (no embedded "Celebration
-// type:" line) fall through unchanged and stay sidebar-only.
-const CELEBRATION_TYPE_RE = /\n\nCelebration type:\s*([A-Z_]+)\s*$/;
-const CELEBRATION_DATE_RE = /\n\nCelebration date:\s*([^\n]+)/;
-const TAGGED_PEOPLE_RE = /\n\nTagged people:\s*([^\n]+)/;
-
-function parseCelebrationMeta(rawMessage = '') {
-  const typeMatch = rawMessage.match(CELEBRATION_TYPE_RE);
-  if (!typeMatch) return null;
-
-  const dateMatch = rawMessage.match(CELEBRATION_DATE_RE);
-  const taggedMatch = rawMessage.match(TAGGED_PEOPLE_RE);
-
-  const cleanMessage = rawMessage
-    .replace(CELEBRATION_TYPE_RE, '')
-    .replace(CELEBRATION_DATE_RE, '')
-    .replace(TAGGED_PEOPLE_RE, '')
-    .trim();
-
-  return {
-    type: typeMatch[1],
-    eventDate: dateMatch ? dateMatch[1].trim() : null,
-    taggedPeople: taggedMatch
-      ? taggedMatch[1].split(',').map((name) => ({ name: name.trim() })).filter((p) => p.name)
-      : [],
-    message: cleanMessage,
-  };
-}
-
-function normalizeNotificationToPost(item) {
-  // All fields come directly from backend NotificationResponse JSON.
-  // announcementId is only meaningful (and only set) when this notification
-  // is really backed by an Announcement row — auto-generated posts (e.g.
-  // scheduler birthday/anniversary alerts) have referenceType EMPLOYEE, not
-  // ANNOUNCEMENT, and can't be permanently deleted through that endpoint.
-  const isAnnouncementBacked = item.referenceType === 'ANNOUNCEMENT';
-  return {
-    id: item.id,
-    type: item.notificationType || 'GENERAL',
-    title: item.title || '',
-    message: item.message || '',
-    createdAt: item.createdAt || new Date().toISOString(),
-    eventDate: item.eventDate || null,
-    images: item.attachmentUrls || [],
-    isRead: Boolean(item.isRead),
-    priority: item.priority || 'LOW',
-    taggedPeople: item.taggedPeople || [],
-    referenceType: item.referenceType || null,
-    announcementId: isAnnouncementBacked ? item.referenceId : null,
-  };
-}
-
-// Some attendance/leave notifications come back from the backend without a
-// notificationType set at all, so normalizeNotificationToPost()'s fallback
-// tags them as GENERAL and they slip past the blockedTypes check above,
-// showing up mislabeled under the "General" celebration tab. Catch these by
-// title as a second line of defence — title text the backend uses for
-// these operational alerts, regardless of what notificationType (or lack
-// thereof) came with them.
-const OPERATIONAL_TITLE_RE = /^(late check-?in|missed check-?out|checkout reminder|absent|leave (applied|update|approved|rejected|cancelled))$/i;
-
 const easeOut = [0.16, 1, 0.3, 1];
 const fadeUp = {
   hidden: { opacity: 0, y: 18 },
@@ -148,7 +75,7 @@ export default function CelebrationWall() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const { showToast } = useToast();
-  const { confirm, promptDialog } = useConfirm();
+  const { confirm } = useConfirm();
   const [active, setActive] = useState('ALL');
   const [likedPosts, setLikedPosts] = useState({});
   const [commentsState, setCommentsState] = useState({});
@@ -173,20 +100,14 @@ export default function CelebrationWall() {
   // Full-size photo preview overlay — set to a src to open, null to close.
   const [lightboxSrc, setLightboxSrc] = useState(null);
   const canCreateCelebration = ['HR_ADMIN', 'SUPER_ADMIN'].includes(user?.role || user?.roles?.[0]);
-  const canEditCelebration = false;
-  const canDeleteCelebration = canCreateCelebration;
-  // Only posts backed by a real Announcement row can be permanently
-  // deleted for everyone — auto-generated posts (e.g. scheduler birthday/
-  // anniversary alerts) have no backing record to delete, so no delete
-  // affordance is shown for those at all.
-  const canDeletePost = (item) => canDeleteCelebration && item.referenceType === 'ANNOUNCEMENT' && !!item.announcementId;
+  // Any post can be hidden locally; nothing is deleted on the server.
+  const canHidePost = () => true;
 
   const loadData = async () => {
     setLoading(true);
     setError('');
     try {
-      const notifResult = await getNotifications({ page: 0, size: 100 });
-      setNotifications(notifResult?.content || []);
+      setNotifications(await getAllNotifications());
     } catch (err) {
       setError(err.message || 'Failed to load celebrations.');
     } finally {
@@ -215,88 +136,10 @@ export default function CelebrationWall() {
     });
   };
 
-  const { celebrationFeed, upcomingEvents, announcements } = useMemo(() => {
-    const rawFeed = [];
-    const rawUpcoming = [];
-    const rawAnnouncements = [];
-
-    const now = new Date();
-    const endOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
-
-    (notifications || []).forEach((item) => {
-      const blockedTypes = [
-        'LATE_CHECK_IN',
-        'MISSED_CHECKOUT',
-        'CHECKOUT_REMINDER',
-        'ABSENT',
-        'LEAVE_APPLIED',
-        'LEAVE_REJECTED',
-        'LEAVE_MANAGER_APPROVED',
-        'LEAVE_HR_APPROVED',
-      ];
-
-      if (blockedTypes.includes(item.notificationType)) {
-        return;
-      }
-      if (OPERATIONAL_TITLE_RE.test((item.title || '').trim())) {
-        return;
-      }
-      if (item.notificationType === 'ANNOUNCEMENT') {
-        const celebrationMeta = parseCelebrationMeta(item.message || '');
-        if (celebrationMeta && CELEBRATION_TYPES.includes(celebrationMeta.type)) {
-          const post = {
-            id: item.id,
-            type: celebrationMeta.type,
-            title: item.title || '',
-            message: celebrationMeta.message,
-            createdAt: item.createdAt || new Date().toISOString(),
-            eventDate: celebrationMeta.eventDate,
-            images: item.attachmentUrls || [],
-            isRead: Boolean(item.isRead),
-            priority: item.priority || 'LOW',
-            taggedPeople: celebrationMeta.taggedPeople,
-            referenceType: 'ANNOUNCEMENT',
-            announcementId: item.referenceId,
-          };
-          const dateVal = new Date(post.eventDate || post.createdAt);
-          if (dateVal > endOfToday) {
-            rawUpcoming.push(post);
-          } else {
-            rawFeed.push(post);
-          }
-          return;
-        }
-
-        rawAnnouncements.push({
-          id: item.id,
-          title: item.title,
-          message: item.message,
-          createdAt: item.createdAt,
-          referenceType: 'ANNOUNCEMENT',
-          announcementId: item.referenceId,
-        });
-        return;
-      }
-
-      const post = normalizeNotificationToPost(item);
-      if (!CELEBRATION_TYPES.includes(post.type)) return; // skip attendance/leave-lifecycle alerts — not celebration content
-      const dateVal = new Date(post.eventDate || post.createdAt);
-
-      if (dateVal > endOfToday) {
-        rawUpcoming.push(post);
-      } else {
-        rawFeed.push(post);
-      }
-    });
-
-    // Approved leave requests and company holidays are intentionally NOT
-    // pulled into this feed. Leave approvals live on Leave; holidays live
-    // on Holidays.
-    return {
-      celebrationFeed: sortRecent(rawFeed).filter((post) => !hiddenPostIds.has(String(post.id))),
-      upcomingEvents: sortRecent(rawUpcoming).filter((post) => !hiddenPostIds.has(String(post.id))),
-      announcements: sortRecent(rawAnnouncements).filter((post) => !hiddenPostIds.has(String(post.id))).slice(0, 4),
-    };
+  const { celebrationFeed, upcomingCelebrations } = useMemo(() => {
+    const { feed, upcoming } = selectCelebrations(notifications);
+    const visible = (list) => sortRecent(list).filter((post) => !hiddenPostIds.has(String(post.id)));
+    return { celebrationFeed: visible(feed), upcomingCelebrations: visible(upcoming) };
   }, [notifications, hiddenPostIds]);
 
   const visibleFeed = useMemo(() => {
@@ -306,6 +149,12 @@ export default function CelebrationWall() {
   }, [celebrationFeed, active]);
 
   const { page, setPage, pageItems, pageSize } = usePagination(visibleFeed, 5);
+  const messageLimit = getCelebrationMessageLimit({
+    kind: 'CELEBRATION',
+    type: celebrationForm.type,
+    eventDate: celebrationForm.eventDate || '0000-00-00',
+    taggedPeople: celebrationForm.taggedPeople,
+  });
 
   const toggleLike = (postId) => {
     setLikedPosts((prev) => ({ ...prev, [postId]: !prev[postId] }));
@@ -329,6 +178,11 @@ export default function CelebrationWall() {
 
   const handleCreateCelebration = async (event) => {
     event.preventDefault();
+    const photoError = validatePhotos(celebrationFiles);
+    if (photoError) {
+      showToast(photoError, 'error');
+      return;
+    }
     setCreating(true);
     try {
       await createCelebration({ ...celebrationForm, attachments: celebrationFiles });
@@ -345,67 +199,21 @@ export default function CelebrationWall() {
     }
   };
 
-  const editWallPost = async (item) => {
-    const result = await promptDialog({
-      title: 'Edit post',
-      confirmText: 'Save',
-      fields: [
-        { name: 'title', label: 'Title', defaultValue: item.title || '', required: true },
-        { name: 'message', label: 'Message', defaultValue: item.message || '', required: true, multiline: true },
-      ],
-    });
-    if (!result) return;
-    try {
-      await updateAnnouncement(item.announcementId, { title: result.title.trim(), message: result.message.trim() });
-      showToast('Post updated successfully.', 'success');
-      await loadData();
-        } catch (err) {
-      // The backend has no edit endpoint (PUT returns 404), so say so plainly.
-      const status = err?.response?.status;
-      const isMissingEndpoint = status === 404 || /NoResourceFoundException/i.test(err?.message || err?.response?.data?.message || '');
-      showToast(
-        isMissingEndpoint
-          ? 'Editing posts is not available yet. You can delete the post and publish it again.'
-          : err?.response?.data?.message || err.message || 'Failed to Update Post.',
-        isMissingEndpoint ? 'info' : 'error'
-      );
-    }
-  };
-
-  const deleteWallPost = async (item) => {
+  const hideWallPost = async (item) => {
     const ok = await confirm({
-      title: 'Remove post',
-      message: `Remove "${item.title}"? This is meant to remove it for everyone.`,
-      confirmText: 'Remove',
+      title: 'Hide post',
+      message: `Hide "${item.title}" from your view? It stays visible to everyone else.`,
+      confirmText: 'Hide',
       danger: true,
     });
     if (!ok) return;
-    try {
-      await deleteAnnouncement(item.announcementId);
-      showToast('Post removed for everyone.', 'success');
-      setNotifications((current) => current.filter(
-        (n) => !(n.referenceType === 'ANNOUNCEMENT' && String(n.referenceId) === String(item.announcementId))
-      ));
-      await loadData();
-    } catch (err) {
-      // The backend doesn't have the delete endpoint deployed yet
-      // (404 / NoResourceFoundException). Rather than show that raw
-      // error, fall back to hiding the post in this browser only —
-      // and say so honestly, since it is NOT deleted for other people.
-      const status = err?.response?.status;
-      const isMissingEndpoint = status === 404 || /NoResourceFoundException/i.test(err?.message || err?.response?.data?.message || '');
-      if (isMissingEndpoint) {
-        setHiddenPostIds((current) => {
-          const next = new Set(current);
-          next.add(String(item.id));
-          try { localStorage.setItem(HIDDEN_POSTS_KEY, JSON.stringify([...next])); } catch { /* storage unavailable, ignore */ }
-          return next;
-        });
-        showToast('Hidden from your view.', 'error');
-        return;
-      }
-      showToast(err?.response?.data?.message || err.message || 'Failed to remove post.', 'error');
-    }
+    setHiddenPostIds((current) => {
+      const next = new Set(current);
+      next.add(String(item.id));
+      try { localStorage.setItem(HIDDEN_POSTS_KEY, JSON.stringify([...next])); } catch { /* storage unavailable, ignore */ }
+      return next;
+    });
+    showToast('Hidden from your view only.', 'info');
   };
 
   return (
@@ -424,8 +232,8 @@ export default function CelebrationWall() {
           <form className="celebration-form" onSubmit={handleCreateCelebration}>
             <label>Celebration Type<select value={celebrationForm.type} onChange={(e) => setCelebrationForm((value) => ({ ...value, type: e.target.value }))}><option value="GENERAL">General Celebration</option><option value="BIRTHDAY">Birthday</option><option value="WORK_ANNIVERSARY">Work Anniversary</option></select></label>
             <label>Celebration Date<DatePicker id="celebration-date" value={celebrationForm.eventDate} onChange={(e) => setCelebrationForm((value) => ({ ...value, eventDate: e.target.value }))} /></label>
-            <label className="full-span">Title<input value={celebrationForm.title} maxLength={120} onChange={(e) => setCelebrationForm((value) => ({ ...value, title: e.target.value }))} required /></label>
-            <label className="full-span">Message<textarea rows={4} value={celebrationForm.message} maxLength={1000} onChange={(e) => setCelebrationForm((value) => ({ ...value, message: e.target.value }))} required /></label>
+            <label className="full-span">Title<input value={celebrationForm.title} maxLength={100} onChange={(e) => setCelebrationForm((value) => ({ ...value, title: e.target.value }))} required /></label>
+            <label className="full-span">Message<textarea rows={4} value={celebrationForm.message} maxLength={messageLimit} onChange={(e) => setCelebrationForm((value) => ({ ...value, message: e.target.value }))} required /></label>
             <div className="full-span celebration-tags-field">
               <div className="celebration-tags-title"><span><Users size={17} /> Tag People</span><small>{celebrationForm.taggedPeople.length} selected</small></div>
               <input maxLength={INPUT_LIMITS.SEARCH} className="celebration-tag-search" value={tagSearch} onChange={(e) => setTagSearch(e.target.value)} placeholder="Search employee name or ID" />
@@ -438,7 +246,7 @@ export default function CelebrationWall() {
               </div>
             </div>
             <div className="celebration-form-actions full-span">
-              <label className="celebration-file"><ImagePlus size={17} /> Add Photos<input type="file" accept="image/*" multiple hidden onChange={(e) => setCelebrationFiles(Array.from(e.target.files || []))} /></label>
+              <label className="celebration-file"><ImagePlus size={17} /> Add Photos (PNG or JPG)<input type="file" accept={PHOTO_ACCEPT} multiple hidden onChange={(e) => setCelebrationFiles(Array.from(e.target.files || []))} /></label>
               {celebrationFiles.length > 0 && <span>{celebrationFiles.length} photo{celebrationFiles.length > 1 ? 's' : ''} selected</span>}
               <div className="celebration-form-buttons">
                 <button type="button" className="btn btn-soft" onClick={() => setComposerOpen(false)}>Cancel</button>
@@ -509,6 +317,7 @@ export default function CelebrationWall() {
             <motion.div className="feed-list" initial="hidden" animate="show" variants={stagger}>
               {pageItems.map((post) => {
                 const meta = categoryMeta(post.type);
+                const images = getImageUrls(post.images);
                 const TIcon = meta.icon;
                 const isLiked = Boolean(likedPosts[post.id]);
                 const comments = commentsState[post.id] || [];
@@ -531,36 +340,37 @@ export default function CelebrationWall() {
                       <span className="post-category-badge" style={{ background: meta.bg, color: meta.color }}>
                         <TIcon size={13} /> {meta.label}
                       </span>
-                      {((canEditCelebration && post.announcementId) || canDeletePost(post)) && (
+                      {canHidePost(post) && (
                         <div className="celebration-card-admin">
-                          {canEditCelebration && post.announcementId && <button type="button" onClick={() => editWallPost(post)}><Pencil size={15} /> Edit</button>}
-                          {canDeletePost(post) && <button type="button" className="danger" onClick={() => deleteWallPost(post)}><Trash2 size={15} /> Remove</button>}
+                          <button type="button" onClick={() => hideWallPost(post)}><EyeOff size={15} /> Hide for me</button>
                         </div>
                       )}
                     </div>
 
                     {/* Thumbnail / content */}
                     <div className="post-thumbnail" style={{ background: meta.soft, borderColor: meta.bg }}>
-                      {post.images.length === 0 && <TIcon size={32} style={{ color: meta.color }} />}
+                      {images.length === 0 && <TIcon size={32} style={{ color: meta.color }} />}
                       <strong>{post.title}</strong>
                       {post.message && <span className="post-message">{post.message}</span>}
                       {post.taggedPeople.length > 0 && <div className="post-tagged-people"><Users size={15} /><span>With {post.taggedPeople.map((person) => person.name).join(', ')}</span></div>}
                     </div>
 
-                    {post.images.length > 0 && (
-                      <div className={`post-image-grid count-${Math.min(post.images.length, 4)}`}>
-                        {post.images.slice(0, 4).map((src, idx) => (
-                          brokenImages[src] ? (
+                    {images.length > 0 && (
+                      <div className={`post-image-grid count-${Math.min(images.length, 4)}`}>
+                        {images.slice(0, 4).map((src, idx) => (
+                          (brokenImages[src] || isUrlExpired(src)) ? (
                             <div
                               key={idx}
                               className="post-image-fallback"
                               style={{ background: meta.soft, borderColor: meta.bg, color: meta.color }}
                             >
                               <ImagePlus size={22} />
-                              <span>Photo unavailable</span>
-                              <button type="button" className="retry-image-btn" onClick={() => retryImage(src)}>
-                                <RefreshCw size={12} /> Retry
-                              </button>
+                              <span>{isUrlExpired(src) ? 'Photo link expired' : 'Photo unavailable'}</span>
+                              {!isUrlExpired(src) && (
+                                <button type="button" className="retry-image-btn" onClick={() => retryImage(src)}>
+                                  <RefreshCw size={12} /> Retry
+                                </button>
+                              )}
                             </div>
                           ) : (
                             <button
@@ -651,7 +461,7 @@ export default function CelebrationWall() {
 
         {/* ---------- Right sidebar ---------- */}
         <aside className="celebration-side">
-          {/* Announcements widget */}
+          {/* Upcoming celebrations widget */}
           <motion.section
             className="panel side-widget"
             initial={{ opacity: 0, x: 20 }}
@@ -660,50 +470,20 @@ export default function CelebrationWall() {
             whileHover={{ y: -4 }}
           >
             <div className="side-widget-head">
-              <span className="side-widget-icon" style={{ background: '#dbeafe', color: '#2563eb' }}>
-                <Megaphone size={18} />
+              <span className="side-widget-icon" style={{ background: '#fce7f3', color: '#db2777' }}>
+                <PartyPopper size={18} />
               </span>
-              <h2>Announcements</h2>
+              <h2>Upcoming Celebrations</h2>
             </div>
-            {announcements.map((item) => (
-              <div className="side-content" key={item.id}>
-                <div className="side-content-title">
-                  <strong>{item.title}</strong>
-                  {canEditCelebration && item.announcementId && (
-                    <div className="side-post-actions">
-                      <button type="button" onClick={() => editWallPost(item)} title="Edit"><Pencil size={14} /></button>
-                    </div>
-                  )}
-                </div>
-                <span>{item.message}</span>
-              </div>
-            ))}
-            {!announcements.length && <p className="empty-inline">No Announcements.</p>}
-          </motion.section>
-
-          {/* Events widget */}
-          <motion.section
-            className="panel side-widget"
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.5, ease: easeOut, delay: 0.18 }}
-            whileHover={{ y: -4 }}
-          >
-            <div className="side-widget-head">
-              <span className="side-widget-icon" style={{ background: '#dcfce7', color: '#16a34a' }}>
-                <CalendarDays size={18} />
-              </span>
-              <h2>Upcoming Events</h2>
-            </div>
-            {upcomingEvents.map((item) => (
+            {upcomingCelebrations.map((item) => (
               <div className="side-content" key={item.id}>
                 <div className="side-content-title">
                   <strong>{item.title}</strong>
                 </div>
-                <span>{item.message || new Date(item.eventDate || item.createdAt).toLocaleDateString()}</span>
+                <span>{new Date(item.eventDate || item.createdAt).toLocaleDateString()}{item.message ? ` · ${item.message}` : ''}</span>
               </div>
             ))}
-            {!upcomingEvents.length && <p className="empty-inline">No upcoming events.</p>}
+            {!upcomingCelebrations.length && <p className="empty-inline">No upcoming celebrations.</p>}
           </motion.section>
 
           {/* Quick links widget */}
