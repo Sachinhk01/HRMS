@@ -411,15 +411,15 @@ export default function PayrollRunsPanel() {
 
     const n = (value) => Number(value || 0);
     if (n(editForm.workedDays) + n(editForm.lopDays) + n(editForm.halfDays) > n(editForm.totalWorkingDays)) {
-      setEditError("Worked days + LOP days + Half days cannot exceed total working days.");
+      showToast("Worked days + LOP days + Half days cannot exceed total working days.", "error");
       return;
     }
     if (editPreview.gross <= 0) {
-      setEditError("Gross salary must be greater than 0.");
+      showToast("Gross salary must be greater than 0.", "error");
       return;
     }
     if (editPreview.net < 0) {
-      setEditError("Total deductions cannot exceed gross salary.");
+      showToast("Total deductions cannot exceed gross salary.", "error");
       return;
     }
 
@@ -485,7 +485,7 @@ export default function PayrollRunsPanel() {
       setDetail(null);
       await refresh();
     } catch (err) {
-      setEditError(err.message || "Failed to save changes.");
+      showToast(err.message || "Failed to save changes.", "error");
     } finally {
       setSaving(false);
     }
@@ -592,7 +592,8 @@ export default function PayrollRunsPanel() {
               <section className="gen-card gen-settings">
                 <header className="gen-card-head"><Settings size={18} /> Payroll Settings</header>
                 <div className="gen-card-body">
-                  <label>Payroll Month <span className="gen-req">*</span>
+                  <label>
+                    <span className="gen-label-text">Payroll Month</span>
                     <MonthPicker id="payroll-generate-month" value={genMonth} onChange={(event) => setGenMonth(event.target.value)} required />
                   </label>
                   <label>Remarks
@@ -623,11 +624,11 @@ export default function PayrollRunsPanel() {
                 <header className="gen-card-head gen-employees-head">
                   <span className="gen-title"><Users size={18} /> Employees</span>
                   <span className="gen-head-actions">
-                    <span className="gen-selected-pill">{selectedIds.length} Selected</span>
                     <label className="gen-select-all">
                       <input type="checkbox" checked={allMatchedSelected} onChange={toggleAllMatched} disabled={matchedEmployees.length === 0} />
-                      Select All
+                      <span>Select All</span>
                     </label>
+                    <span className="gen-selected-pill">{selectedIds.length} Selected</span>
                   </span>
                 </header>
                 <div className="gen-card-body">
@@ -903,7 +904,6 @@ export default function PayrollRunsPanel() {
               <button type="button" className="payroll-modal-close" onClick={closeEdit} aria-label="Close"><X size={18} /></button>
             </div>
             <div className="payroll-modal-body">
-              {editError && <div className="form-alert">{editError}</div>}
               {halfDaysLoadError && <div className="form-alert">{halfDaysLoadError}</div>}
 
               {EDIT_SECTIONS.map(([heading, fields]) => (
@@ -918,7 +918,7 @@ export default function PayrollRunsPanel() {
                           max="999999"
                           step={step || "0.01"}
                           value={editForm[key]}
-                          required={key === "halfDays"}
+                          onWheel={(event) => event.currentTarget.blur()}
                           onChange={(event) => setEditForm((form) => ({ ...form, [key]: event.target.value }))}
                         />
                       </label>

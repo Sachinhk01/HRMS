@@ -166,3 +166,21 @@
 .dp-popup .dp-link:hover:not(:disabled) { background: #eff6ff; }
 .dp-popup .dp-link--muted { color: #64748b; }
 .dp-popup .dp-link:disabled { opacity: .4; cursor: not-allowed; }
+
+/* Keep the calendar icon visible even when a page class (e.g. .compact-select)
+   sets the `background:` shorthand, which would otherwise wipe background-image.
+   Higher specificity (0,2,1) beats `.compact-select` and `.some-page .compact-select`. */
+input.dp-input[data-picker] {
+  padding-right: 38px !important;
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  background-size: 18px 18px;
+}
+
+input.dp-input[data-picker="date"] {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%23475569' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='4' width='18' height='18' rx='2'/%3E%3Cpath d='M16 2v4M8 2v4M3 10h18'/%3E%3C/svg%3E");
+}
+
+input.dp-input[data-picker="month"] {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%23475569' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='4' width='18' height='18' rx='2'/%3E%3Cpath d='M16 2v4M8 2v4M3 10h18M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01'/%3E%3C/svg%3E");
+}

@@ -71,15 +71,29 @@ export default function PaymentDetailsPanel() {
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
 
+  const [employeesLoading, setEmployeesLoading] = useState(true);
+
   useEffect(() => {
-    getEmployeeDropdown().then(setEmployees).catch(() => setEmployees([]));
+    let cancelled = false;
+    getEmployeeDropdown()
+      .then((list) => { if (!cancelled) setEmployees(list || []); })
+      .catch((err) => {
+        if (cancelled) return;
+        setEmployees([]);
+        showToast(err.message || "Failed to load employees.", "error");
+      })
+      .finally(() => { if (!cancelled) setEmployeesLoading(false); });
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const filtered = useMemo(() => employees
-    .filter((item) =>
-      `${item.employeeCode} ${item.employeeName}`.toLowerCase().includes(query.toLowerCase())
-    )
-    .slice(0, 40), [employees, query]);
+  // No .slice(): the old 40-item cap hid everyone after the first 40 unless you searched.
+  const filtered = useMemo(() => {
+    const term = query.trim().toLowerCase();
+    return employees.filter((item) =>
+      `${item.employeeCode} ${item.employeeName}`.toLowerCase().includes(term)
+    );
+  }, [employees, query]);
 
   const load = useCallback(async (employeeId) => {
     if (!employeeId) {
@@ -196,11 +210,17 @@ export default function PaymentDetailsPanel() {
             <input maxLength={INPUT_LIMITS.SEARCH} value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search employee…" />
           </div>
           <select
-            className="compact-select"
+            className="compact-select payroll-employee-select"
             value={selectedId}
             onChange={(event) => setSelectedId(event.target.value)}
           >
-            <option value="">Select an employee…</option>
+            <option value="">
+              {employeesLoading
+                ? "Loading employees…"
+                : filtered.length === 0
+                  ? "No employees found"
+                  : "Select an employee…"}
+            </option>
             {filtered.map((item) => (
               <option key={item.id} value={item.id}>{item.employeeCode} · {item.employeeName}</option>
             ))}

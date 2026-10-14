@@ -102,9 +102,39 @@ export async function getEmployeeById(id) {
   return data.data;
 }
 
+// Shape every dropdown option as { id, employeeCode, employeeName }, whichever endpoint it came from.
+function toDropdownOption(employee) {
+  return {
+    id: employee?.id ?? employee?.employeeId,
+    employeeCode: employee?.employeeCode ?? employee?.code ?? "",
+    employeeName:
+      employee?.employeeName ||
+      employee?.name ||
+      `${employee?.firstName || ""} ${employee?.lastName || ""}`.trim() ||
+      employee?.email ||
+      "Employee",
+  };
+}
+
+// Prefer the lightweight /employees/dropdown endpoint. It is limited to HR_ADMIN / MANAGER /
+// SUPER_ADMIN and returns nothing when it fails or comes back empty, so fall back to the normal
+// employee list (same approach Form 16 already uses) instead of showing an empty dropdown.
 export async function getEmployeeDropdown() {
-  const { data } = await api.get("/employees/dropdown");
-  return data.data; // [{ id, employeeCode, employeeName }]
+  try {
+    const { data } = await api.get("/employees/dropdown");
+    const list = data?.data ?? data;
+    if (Array.isArray(list) && list.length) {
+      return list.map(toDropdownOption).filter((option) => option.id != null);
+    }
+  } catch {
+    // fall through to the paginated employee list below
+  }
+
+  const result = await getEmployees({ page: 0, size: 500 });
+  return result.content
+    .filter((employee) => employee?.active !== false)
+    .map(toDropdownOption)
+    .filter((option) => option.id != null);
 }
 
 export async function getMyProfile() {

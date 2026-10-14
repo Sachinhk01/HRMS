@@ -205,13 +205,22 @@
 }
 .payroll-search input:focus { box-shadow: none; border: none; }
 
-.payroll-page input[type="number"] {
+/* The edit/detail modals are rendered with createPortal into document.body, so they sit
+   OUTSIDE .payroll-page. Target .payroll-modal / .payroll-overlay as well so the number
+   spinner arrows are hidden there too. */
+.payroll-page input[type="number"],
+.payroll-modal input[type="number"],
+.payroll-overlay input[type="number"] {
   appearance: textfield;
   -moz-appearance: textfield;
 }
 
 .payroll-page input[type="number"]::-webkit-inner-spin-button,
-.payroll-page input[type="number"]::-webkit-outer-spin-button {
+.payroll-page input[type="number"]::-webkit-outer-spin-button,
+.payroll-modal input[type="number"]::-webkit-inner-spin-button,
+.payroll-modal input[type="number"]::-webkit-outer-spin-button,
+.payroll-overlay input[type="number"]::-webkit-inner-spin-button,
+.payroll-overlay input[type="number"]::-webkit-outer-spin-button {
   margin: 0;
   -webkit-appearance: none;
 }
