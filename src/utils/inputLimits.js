@@ -17,7 +17,7 @@ export const INPUT_LIMITS = {
   SHORT_TEXT: 100,     // department, position, bank, remarks, type, etc.
   EXPERIENCE: 30,      // e.g. "2 years"
   URL: 500,
-  REASON: 500,         // reasons (leave, regularization, rejection)
+  REASON: 250,         // reasons (leave, regularization, rejection)
   HOLIDAY_NAME: 100,   // backend: 100
   HOLIDAY_NOTE: 300,   // backend: 300
   FEEDBACK: 2000,      // performance - overall feedback

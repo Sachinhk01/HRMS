@@ -1,18 +1,13 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { motion, MotionConfig } from "framer-motion";
-import {
-  Banknote, Building2, CalendarCheck, CalendarDays, CalendarX, Clock, Download, FileText,
-  Hash, Landmark, Loader2, ShieldCheck, TrendingUp, UserCheck, WalletCards,
-} from "lucide-react";
+import { Banknote, Building2, CreditCard, Download, FileText, Hash, Landmark, ShieldCheck, WalletCards } from "lucide-react";
+import PageHeader from "../../components/PageHeader";
 import { useAuth } from "../../context/AuthContext";
 import { getMyProfile } from "../../services/employeeService";
 import {
   downloadPayslip, formatINR, getPaymentDetails, getPayrollByEmployee,
   payrollMonthLabel, triggerBlobDownload,
 } from "../../services/payrollService";
-import { EASE_OUT } from "../../components/Motion";
-import { AnimatedNumber, EmptyState, PayrollBadge, getHalfDayDeduction } from "./payrollUi";
-import "./SalaryRedesign.css";
+import { AttendanceSection, DeductionsSection, EarningsSection, EmptyState, PayrollBadge } from "./payrollUi";
 
 const MODE_LABELS = { BANK_TRANSFER: "Bank transfer", UPI: "UPI", CHEQUE: "Cheque", CASH: "Cash" };
 
@@ -57,7 +52,6 @@ export default function EmployeePayslipView() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [downloading, setDownloading] = useState(false);
-  const [selectedId, setSelectedId] = useState(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -111,14 +105,21 @@ export default function EmployeePayslipView() {
   const latest = sorted[0] || null;
   const totalPaid = sorted.reduce((sum, i) => sum + Number(i.netPayable || 0), 0);
 
-  async function handleDownload(item) {
+  async function handleDownload(item, source) {
     if (!item || downloading) return;
+    setDownloadError(null);
+
+    if (!DOWNLOADABLE_STATUSES.includes(String(item.status || "").toUpperCase())) {
+      setDownloadError({ id: item.id, source, message: payslipBlockedMessage(item) });
+      return;
+    }
+
     setDownloading(true);
     try {
       const { blob, filename } = await downloadPayslip(item.id);
       triggerBlobDownload(blob, filename);
     } catch (err) {
-      setError(err.message || "Failed to download payslip.");
+      setDownloadError({ id: item.id, source, message: await readDownloadError(err) });
     } finally {
       setDownloading(false);
     }
@@ -236,59 +237,123 @@ export default function EmployeePayslipView() {
           </Breakdown>
         </div>
 
-        <motion.section className="sal-panel" variants={rise}>
-          <h2>Attendance summary <small>{payrollMonthLabel(selected?.payrollMonth)}</small></h2>
-          <div className="sal-attendance">
-            {attendance.map(([Icon, label, value]) => (
-              <div key={label} className="sal-att"><Icon size={16} /><strong>{value == null ? "—" : <AnimatedNumber value={value} />}</strong><span>{label}</span></div>
-            ))}
-          </div>
-        </motion.section>
+          <div className="payroll-layout">
+            <section className="panel pay-hero">
+              <Banknote size={56} strokeWidth={1.4} />
+              <div className="pay-hero-copy">
+                <span>{selected ? payrollMonthLabel(selected.payrollMonth) : ""}</span>
+                <strong>{formatINR(selected?.netPayable)}</strong>
+                <p>
+                  {selected?.payrollNumber} · Net payable after {formatINR(selected?.totalDeduction)} in deductions.
+                </p>
+              </div>
+              <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                <select
+                  className="compact-select payslip-selector"
+                  value={selected?.id || ""}
+                  onChange={(event) => setSelectedId(Number(event.target.value))}
+                >
+                  {sorted.map((item) => (
+                    <option key={item.id} value={item.id}>
+                      {payrollMonthLabel(item.payrollMonth)} · {item.status}
+                    </option>
+                  ))}
+                </select>
+                <button className="btn btn-primary" onClick={() => handleDownload(selected)} disabled={downloading}>
+                  <Download size={15} /> {downloading ? "Downloading…" : "Payslip"}
+                </button>
+              </div>
+            </section>
 
-        <motion.section className="sal-panel" variants={rise}>
-          <h2>Payment details {payment?.paymentMode && <PayrollBadge status={payment.paymentMode} />}</h2>
-          {details ? (
-            <div className="sal-details">
-              {details.map(([Icon, label, value]) => (
-                <div key={label} className="sal-detail"><span className="sal-detail-icon"><Icon size={15} /></span><div><small>{label}</small><strong>{value}</strong></div></div>
-              ))}
-            </div>
-          ) : (
-            <EmptyState icon={Landmark} title="No payment details on file" note="Contact HR to update your bank and tax details." />
+            <EarningsSection data={selected} />
+            <DeductionsSection data={selected} />
+          </div>
+
+          {selected && (
+            <section className="panel">
+              <div className="panel-title"><h2>Attendance Summary</h2></div>
+              <AttendanceSection data={selected} />
+            </section>
           )}
-        </motion.section>
 
-        <motion.section className="sal-panel" variants={rise}>
-          <h2>Payslip history <small>Select a row to view that month</small></h2>
-          <div className="sal-table-wrap">
-            <table className="sal-table">
-              <thead><tr><th>Month</th><th>Payroll number</th><th>Status</th><th>Gross</th><th>Deductions</th><th>Net pay</th><th /></tr></thead>
-              <tbody>
-                {sorted.map((item, i) => (
-                  <motion.tr
-                    key={item.id} className={selected?.id === item.id ? "is-active" : ""}
-                    initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, delay: 0.5 + i * 0.04, ease: EASE_OUT }}
-                    onClick={() => setSelectedId(item.id)} tabIndex={0}
-                    onKeyDown={(e) => { if (e.key === "Enter") setSelectedId(item.id); }}
-                  >
-                    <td><strong>{payrollMonthLabel(item.payrollMonth)}</strong></td>
-                    <td>{item.payrollNumber}</td>
-                    <td><PayrollBadge status={item.status} /></td>
-                    <td>{money(item.grossSalary)}</td>
-                    <td>{money(item.totalDeduction)}</td>
-                    <td><strong>{money(item.netPayable)}</strong></td>
-                    <td className="sal-right">
-                      <button type="button" className="sal-pdf" onClick={(e) => { e.stopPropagation(); handleDownload(item); }} disabled={downloading}>
-                        <Download size={14} /> PDF
-                      </button>
-                    </td>
-                  </motion.tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </motion.section>
-      </motion.div>
-    </MotionConfig>
+          <section className="panel">
+            <div className="panel-title">
+              <h2>Payment Details</h2>
+              <PayrollBadge status={payment?.paymentMode} />
+            </div>
+            {payment ? (
+              <div className="pay-details-grid">
+                <div className="pay-detail-item">
+                  <span><Landmark size={12} /> Bank</span>
+                  <strong>{payment.bankName || "—"}</strong>
+                </div>
+                <div className="pay-detail-item">
+                  <span><Hash size={12} /> Account Number</span>
+                  <strong>{payment.accountNumber ? `•••• ${payment.accountNumber.slice(-4)}` : "—"}</strong>
+                </div>
+                <div className="pay-detail-item">
+                  <span><Building2 size={12} /> IFSC</span>
+                  <strong>{payment.ifscCode || "—"}</strong>
+                </div>
+                <div className="pay-detail-item">
+                  <span><WalletCards size={12} /> Payment Mode</span>
+                  <strong>{MODE_LABELS[payment.paymentMode] || payment.paymentMode || "—"}</strong>
+                </div>
+                <div className="pay-detail-item">
+                  <span><ShieldCheck size={12} /> PAN</span>
+                  <strong>{payment.panNumber || "—"}</strong>
+                </div>
+                <div className="pay-detail-item">
+                  <span><Hash size={12} /> UAN / PF / ESI</span>
+                  <strong>{[payment.uanNumber, payment.pfNumber, payment.esiNumber].filter(Boolean).join(" · ") || "—"}</strong>
+                </div>
+              </div>
+            ) : (
+              <EmptyState
+                icon={Landmark}
+                title="No payment details on file"
+                note="Please contact HR to update your bank and tax details."
+              />
+            )}
+          </section>
+
+          <section className="panel">
+            <div className="panel-title"><h2>Payslip History</h2></div>
+            <div className="table-wrap">
+              <table className="table">
+                <thead>
+                  <tr>
+                    <th>Month</th>
+                    <th>Payroll Number</th>
+                    <th>Status</th>
+                    <th>Gross</th>
+                    <th>Deductions</th>
+                    <th>Net Pay</th>
+                    <th style={{ textAlign: "right" }}>Payslip</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {sorted.map((item) => (
+                    <tr key={item.id} className={selected?.id === item.id ? "row-active" : ""}>
+                      <td><strong>{payrollMonthLabel(item.payrollMonth)}</strong></td>
+                      <td>{item.payrollNumber}</td>
+                      <td><PayrollBadge status={item.status} /></td>
+                      <td>{formatINR(item.grossSalary)}</td>
+                      <td>{formatINR(item.totalDeduction)}</td>
+                      <td><strong>{formatINR(item.netPayable)}</strong></td>
+                      <td style={{ textAlign: "right" }}>
+                        <button className="btn btn-ghost btn-sm" onClick={() => handleDownload(item)} disabled={downloading}>
+                          <Download size={14} /> PDF
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </section>
+        </>
+      )}
+    </div>
   );
 }

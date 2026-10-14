@@ -8,18 +8,23 @@ import { Avatar, PaidLop, StatusChip } from '../components/LeaveBits';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import usePagination, { sortRecent } from '../hooks/usePagination';
-import {
-  exportLeaveReport, getAllLeaveRequests, getTeamLeaveRequests, managerLeaveAction,
-} from '../services/leaveService';
+import { getAllLeaveRequests, getTeamLeaveRequests, managerLeaveAction, exportLeaveReport } from '../services/leaveService';
 import { capitalizeName } from '../utils/formatName';
 import { formatDate, formatRange, isOwnRequest, isPending, leaveErrorMessage } from '../utils/leaveFormat';
 import './LeaveApprovals.css';
 import './LeaveRequests.css';
 import { INPUT_LIMITS } from '../utils/inputLimits';
 
-const thisYear = new Date().getFullYear();
-const years = Array.from({ length: 7 }, (_, index) => thisYear - 3 + index);
-const currentMonth = new Date().getMonth() + 1;
+const easeOut = [0.16, 1, 0.3, 1];
+const fadeUp = {
+  hidden: { opacity: 0, y: 18 },
+  show: { opacity: 1, y: 0, transition: { duration: 0.5, ease: easeOut } },
+};
+const stagger = { hidden: {}, show: { transition: { staggerChildren: 0.06, delayChildren: 0.04 } } };
+
+function initials(name = '') {
+  return name.split(' ').map((p) => p[0]).join('').slice(0, 2).toUpperCase();
+}
 
 export default function LeaveApprovals() {
   const { user } = useAuth();
@@ -91,16 +96,18 @@ export default function LeaveApprovals() {
       ));
     }
     return list;
-  }, [ordered, applied]);
-  const { page, setPage, pageItems, pageSize } = usePagination(filtered, 10);
-  useEffect(() => { setPage(1); }, [applied, setPage]);
+  }, [ordered, searchQuery, typeFilter, statusFilter]);
 
-  const summary = useMemo(() => ({
-    pending: ordered.filter((row) => isPending(row)).length,
-    approved: ordered.filter((row) => String(row.status).toUpperCase() === 'APPROVED').length,
-    rejected: ordered.filter((row) => String(row.status).toUpperCase() === 'REJECTED').length,
-    total: ordered.length,
-  }), [ordered]);
+  const { page, setPage, pageItems, pageSize } = usePagination(filteredOrdered, 6);
+
+  // Summary cards derived from real backend data
+  const summary = useMemo(() => {
+    const pending = ordered.filter((r) => String(r.status || '').toUpperCase() === 'PENDING').length;
+    const approved = ordered.filter((r) => String(r.status || '').toUpperCase() === 'APPROVED').length;
+    const rejected = ordered.filter((r) => String(r.status || '').toUpperCase() === 'REJECTED').length;
+    const total = ordered.length;
+    return { pending, approved, rejected, total };
+  }, [ordered]);
 
   const decide = async (row, action, reason = '') => {
     if (!canAct || !isPending(row) || isOwnRequest(row, user) || acting) return;
@@ -185,48 +192,74 @@ export default function LeaveApprovals() {
             <label htmlFor="team-employee">Employee</label>
             <div className="lr-select"><select id="team-employee" value={draft.employee} onChange={(event) => setDraft((value) => ({ ...value, employee: event.target.value }))}><option value="ALL">All employees</option>{employees.map((employee) => <option key={employee.id} value={employee.id}>{capitalizeName(employee.name)}</option>)}</select></div>
           </div>
-          <div className="lr-filter">
-            <label htmlFor="team-status">Status</label>
-            <div className="lr-select"><select id="team-status" value={draft.status} onChange={(event) => setDraft((value) => ({ ...value, status: event.target.value }))}><option value="ALL">All statuses</option><option value="PENDING">Pending</option><option value="APPROVED">Approved</option><option value="REJECTED">Rejected</option><option value="CANCELLED">Cancelled</option></select></div>
-          </div>
-          <div className="lr-filter">
-            <label htmlFor="team-type">Leave Type</label>
-            <div className="lr-select"><select id="team-type" value={draft.type} onChange={(event) => setDraft((value) => ({ ...value, type: event.target.value }))}><option value="ALL">All types</option>{leaveTypes.map((type) => <option key={type} value={type}>{type}</option>)}</select></div>
-          </div>
-          <label className="lr-team-search" htmlFor="team-search"><Search size={15} /><input id="team-search" maxLength={INPUT_LIMITS.SEARCH} value={draft.search} onChange={(event) => setDraft((value) => ({ ...value, search: event.target.value }))} placeholder="Search name, code, or leave type" /></label>
-          <button type="submit" className="lr-btn lr-btn--primary"><Search size={15} /> Search</button>
-          <ExportMenu onExport={exportReport} />
-        </form>
+        </div>
 
-        <div className="lr-table-wrap">
-          <table className="lr-table lr-team-table">
-            <thead><tr><th>#</th><th>Employee</th><th>Leave Dates</th><th>Days</th><th>Reason</th><th>Leave Type</th><th>Status</th><th>Paid / LOP</th><th>Actions</th></tr></thead>
+        <div className="la-toolbar">
+          <label className="la-search">
+            <Search size={15} />
+            <input maxLength={INPUT_LIMITS.SEARCH} type="text" placeholder="Search employee or leave type..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
+          </label>
+          <select className="compact-select" value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)}>
+            <option value="ALL">All leave types</option>
+            {leaveTypes.map((t) => <option key={t} value={t}>{t}</option>)}
+          </select>
+          <select className="compact-select" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+            <option value="ALL">All Statuses</option>
+            <option value="PENDING">Pending</option>
+            <option value="APPROVED">Approved</option>
+            <option value="REJECTED">Rejected</option>
+          </select>
+          <ExportMenu onExport={handleExport} />
+        </div>
+
+        <div className="table-wrap">
+          <table className="la-table">
+            <thead>
+              <tr>
+                <th>Employee</th><th>Leave Type</th><th>Date Range</th><th>Days</th><th>Reason</th><th>Status</th><th>Actions</th>
+              </tr>
+            </thead>
             <tbody>
-              {loading && Array.from({ length: 5 }, (_, index) => <tr key={index} className="lr-skel"><td colSpan={9}><div /></td></tr>)}
-              {!loading && pageItems.map((row, index) => {
-                const canDecide = canAct && isPending(row) && !isOwnRequest(row, user);
-                const range = formatRange(row.startDate, row.endDate);
-                return (
-                  <tr key={row.id}>
-                    <td>{(page - 1) * pageSize + index + 1}</td>
-                    <td><span className="lr-emp"><Avatar name={row.employeeName} /><span><b>{capitalizeName(row.employeeName || 'Employee')}</b><small>{row.employeeCode || ''}</small></span></span></td>
-                    <td><span className="lr-dates">{range.main}<small>{range.sub}</small></span></td>
-                    <td>{row.totalDays ?? '—'}</td>
-                    <td className="lr-reason" title={row.reason}>{row.reason || '—'}</td>
-                    <td>{row.leaveType || '—'}</td>
-                    <td><StatusChip status={row.status} /></td>
-                    <td><PaidLop row={row} /></td>
-                    <td><div className="lr-actions">
-                      {canDecide ? (
-                        <>
-                          <button type="button" className="lr-btn lr-btn--approve" disabled={acting} onClick={() => setApproveTarget(row)}>Approve</button>
-                          <button type="button" className="lr-btn lr-btn--reject" disabled={acting} onClick={() => { setRejectTarget(row); setRejectReason(''); }}>Reject</button>
-                        </>
-                      ) : <button type="button" className="lr-btn lr-btn--view" onClick={() => navigate(`/leave/${row.id}`)}>View</button>}
-                    </div></td>
-                  </tr>
-                );
-              })}
+              {loading && Array.from({ length: 4 }).map((_, i) => (
+                <tr key={`lsk-${i}`} className="skeleton-row"><td colSpan={7}><div className="skeleton-bar" /></td></tr>
+              ))}
+              {!loading && pageItems.map((row, i) => (
+                <motion.tr key={row.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, delay: i * 0.04, ease: easeOut }}>
+                  <td>
+                    <button className="emp-cell" onClick={() => setDrawerItem(row)}>
+                      <span className="emp-avatar">{initials(row.employeeName)}</span>
+                      <span className="emp-name">{capitalizeName(row.employeeName)}</span>
+                    </button>
+                  </td>
+                  <td><span className="lt-type">{row.leaveType}</span></td>
+                  <td>{row.startDate} – {row.endDate}</td>
+                  <td><strong>{row.totalDays}</strong></td>
+                  <td className="reason-cell"><span title={row.reason}>{row.reason}</span></td>
+                  <td><span className={`status-pill ${String(row.status || '').toLowerCase()}`}><StatusBadge>{row.status}</StatusBadge></span></td>
+                  <td>
+                    <div className="la-actions">
+                      <motion.button
+                        className="btn btn-small btn-gradient-green"
+                        whileHover={String(row.status || '').toUpperCase() === 'PENDING' ? { scale: 1.05 } : undefined}
+                        whileTap={String(row.status || '').toUpperCase() === 'PENDING' ? { scale: 0.95 } : undefined}
+                        disabled={acting || String(row.status || '').toUpperCase() !== 'PENDING'}
+                        onClick={() => setApproveTarget(row)}
+                      >
+                        <Check size={15} /> Approve
+                      </motion.button>
+                      <motion.button
+                        className="btn btn-small btn-gradient-red"
+                        whileHover={String(row.status || '').toUpperCase() === 'PENDING' ? { scale: 1.05 } : undefined}
+                        whileTap={String(row.status || '').toUpperCase() === 'PENDING' ? { scale: 0.95 } : undefined}
+                        disabled={acting || String(row.status || '').toUpperCase() !== 'PENDING'}
+                        onClick={() => { setRejectTarget(row); setRejectReason(''); }}
+                      >
+                        <X size={15} /> Reject
+                      </motion.button>
+                    </div>
+                  </td>
+                </motion.tr>
+              ))}
             </tbody>
           </table>
           {!loading && !filtered.length && <div className="lr-empty"><Inbox size={30} /><p>No leave requests found.</p><small>Try a different month or filter.</small></div>}
@@ -247,15 +280,92 @@ export default function LeaveApprovals() {
           </motion.div>
         )}
         {rejectTarget && (
-          <motion.div className="lr-overlay lr-overlay--center" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onMouseDown={(event) => {
-            if (event.target === event.currentTarget && !acting) setRejectTarget(null);
-          }}>
-            <section className="lr-modal" role="dialog" aria-modal="true" aria-labelledby="team-reject-title">
-              <h3 id="team-reject-title">Reject this request?</h3>
-              <p>Provide a reason for rejecting {capitalizeName(rejectTarget.employeeName)}’s request.</p>
-              <label className="lr-field"><span>Rejection reason</span><textarea rows={4} maxLength={500} required value={rejectReason} onChange={(event) => setRejectReason(event.target.value)} /></label>
-              <div className="lr-modal-actions"><button type="button" className="lr-btn lr-btn--ghost" onClick={() => setRejectTarget(null)} disabled={acting}>Cancel</button><button type="button" className="lr-btn lr-btn--reject" disabled={acting || !rejectReason.trim()} onClick={() => decide(rejectTarget, 'REJECT', rejectReason.trim())}><X size={15} />{acting ? 'Rejecting…' : 'Reject'}</button></div>
-            </section>
+          <motion.div className="modal-overlay" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setRejectTarget(null)}>
+            <motion.div className="modal-card" initial={{ opacity: 0, scale: 0.94, y: 12 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.94, y: 12 }} transition={{ duration: 0.25, ease: easeOut }} onClick={(e) => e.stopPropagation()}>
+              <div className="modal-icon-wrap danger"><XCircle size={26} /></div>
+              <h3>Reject This Request?</h3>
+              <p>Provide a Reason For Rejecting <strong>{capitalizeName(rejectTarget.employeeName)}</strong>'s <strong>{rejectTarget.leaveType}</strong> Leave Request.</p>
+              <label className="reject-reason-field">
+                <textarea rows="4" maxLength={500} value={rejectReason} onChange={(e) => setRejectReason(e.target.value)} placeholder="Reason for rejection..." />
+                <span className="lf-counter">{rejectReason.length}/500</span>
+              </label>
+              <div className="modal-actions">
+                <button className="btn btn-soft" onClick={() => setRejectTarget(null)}>Cancel</button>
+                <button className="btn btn-gradient-red" disabled={acting} onClick={confirmReject}><X size={16} /> {acting ? 'Rejecting...' : 'Confirm rejection'}</button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ---------- Detail drawer ---------- */}
+      <AnimatePresence>
+        {drawerItem && (
+          <motion.div
+            className="drawer-overlay"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setDrawerItem(null)}
+          >
+            <motion.aside
+              className="detail-drawer"
+              role="dialog"
+              aria-modal="true"
+              aria-label="Leave request details"
+              onClick={(e) => e.stopPropagation()}
+              initial={{ opacity: 0, scale: 0.94, y: 16 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.94, y: 16 }}
+              transition={{ type: 'spring', stiffness: 380, damping: 32 }}
+            >
+              <div className="drawer-head">
+                <span className="eyebrow">Request Details</span>
+                <h2>Leave Request</h2>
+                <button className="drawer-close" onClick={() => setDrawerItem(null)} aria-label="Close"><X size={20} /></button>
+              </div>
+
+              <div className="drawer-body">
+                <div className="drawer-emp">
+                  <span className="emp-avatar lg">{initials(drawerItem.employeeName)}</span>
+                  <div>
+                    <strong>{capitalizeName(drawerItem.employeeName)}</strong>
+                    {drawerItem.department ? <small>{drawerItem.department}</small> : null}
+                  </div>
+                  <span className="drawer-emp-status"><StatusBadge>{drawerItem.status}</StatusBadge></span>
+                </div>
+
+                <div className="drawer-grid">
+                  <div className="dg-item"><FileText size={15} /><span>Leave Type</span><strong>{drawerItem.leaveType}</strong></div>
+                  <div className="dg-item"><CalendarDays size={15} /><span>Total Days</span><strong>{drawerItem.totalDays}</strong></div>
+                  <div className="dg-item dg-wide"><CalendarRange size={15} /><span>Date Range</span><strong>{drawerItem.startDate} – {drawerItem.endDate}</strong></div>
+                </div>
+
+                <div className="drawer-section">
+                  <span className="ds-label"><FileText size={14} /> Reason</span>
+                  <p>{drawerItem.reason || 'No Reason Provided.'}</p>
+                </div>
+
+                <div className="drawer-section">
+                  <span className="ds-label"><History size={14} /> Timeline</span>
+                  <div className="timeline">
+                    <div className="tl-item"><span className="tl-dot" /><div><strong>Request Submitted</strong><small>{drawerItem.startDate}</small></div></div>
+                    <div className="tl-item"><span className="tl-dot pending" /><div><strong>Awaiting Manager Decision</strong><small>{drawerItem.status}</small></div></div>
+                  </div>
+                </div>
+              </div>
+
+              {String(drawerItem.status || '').toUpperCase() === 'PENDING' && (
+                <div className="drawer-footer">
+                  <motion.button className="btn btn-gradient-green" whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }} disabled={acting} onClick={() => { setApproveTarget(drawerItem); setDrawerItem(null); }}>
+                    <Check size={16} /> Approve
+                  </motion.button>
+                  <motion.button className="btn btn-gradient-red" whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }} disabled={acting} onClick={() => { setRejectTarget(drawerItem); setDrawerItem(null); }}>
+                    <X size={16} /> Reject
+                  </motion.button>
+                </div>
+              )}
+            </motion.aside>
           </motion.div>
         )}
       </AnimatePresence>

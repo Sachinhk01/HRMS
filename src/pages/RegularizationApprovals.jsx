@@ -293,16 +293,42 @@ export default function RegularizationApprovals() {
         <div className="reg-filters-row">
           <div className="reg-search">
             <Search size={16} />
-            <input maxLength={INPUT_LIMITS.SEARCH} type="text" placeholder="Search by employee or reason…" value={search} onChange={(e) => setSearch(e.target.value)} />
+            <input
+              id="ra-search"
+              name="search"
+              data-testid="ra-search-input"
+              aria-label="Search by employee or reason"
+              maxLength={INPUT_LIMITS.SEARCH}
+              type="text"
+              placeholder="Search by employee or reason…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
           </div>
-          <select className="compact-select" value={employeeFilter} onChange={(e) => setEmployeeFilter(e.target.value)}>
+          <select
+            id="ra-employee-filter"
+            name="employee"
+            data-testid="ra-employee-filter"
+            aria-label="Filter by employee"
+            className="compact-select"
+            value={employeeFilter}
+            onChange={(e) => setEmployeeFilter(e.target.value)}
+          >
             <option value="ALL">All Employees</option>
             {employees.map((name) => (
               <option key={name} value={name}>{capitalizeName(name)}</option>
             ))}
           </select>
           {tab === 'all' && (
-            <select className="compact-select" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+            <select
+              id="ra-status-filter"
+              name="status"
+              data-testid="ra-status-filter"
+              aria-label="Filter by status"
+              className="compact-select"
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+            >
               <option value="ALL">All Statuses</option>
               {Object.keys(STATUS_META).map((key) => (
                 <option key={key} value={key}>{STATUS_META[key].label}</option>
@@ -378,7 +404,7 @@ export default function RegularizationApprovals() {
               <div className="reg-detail-loading">Loading…</div>
             ) : (
               <>
-                <h3>{capitalizeName(selected.employeeName)}'s Request #{selected.id}</h3>
+                <h3>{capitalizeName(selected.employeeName)}'s Request {selected.id}</h3>
                 <p className="reg-detail-sub">
                   {fmtDate(selected.fromDate)} – {fmtDate(selected.toDate)} · <StatusBadge tone={(STATUS_META[selected.status] || {}).tone}>{(STATUS_META[selected.status] || {}).label || selected.status}</StatusBadge>
                 </p>

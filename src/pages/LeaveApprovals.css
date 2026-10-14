@@ -184,6 +184,7 @@
   font-weight: 700; font-size: 12px; flex-shrink: 0;
 }
 .emp-avatar.lg { width: 56px; height: 56px; font-size: 18px; }
+.emp-avatar-img { object-fit: cover; display: block; background: #e2e8f0; }
 .emp-name { font-weight: 700; color: #0f172a; font-size: 13px; }
 
 /* Status pills */
