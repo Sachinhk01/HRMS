@@ -1,26 +1,26 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { useNavigate } from 'react-router-dom';
-import { CalendarDays, Check, CheckCircle2, Clock3, Inbox, Search, Timer, X, XCircle } from 'lucide-react';
+import { CalendarDays, CalendarRange, Check, CheckCircle2, Clock3, FileText, History, Inbox, Search, Timer, X, XCircle } from 'lucide-react';
 import ExportMenu from '../components/ExportMenu';
 import Pagination from '../components/Pagination';
-import { Avatar, PaidLop, StatusChip } from '../components/LeaveBits';
+import StatusBadge from '../components/StatusBadge';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import usePagination, { sortRecent } from '../hooks/usePagination';
 import { getAllLeaveRequests, getTeamLeaveRequests, managerLeaveAction, exportLeaveReport } from '../services/leaveService';
 import { capitalizeName } from '../utils/formatName';
-import { formatDate, formatRange, isOwnRequest, isPending, leaveErrorMessage } from '../utils/leaveFormat';
+import { formatDate, isOwnRequest, isPending, leaveErrorMessage } from '../utils/leaveFormat';
 import './LeaveApprovals.css';
 import './LeaveRequests.css';
 import { INPUT_LIMITS } from '../utils/inputLimits';
 
 const easeOut = [0.16, 1, 0.3, 1];
-const fadeUp = {
-  hidden: { opacity: 0, y: 18 },
-  show: { opacity: 1, y: 0, transition: { duration: 0.5, ease: easeOut } },
-};
-const stagger = { hidden: {}, show: { transition: { staggerChildren: 0.06, delayChildren: 0.04 } } };
+
+// Month / year filter defaults and the selectable year range.
+const now = new Date();
+const currentMonth = now.getMonth() + 1;
+const thisYear = now.getFullYear();
+const years = Array.from({ length: 5 }, (_, index) => thisYear - 3 + index);
 
 function initials(name = '') {
   return name.split(' ').map((p) => p[0]).join('').slice(0, 2).toUpperCase();
@@ -29,7 +29,6 @@ function initials(name = '') {
 export default function LeaveApprovals() {
   const { user } = useAuth();
   const { showToast } = useToast();
-  const navigate = useNavigate();
   const role = user?.role || user?.roles?.[0];
   const canAct = role === 'MANAGER';
   const [rows, setRows] = useState([]);
@@ -46,6 +45,7 @@ export default function LeaveApprovals() {
   const [rejectTarget, setRejectTarget] = useState(null);
   const [rejectReason, setRejectReason] = useState('');
   const [approveTarget, setApproveTarget] = useState(null);
+  const [drawerItem, setDrawerItem] = useState(null);
   const [acting, setActing] = useState(false);
 
   const load = useCallback(async () => {
@@ -96,9 +96,12 @@ export default function LeaveApprovals() {
       ));
     }
     return list;
-  }, [ordered, searchQuery, typeFilter, statusFilter]);
+  }, [ordered, applied]);
 
-  const { page, setPage, pageItems, pageSize } = usePagination(filteredOrdered, 6);
+  const { page, setPage, pageItems, pageSize } = usePagination(filtered, 6);
+
+  // Go back to page 1 whenever a new search is applied.
+  useEffect(() => { setPage(1); }, [applied, setPage]);
 
   // Summary cards derived from real backend data
   const summary = useMemo(() => {
@@ -125,6 +128,11 @@ export default function LeaveApprovals() {
     } finally {
       setActing(false);
     }
+  };
+
+  const confirmReject = () => {
+    if (!rejectTarget) return;
+    decide(rejectTarget, 'REJECT', rejectReason.trim() || 'Not approved');
   };
 
   const handleSearch = (event) => {
@@ -163,6 +171,9 @@ export default function LeaveApprovals() {
     { icon: Timer, label: 'Total Requests', value: summary.total, tone: 'blue' },
   ];
 
+  // A row can be approved/rejected only by a manager, while pending, and never on their own request.
+  const canDecide = (row) => canAct && isPending(row) && !isOwnRequest(row, user);
+
   return (
     <div className="lr-page page-reveal">
       <header className="lr-head">
@@ -192,25 +203,42 @@ export default function LeaveApprovals() {
             <label htmlFor="team-employee">Employee</label>
             <div className="lr-select"><select id="team-employee" value={draft.employee} onChange={(event) => setDraft((value) => ({ ...value, employee: event.target.value }))}><option value="ALL">All employees</option>{employees.map((employee) => <option key={employee.id} value={employee.id}>{capitalizeName(employee.name)}</option>)}</select></div>
           </div>
-        </div>
-
-        <div className="la-toolbar">
-          <label className="la-search">
-            <Search size={15} />
-            <input maxLength={INPUT_LIMITS.SEARCH} type="text" placeholder="Search employee or leave type..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
-          </label>
-          <select className="compact-select" value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)}>
-            <option value="ALL">All leave types</option>
-            {leaveTypes.map((t) => <option key={t} value={t}>{t}</option>)}
-          </select>
-          <select className="compact-select" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
-            <option value="ALL">All Statuses</option>
-            <option value="PENDING">Pending</option>
-            <option value="APPROVED">Approved</option>
-            <option value="REJECTED">Rejected</option>
-          </select>
-          <ExportMenu onExport={handleExport} />
-        </div>
+          <div className="lr-filter">
+            <label htmlFor="team-status">Status</label>
+            <div className="lr-select">
+              <select id="team-status" value={draft.status} onChange={(event) => setDraft((value) => ({ ...value, status: event.target.value }))}>
+                <option value="ALL">All statuses</option>
+                <option value="PENDING">Pending</option>
+                <option value="APPROVED">Approved</option>
+                <option value="REJECTED">Rejected</option>
+              </select>
+            </div>
+          </div>
+          <div className="lr-filter">
+            <label htmlFor="team-type">Leave type</label>
+            <div className="lr-select">
+              <select id="team-type" value={draft.type} onChange={(event) => setDraft((value) => ({ ...value, type: event.target.value }))}>
+                <option value="ALL">All leave types</option>
+                {leaveTypes.map((type) => <option key={type} value={type}>{type}</option>)}
+              </select>
+            </div>
+          </div>
+          <div className="lr-filter">
+            <label htmlFor="team-search">Search</label>
+            <input
+              id="team-search"
+              type="text"
+              maxLength={INPUT_LIMITS.SEARCH}
+              placeholder="Search employee or leave type..."
+              value={draft.search}
+              onChange={(event) => setDraft((value) => ({ ...value, search: event.target.value }))}
+            />
+          </div>
+          <div className="lr-filter lr-filter--actions">
+            <button type="submit" className="lr-btn lr-btn--approve"><Search size={15} /> Search</button>
+            <ExportMenu onExport={exportReport} />
+          </div>
+        </form>
 
         <div className="table-wrap">
           <table className="la-table">
@@ -226,7 +254,7 @@ export default function LeaveApprovals() {
               {!loading && pageItems.map((row, i) => (
                 <motion.tr key={row.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, delay: i * 0.04, ease: easeOut }}>
                   <td>
-                    <button className="emp-cell" onClick={() => setDrawerItem(row)}>
+                    <button type="button" className="emp-cell" onClick={() => setDrawerItem(row)}>
                       <span className="emp-avatar">{initials(row.employeeName)}</span>
                       <span className="emp-name">{capitalizeName(row.employeeName)}</span>
                     </button>
@@ -237,26 +265,30 @@ export default function LeaveApprovals() {
                   <td className="reason-cell"><span title={row.reason}>{row.reason}</span></td>
                   <td><span className={`status-pill ${String(row.status || '').toLowerCase()}`}><StatusBadge>{row.status}</StatusBadge></span></td>
                   <td>
-                    <div className="la-actions">
-                      <motion.button
-                        className="btn btn-small btn-gradient-green"
-                        whileHover={String(row.status || '').toUpperCase() === 'PENDING' ? { scale: 1.05 } : undefined}
-                        whileTap={String(row.status || '').toUpperCase() === 'PENDING' ? { scale: 0.95 } : undefined}
-                        disabled={acting || String(row.status || '').toUpperCase() !== 'PENDING'}
-                        onClick={() => setApproveTarget(row)}
-                      >
-                        <Check size={15} /> Approve
-                      </motion.button>
-                      <motion.button
-                        className="btn btn-small btn-gradient-red"
-                        whileHover={String(row.status || '').toUpperCase() === 'PENDING' ? { scale: 1.05 } : undefined}
-                        whileTap={String(row.status || '').toUpperCase() === 'PENDING' ? { scale: 0.95 } : undefined}
-                        disabled={acting || String(row.status || '').toUpperCase() !== 'PENDING'}
-                        onClick={() => { setRejectTarget(row); setRejectReason(''); }}
-                      >
-                        <X size={15} /> Reject
-                      </motion.button>
-                    </div>
+                    {canAct ? (
+                      <div className="la-actions">
+                        <motion.button
+                          type="button"
+                          className="btn btn-small btn-gradient-green"
+                          whileHover={canDecide(row) ? { scale: 1.05 } : undefined}
+                          whileTap={canDecide(row) ? { scale: 0.95 } : undefined}
+                          disabled={acting || !canDecide(row)}
+                          onClick={() => setApproveTarget(row)}
+                        >
+                          <Check size={15} /> Approve
+                        </motion.button>
+                        <motion.button
+                          type="button"
+                          className="btn btn-small btn-gradient-red"
+                          whileHover={canDecide(row) ? { scale: 1.05 } : undefined}
+                          whileTap={canDecide(row) ? { scale: 0.95 } : undefined}
+                          disabled={acting || !canDecide(row)}
+                          onClick={() => { setRejectTarget(row); setRejectReason(''); }}
+                        >
+                          <X size={15} /> Reject
+                        </motion.button>
+                      </div>
+                    ) : '—'}
                   </td>
                 </motion.tr>
               ))}
@@ -280,7 +312,7 @@ export default function LeaveApprovals() {
           </motion.div>
         )}
         {rejectTarget && (
-          <motion.div className="modal-overlay" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setRejectTarget(null)}>
+          <motion.div className="modal-overlay" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => { if (!acting) setRejectTarget(null); }}>
             <motion.div className="modal-card" initial={{ opacity: 0, scale: 0.94, y: 12 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.94, y: 12 }} transition={{ duration: 0.25, ease: easeOut }} onClick={(e) => e.stopPropagation()}>
               <div className="modal-icon-wrap danger"><XCircle size={26} /></div>
               <h3>Reject This Request?</h3>
@@ -290,8 +322,8 @@ export default function LeaveApprovals() {
                 <span className="lf-counter">{rejectReason.length}/500</span>
               </label>
               <div className="modal-actions">
-                <button className="btn btn-soft" onClick={() => setRejectTarget(null)}>Cancel</button>
-                <button className="btn btn-gradient-red" disabled={acting} onClick={confirmReject}><X size={16} /> {acting ? 'Rejecting...' : 'Confirm rejection'}</button>
+                <button type="button" className="btn btn-soft" onClick={() => setRejectTarget(null)} disabled={acting}>Cancel</button>
+                <button type="button" className="btn btn-gradient-red" disabled={acting} onClick={confirmReject}><X size={16} /> {acting ? 'Rejecting...' : 'Confirm rejection'}</button>
               </div>
             </motion.div>
           </motion.div>
@@ -322,7 +354,7 @@ export default function LeaveApprovals() {
               <div className="drawer-head">
                 <span className="eyebrow">Request Details</span>
                 <h2>Leave Request</h2>
-                <button className="drawer-close" onClick={() => setDrawerItem(null)} aria-label="Close"><X size={20} /></button>
+                <button type="button" className="drawer-close" onClick={() => setDrawerItem(null)} aria-label="Close"><X size={20} /></button>
               </div>
 
               <div className="drawer-body">
@@ -355,12 +387,12 @@ export default function LeaveApprovals() {
                 </div>
               </div>
 
-              {String(drawerItem.status || '').toUpperCase() === 'PENDING' && (
+              {canDecide(drawerItem) && (
                 <div className="drawer-footer">
-                  <motion.button className="btn btn-gradient-green" whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }} disabled={acting} onClick={() => { setApproveTarget(drawerItem); setDrawerItem(null); }}>
+                  <motion.button type="button" className="btn btn-gradient-green" whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }} disabled={acting} onClick={() => { setApproveTarget(drawerItem); setDrawerItem(null); }}>
                     <Check size={16} /> Approve
                   </motion.button>
-                  <motion.button className="btn btn-gradient-red" whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }} disabled={acting} onClick={() => { setRejectTarget(drawerItem); setDrawerItem(null); }}>
+                  <motion.button type="button" className="btn btn-gradient-red" whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }} disabled={acting} onClick={() => { setRejectTarget(drawerItem); setRejectReason(''); setDrawerItem(null); }}>
                     <X size={16} /> Reject
                   </motion.button>
                 </div>
