@@ -20,6 +20,4 @@ export const INPUT_LIMITS = {
   REASON: 500,         // reasons (leave, regularization, rejection)
   HOLIDAY_NAME: 100,   // backend: 100
   HOLIDAY_NOTE: 300,   // backend: 300
-  FEEDBACK: 2000,      // performance - overall feedback
-  REVIEW_NOTES: 1000,  // performance - strengths / improvements / goals
 };

@@ -13,7 +13,7 @@ import {
   Star,
 } from 'lucide-react';
 import {
-  getNotifications,
+  getAllNotifications,
   hasPdfAttachment,
   parseCelebrationMeta,
 } from '../services/notificationService';
@@ -97,8 +97,7 @@ export default function HighlightCarousel({
 
     async function loadAnnouncement() {
       try {
-        const result = await getNotifications({ page: 0, size: 50 });
-        const items = result?.content || [];
+        const items = await getAllNotifications({ maxPages: 3 });
         const latest = items
           .filter(
             (item) =>

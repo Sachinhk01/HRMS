@@ -107,7 +107,7 @@ export function ManagerLogin() {
             </motion.h2>
 
             <motion.p className="hrms-login__subtext" variants={rise}>
-              Review Approvals, Track Attendance, And Monitor Performance —
+              Review Approvals And Track Attendance —
               All From One Manager Dashboard.
             </motion.p>
 

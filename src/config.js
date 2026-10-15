@@ -47,7 +47,6 @@ export const ROLE_MENUS = {
     ['/celebrations', 'Celebration Wall'],
     ['/announcements', 'Announcements'],
     ['/events', 'Events'],
-    ['/performance', 'Performance'],
     ['/employees', 'Employees'],
     ['/reports', 'Reports'],
     ['/payroll', 'My Salary'],
@@ -64,7 +63,6 @@ export const ROLE_MENUS = {
     ['/events', 'Events'],
     ['/leave', 'Leave'],
     ['/leave-approvals', 'Team Requests'],
-    ['/performance', 'Performance'],
     ['/candidates', 'Candidates'],
     ['/form16', 'Form 16'],
     ['/profile', 'Profile'],
@@ -178,13 +176,6 @@ export const ROUTE_ROLES = {
   'CLIENT',
 ],
 
-
-
-
-  '/performance': [
-    'MANAGER',
-    'SUPER_ADMIN',
-  ],
   '/holidays': ['EMPLOYEE', 'HR_ADMIN', 'MANAGER', 'SUPER_ADMIN'],
   '/candidates': [
     'MANAGER',

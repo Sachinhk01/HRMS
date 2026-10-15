@@ -51,7 +51,36 @@ export function formatRange(start, end) {
 }
 
 export function appliedOnOf(row) {
-  return row?.appliedOn || row?.appliedAt || row?.createdAt || row?.submittedAt || null;
+  if (!row || typeof row !== 'object') return null;
+
+  const candidates = [
+    row.appliedOn,
+    row.appliedAt,
+    row.createdAt,
+    row.submittedAt,
+    row.requestedAt,
+    row.requestDate,
+    row.requestedOn,
+    row.applicationDate,
+    row.appliedDate,
+    row.createdDate,
+    row.applied_on,
+    row.created_on,
+    row.submitted_on,
+    row.requested_on,
+    row.application_date,
+  ];
+
+  const found = candidates.find((value) => value !== null && value !== undefined && value !== '' && value !== 'null');
+  if (found) return found;
+
+  const keyMatch = Object.entries(row).find(([key, value]) => {
+    if (value === null || value === undefined || value === '') return false;
+    return /(?:^|_)(?:applied|created|submitted|requested|application)(?:On|At|Date|AtDate|DateTime|Time|_on|_at|_date)?$/i.test(key)
+      || /(?:^|_)(?:applied|created|submitted|requested|application)(?:On|At|Date|AtDate|DateTime|Time|_on|_at|_date)?/i.test(key);
+  });
+
+  return keyMatch ? keyMatch[1] : null;
 }
 
 export function formatDateTime(value) {

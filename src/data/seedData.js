@@ -8,7 +8,6 @@ export const emptyStore = {
   posts: [],
   announcements: [],
   events: [],
-  performanceRecords: [],
   notifications: [],
   employeeOfMonth: null,
   settings: { notifications: true, theme: 'light', sessionTimeout: 30 },

@@ -2,12 +2,9 @@ export * from "./authService";
 export * from "./employeeService";
 export * from "./attendanceService";
 export * from "./leaveService";
-export * from "./celebrationService";
 export * from "./timesheetService";
 export * from "./payrollService";
-export * from "./performanceService";
 export * from "./notificationService";
 export * from "./localStorageService";
 export * from "./candidateService";
 export * from "./regularizationService";
-

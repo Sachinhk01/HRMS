@@ -14,7 +14,6 @@ import Leave from './pages/Leave';
 import CelebrationWall from './pages/CelebrationWall';
 import Profile from './pages/Profile';
 import Reports from './pages/Reports';
-import Performance from './pages/Performance';
 import Payroll from './pages/Payroll';
 import NotFound from './pages/NotFound';
 import Holidays from './pages/Holidays';
@@ -91,7 +90,6 @@ export default function App() {
         <Route path="/announcements" element={<RoleRoute><Announcements /></RoleRoute>} />
         <Route path="/events" element={<RoleRoute><Events /></RoleRoute>} />
         <Route path="/reports" element={<RoleRoute><Reports /></RoleRoute>} />
-        <Route path="/performance" element={<RoleRoute><Performance /></RoleRoute>} />
         <Route path="/notifications" element={<RoleRoute><Notifications /></RoleRoute>} />
         <Route path="/form16" element={<RoleRoute><Form16 /></RoleRoute>} />
         <Route path="/settings" element={<RoleRoute><Settings /></RoleRoute>} />

@@ -31,6 +31,7 @@ const TYPE_META = {
 };
 
 const FILTERS = [{ id: 'all', label: 'All' }, { id: 'unread', label: 'Unread' }];
+const PAGE_SIZE = 20;
 
 const dayStart = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
 
@@ -76,6 +77,9 @@ function Count({ value }) {
 export default function Notifications() {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [pageNo, setPageNo] = useState(0);
+  const [hasMore, setHasMore] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState('');
   const [filter, setFilter] = useState('all');
   const [settled, setSettled] = useState(false);
@@ -84,11 +88,32 @@ export default function Notifications() {
   const load = useCallback(() => {
     setLoading(true);
     setError('');
-    getNotifications({ page: 0, size: 20 })
-      .then((res) => setItems(res?.content || []))
+    getNotifications({ page: 0, size: PAGE_SIZE })
+      .then((res) => {
+        setItems(res?.content || []);
+        setPageNo(0);
+        setHasMore(!(res?.last ?? true));
+      })
       .catch((err) => setError(err.message || 'Failed to load notifications.'))
       .finally(() => setLoading(false));
   }, []);
+
+  const loadMore = async () => {
+    setLoadingMore(true);
+    try {
+      const res = await getNotifications({ page: pageNo + 1, size: PAGE_SIZE });
+      setItems((prev) => {
+        const seen = new Set(prev.map((item) => item.id));
+        return [...prev, ...(res?.content || []).filter((item) => !seen.has(item.id))];
+      });
+      setPageNo((page) => page + 1);
+      setHasMore(!(res?.last ?? true));
+    } catch (err) {
+      setError(err.message || 'Failed to load more notifications.');
+    } finally {
+      setLoadingMore(false);
+    }
+  };
 
   useEffect(() => { load(); refreshUnreadCount(); }, [load, refreshUnreadCount]);
 
@@ -177,7 +202,7 @@ export default function Notifications() {
 
         {!loading && !error && (
           <StatCards items={[
-            { label: 'Total', value: items.length, icon: Inbox, tone: 'blue', note: 'Latest 20 notifications' },
+            { label: 'Total', value: items.length, icon: Inbox, tone: 'blue', note: 'Loaded notifications' },
             { label: 'Unread', value: unreadCount, icon: BellRing, tone: 'amber', note: unreadCount ? 'Waiting for you' : 'Nothing pending' },
             { label: 'Today', value: todayCount, icon: CalendarCheck2, tone: 'green', note: 'Received today' },
             { label: 'Announcements', value: announcementCount, icon: Megaphone, tone: 'violet', note: 'From HR' },
@@ -273,6 +298,14 @@ export default function Notifications() {
                 </motion.div>
               ))}
             </AnimatePresence>
+          )}
+
+          {!loading && !error && hasMore && (
+            <div style={{ textAlign: 'center', padding: '14px 0' }}>
+              <button type="button" className="btn btn-soft" onClick={loadMore} disabled={loadingMore}>
+                {loadingMore ? 'Loading…' : 'Load more'}
+              </button>
+            </div>
           )}
         </section>
       </div>

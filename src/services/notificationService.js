@@ -5,9 +5,9 @@ export async function getNotifications({ page = 0, size = 100 } = {}) {
   return data.data;
 }
 
-export async function getAllNotifications({ pageSize = 100 } = {}) {
+export async function getAllNotifications({ pageSize = 100, maxPages = 20 } = {}) {
   const all = [];
-  for (let page = 0; ; page += 1) {
+  for (let page = 0; page < maxPages; page += 1) {
     const result = await getNotifications({ page, size: pageSize });
     const content = result?.content || [];
     all.push(...content);
@@ -74,14 +74,11 @@ export function mapAnnouncementToMagazine(announcement) {
 // Trade-offs:
 // - That response has no uploadType, so a magazine is recognised by its PDF
 //   attachment (plain announcements and celebrations don't attach PDFs).
-// - Only the newest 100 notifications are scanned. A magazine older than
-//   that (a very busy month) will drop off until a new one is published.
 // - The PDF link itself is a 15-minute presigned URL stored by the backend,
 //   so the card shows, but opening the PDF fails after that window until the
 //   backend stores a permanent key / presigns on read.
 export async function getLatestMagazine() {
-  const result = await getNotifications({ page: 0, size: 100 });
-  const items = result?.content || [];
+  const items = await getAllNotifications({ maxPages: 5 });
   const latestMagazine = items
     .filter((item) => isMagazineNotification(item))
     .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))[0];
@@ -168,12 +165,6 @@ export function parseNotificationContent(item = {}) {
     isMagazine: isMagazineNotification(item),
   };
 }
-
-// Only genuine celebration/event content belongs on the "Upcoming Events"
-// page — mirrors the same allowlist used on the Celebration Wall so
-// operational alerts (late check-in, leave lifecycle, etc.) never leak in.
-const EVENT_TYPES = ['BIRTHDAY', 'WORK_ANNIVERSARY', 'HOLIDAY', 'GENERAL'];
-export { EVENT_TYPES };
 
 // The "Add Celebration" composer on the Celebration Wall posts through the
 // existing /notifications/announcement endpoint (there's no dedicated
@@ -353,89 +344,4 @@ export function isUrlExpired(url = '') {
   } catch {
     return false;
   }
-}
-
-// Same "what counts as upcoming" logic as the Celebration Wall's sidebar
-// widget: celebration-type notifications (birthdays, work anniversaries,
-// general celebration posts, celebration-meta-tagged announcements) plus
-// company holidays, whose date falls after today — so the Events page
-// shows exactly what the Celebration Wall considers "Upcoming events".
-export function buildUpcomingEvents(notifications = [], holidays = []) {
-  const now = new Date();
-  const endOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
-  const upcoming = [];
-
-  const blockedTypes = [
-    'LATE_CHECK_IN', 'MISSED_CHECKOUT', 'ABSENT',
-    'LEAVE_APPLIED', 'LEAVE_REJECTED', 'LEAVE_MANAGER_APPROVED', 'LEAVE_HR_APPROVED',
-  ];
-
-  (notifications || []).forEach((item) => {
-    if (blockedTypes.includes(item.notificationType)) return;
-
-    if (item.notificationType === 'ANNOUNCEMENT') {
-      const meta = parseCelebrationMeta(item.message || '');
-      if (!meta) return; // plain announcement, not a celebration/event
-      const dateVal = new Date(meta.eventDate || item.createdAt);
-      if (dateVal > endOfToday) {
-        upcoming.push({
-          id: item.id,
-          type: meta.type,
-          title: item.title || '',
-          message: meta.message,
-          eventDate: meta.eventDate,
-          createdAt: item.createdAt,
-          attachmentUrls: item.attachmentUrls || [],
-        });
-      }
-      return;
-    }
-
-    if (!EVENT_TYPES.includes(item.notificationType)) return;
-    const dateVal = new Date(item.eventDate || item.createdAt);
-    if (dateVal > endOfToday) {
-      upcoming.push({
-        id: item.id,
-        type: item.notificationType,
-        title: item.title || '',
-        message: item.message || '',
-        eventDate: item.eventDate || null,
-        createdAt: item.createdAt,
-        attachmentUrls: item.attachmentUrls || [],
-      });
-    }
-  });
-
-  (holidays || []).forEach((holiday) => {
-    const dateVal = new Date(holiday.holidayDate);
-    if (dateVal > endOfToday) {
-      upcoming.push({
-        id: `holiday-${holiday.id}`,
-        type: 'HOLIDAY',
-        title: holiday.holidayName || 'Holiday',
-        message: holiday.description || '',
-        eventDate: holiday.holidayDate,
-        createdAt: holiday.holidayDate,
-        attachmentUrls: [],
-      });
-    }
-  });
-
-  return upcoming;
-}
-
-export function splitCelebrationFeedAndEvents(notifications = []) {
-  const now = new Date();
-  const endOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
-  const celebrationFeed = [];
-  const upcomingEvents = [];
-  notifications.forEach((item) => {
-    if (item.notificationType === 'ANNOUNCEMENT') return;
-    if (!EVENT_TYPES.includes(item.notificationType)) return;
-    const parsed = parseNotificationContent(item);
-    const itemDate = parsed.date ? new Date(parsed.date) : now;
-    if (itemDate > endOfToday) upcomingEvents.push(item);
-    else celebrationFeed.push(item);
-  });
-  return { celebrationFeed, upcomingEvents };
 }

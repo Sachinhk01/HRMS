@@ -16,7 +16,7 @@ import {
   applyLeave, cancelLeave, getActiveLeaveTypes, getMyLeaveBalances, getMyLeaveRequests,
 } from '../services/leaveService';
 import {
-  MONTH_NAMES, appliedOnOf, approxWeekdays, formatDate, formatDateTime, formatRange,
+  MONTH_NAMES, approxWeekdays, formatDate, formatRange,
   isPending, leaveErrorMessage,
 } from '../utils/leaveFormat';
 import './Leave.css';
@@ -368,12 +368,11 @@ export default function Leave() {
 
         <div className="lr-table-wrap">
           <table className="lr-table">
-            <thead><tr><th>#</th><th>Leave Dates</th><th>Days</th><th>Reason</th><th>Leave Type</th><th>Status</th><th>Paid / LOP</th><th>Applied On</th><th>Actions</th></tr></thead>
+            <thead><tr><th>#</th><th>Leave Dates</th><th>Days</th><th>Reason</th><th>Leave Type</th><th>Status</th><th>Paid / LOP</th><th>Actions</th></tr></thead>
             <tbody>
-              {loading && Array.from({ length: 5 }, (_, index) => <tr key={index} className="lr-skel"><td colSpan={9}><div /></td></tr>)}
+              {loading && Array.from({ length: 5 }, (_, index) => <tr key={index} className="lr-skel"><td colSpan={8}><div /></td></tr>)}
               {!loading && pageItems.map((row, index) => {
                 const range = formatRange(row.startDate, row.endDate);
-                const appliedOn = appliedOnOf(row);
                 return (
                   <tr key={row.id}>
                     <td>{(page - 1) * pageSize + index + 1}</td>
@@ -383,7 +382,6 @@ export default function Leave() {
                     <td>{row.leaveType || '—'}</td>
                     <td><StatusChip status={row.status} /></td>
                     <td><PaidLop row={row} /></td>
-                    <td>{appliedOn ? formatDateTime(appliedOn) : '—'}</td>
                     <td>
                       <KebabMenu label={`Actions for leave request ${row.id}`} items={[
                         { label: 'View details', icon: <Eye size={15} />, onClick: () => navigate(`/leave/${row.id}`) },

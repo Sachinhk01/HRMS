@@ -15,7 +15,6 @@ import {
   FileText,
   Wallet,
   Timer,
-  Target,
   ChevronRight,
   Sparkles,
 } from "lucide-react";
@@ -472,13 +471,11 @@ useEffect(() => {
       [ClipboardCheck, 'Pending Leave', leaveLoading ? '...' : pendingApprovalsCount, 'Awaiting Decision', 'pink', '/leave-approvals'],
       [CalendarDays, 'My Leaves Left', leaveLoading ? '...' : leaveSummary.left, `${leaveLoading ? '...' : leaveSummary.taken} Days Taken`, 'blue', '/leave'],
       [Clock3, 'Attendance', attendanceLoading ? '...' : attendanceCount, 'Team Records', 'green', '/attendance'],
-      [Target, 'Performance', 'Review', 'Team Goals', 'orange', '/performance'],
     ];
     links = [
       { label: "My Leave", path: "/leave", icon: CalendarDays },
       { label: "Leave Approvals", path: "/leave-approvals", icon: ClipboardCheck },
       { label: "Attendance", path: "/attendance", icon: Clock3 },
-      { label: "Performance", path: "/performance", icon: Award },
       { label: "Employees", path: "/employees", icon: Users },
     ];
   }
@@ -596,7 +593,7 @@ useEffect(() => {
         <div className="welcome-banner-text">
           <span className="eyebrow">{greeting}</span>
           <h1>Welcome Back, {capitalizeName(user.name?.split(' ')[0])}!</h1>
-          <p>{role === 'EMPLOYEE' ? "Let's Make Today Productive." : role === 'HR_ADMIN' ? 'Manage People, Engagement And HR Operations.' : 'Review Team Attendance, Leave And Performance.'}</p>
+          <p>{role === 'EMPLOYEE' ? "Let's Make Today Productive." : role === 'HR_ADMIN' ? 'Manage People, Engagement And HR Operations.' : 'Review Team Attendance And Leave.'}</p>
         </div>
       </HeroBanner>
 
