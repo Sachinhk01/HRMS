@@ -117,3 +117,80 @@
   .payroll-hero *, .payroll-hero::before, .payroll-badge::before, .payroll-modal, .payroll-overlay { animation: none !important; }
   .pr-line { stroke-dashoffset: 0; }
 }
+
+
+/* ===== Generate Payroll: asterisk, checkbox size and header alignment ===== */
+
+/* The red "*" for Payroll Month comes from formValidation.js (it marks .gen-label-text with
+   data-required because the MonthPicker input is `required`), so the JSX must NOT print its own. */
+.gen-label-text { display: inline-block; }
+
+/* Medium checkboxes (the global `.payroll-page input` rules were blowing them up). */
+.payroll-page .gen-payroll input[type="checkbox"] {
+  appearance: auto;
+  -webkit-appearance: checkbox;
+  width: 18px;
+  height: 18px;
+  min-width: 18px;
+  padding: 0;
+  margin: 0;
+  flex: none;
+  border-radius: 4px;
+  accent-color: var(--blue, #2563eb);
+  cursor: pointer;
+}
+.payroll-page .gen-payroll input[type="checkbox"]:disabled { cursor: not-allowed; }
+
+/* Save As Draft: checkbox vertically aligned with the title, text block beside it. */
+.payroll-page .gen-card-body label.gen-draft {
+  flex-direction: row;
+  align-items: center;
+  gap: 12px;
+}
+.payroll-page .gen-draft span { display: flex; flex-direction: column; gap: 2px; }
+
+/* Employees header: [checkbox] Select All on top, "N Selected" pill underneath. */
+.gen-head-actions {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+}
+.payroll-page .gen-card-head label.gen-select-all,
+.payroll-page .gen-card-body label.gen-select-all {
+  display: inline-flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.gen-selected-pill { white-space: nowrap; }
+
+
+/* ===== Payment Details: wider "Select an employee" dropdown ===== */
+.payroll-page .payroll-toolbar select.payroll-employee-select {
+  flex: 0 0 min(520px, 45%);   /* up to 520px, never more than 45% of the toolbar */
+  width: min(520px, 45%);
+  min-width: 380px;
+  max-width: 100%;
+  min-height: 42px;
+  padding: 10px 14px;
+  font-size: 13px;
+  text-overflow: ellipsis;
+}
+/* let the search box shrink so the wider dropdown stays on the same row */
+.payroll-page .payroll-toolbar .payroll-search { min-width: 160px; }
+
+@media (max-width: 900px) {
+  .payroll-page .payroll-toolbar select.payroll-employee-select {
+    flex: 1 1 100%;
+    width: 100%;
+    min-width: 0;
+  }
+}

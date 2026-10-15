@@ -14,6 +14,25 @@ import { EASE_OUT } from "../../components/Motion";
 import { AnimatedNumber, EmptyState, PayrollBadge, getHalfDayDeduction } from "./payrollUi";
 import "./SalaryRedesign.css";
 
+// Only paid payslips can be downloaded from the employee view.
+const DOWNLOADABLE_STATUSES = ["PAID"];
+
+function payslipBlockedMessage(item) {
+  return `The payslip for ${payrollMonthLabel(item?.payrollMonth)} is not available for download yet (status: ${item?.status || "unknown"}).`;
+}
+
+// Blob responses hide the server's JSON error body, so read it back as text when possible.
+async function readDownloadError(err) {
+  try {
+    const data = err?.response?.data;
+    if (data instanceof Blob) {
+      const parsed = JSON.parse(await data.text());
+      if (parsed?.message) return parsed.message;
+    }
+  } catch { /* fall through to the generic message */ }
+  return err?.message || "Failed to download payslip.";
+}
+
 const MODE_LABELS = { BANK_TRANSFER: "Bank transfer", UPI: "UPI", CHEQUE: "Cheque", CASH: "Cash" };
 
 const stagger = { hidden: {}, show: { transition: { staggerChildren: 0.07, delayChildren: 0.05 } } };
@@ -57,6 +76,7 @@ export default function EmployeePayslipView() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [downloading, setDownloading] = useState(false);
+  const [downloadError, setDownloadError] = useState(null);
   const [selectedId, setSelectedId] = useState(null);
 
   const load = useCallback(async () => {
@@ -113,12 +133,19 @@ export default function EmployeePayslipView() {
 
   async function handleDownload(item) {
     if (!item || downloading) return;
+    setDownloadError(null);
+
+    if (!DOWNLOADABLE_STATUSES.includes(String(item.status || "").toUpperCase())) {
+      setDownloadError({ id: item.id, message: payslipBlockedMessage(item) });
+      return;
+    }
+
     setDownloading(true);
     try {
       const { blob, filename } = await downloadPayslip(item.id);
       triggerBlobDownload(blob, filename);
     } catch (err) {
-      setError(err.message || "Failed to download payslip.");
+      setDownloadError({ id: item.id, message: await readDownloadError(err) });
     } finally {
       setDownloading(false);
     }
@@ -195,6 +222,12 @@ export default function EmployeePayslipView() {
       <motion.div className="sal-page" variants={stagger} initial="hidden" animate="show">
         <motion.div variants={rise}>{hero}</motion.div>
         {error && <div className="sal-error">{error}</div>}
+        {downloadError && (
+          <div className="sal-error" role="alert">
+            {downloadError.message}
+            <button type="button" className="sal-pdf" onClick={() => setDownloadError(null)} style={{ marginLeft: 12 }}>Dismiss</button>
+          </div>
+        )}
 
         <div className="sal-top">
           <motion.section className="sal-net" variants={rise}>

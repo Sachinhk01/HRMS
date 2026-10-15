@@ -468,14 +468,27 @@ export default function Regularization() {
         <div className="reg-filters-row">
           <div className="reg-search">
             <Search size={16} />
-            <input maxLength={INPUT_LIMITS.SEARCH}
+            <input
+              id="reg-search"
+              name="search"
+              data-testid="reg-search-input"
+              aria-label="Search by reason or date"
+              maxLength={INPUT_LIMITS.SEARCH}
               type="text"
               placeholder="Search by reason or date…"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
           </div>
-          <select className="compact-select" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+          <select
+            id="reg-status-filter"
+            name="status"
+            data-testid="reg-status-filter"
+            aria-label="Filter by status"
+            className="compact-select"
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+          >
             <option value="ALL">All Statuses</option>
             {Object.keys(STATUS_META).filter((k) => k !== 'CANCELLED' && k !== 'REVERTED').map((key) => (
               <option key={key} value={key}>{STATUS_META[key].label}</option>
