@@ -697,21 +697,21 @@ export default function Employees() {
                           <span>Username</span>
                           <div className="ef-control">
                             <User size={16} className="ef-icon" />
-                            <input maxLength={INPUT_LIMITS.USERNAME} type="text" value={form.username} onChange={updateField('username')} placeholder="Enter a username (e.g. anagha.k)" required />
+                            <input maxLength={INPUT_LIMITS.USERNAME} type="text" value={form.username} onChange={updateField('username')} placeholder="Enter a username" required />
                           </div>
                         </label>
                         <label className="form-field">
                           <span>Email</span>
                           <div className="ef-control">
                             <Mail size={16} className="ef-icon" />
-                            <input maxLength={INPUT_LIMITS.EMAIL} type="email" value={form.email} onChange={updateField('email')} placeholder="Enter work email (e.g. name@company.com)" required />
+                            <input maxLength={INPUT_LIMITS.EMAIL} type="email" value={form.email} onChange={updateField('email')} placeholder="Enter work email" required />
                           </div>
                         </label>
                         <label className="form-field">
                           <span>Temporary Password</span>
                           <div className="ef-control">
                             <Lock size={16} className="ef-icon" />
-                            <input maxLength={INPUT_LIMITS.PASSWORD} className="ef-has-eye" type={showPw ? 'text' : 'password'} value={form.password} onChange={updateField('password')} placeholder="Enter a temporary password (min. 6 characters)" required />
+                            <input maxLength={INPUT_LIMITS.PASSWORD} className="ef-has-eye" type={showPw ? 'text' : 'password'} value={form.password} onChange={updateField('password')} placeholder="Enter a temporary password" required />
                             <button type="button" className="ef-eye" tabIndex={-1} onClick={() => setShowPw((v) => !v)} aria-label={showPw ? 'Hide password' : 'Show password'}>
                               {showPw ? <EyeOff size={16} /> : <Eye size={16} />}
                             </button>
