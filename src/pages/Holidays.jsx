@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
-import { CalendarDays, Edit3, Plus, Search, Trash2 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { ArrowLeft, CalendarDays, Edit3, Plus, Search, Trash2 } from 'lucide-react';
 import PageHero from '../components/PageHero';
 import Pagination from '../components/Pagination';
 import usePagination from '../hooks/usePagination';
@@ -58,6 +59,7 @@ function HolidayEta({ date }) {
 
 export default function Holidays() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const canManage = user.role === 'HR_ADMIN'; // only the HR portal can add / edit / delete
 
   const [holidays, setHolidays] = useState([]);
@@ -71,6 +73,12 @@ export default function Holidays() {
   const [formErrors, setFormErrors] = useState({});
   const { showToast } = useToast();
   const { confirm } = useConfirm();
+
+  function goBack() {
+    // If the user came from another page (e.g. Dashboard) go back to it, otherwise fall back to the Dashboard.
+    if (window.history.state && window.history.state.idx > 0) navigate(-1);
+    else navigate('/dashboard');
+  }
 
   async function refresh() {
     setLoading(true);
@@ -199,6 +207,10 @@ export default function Holidays() {
 
   return (
     <div className="page-stack holidays-page page-reveal">
+      <button type="button" className="holiday-back-btn" onClick={goBack} aria-label="Back to Dashboard">
+        <ArrowLeft size={16} /> Back
+      </button>
+
       <PageHero eyebrow="Organisation calendar" title="Holiday list" description="View company holidays and plan attendance and leave in advance." icon={CalendarDays} />
 
       <div className="holiday-overview-grid">

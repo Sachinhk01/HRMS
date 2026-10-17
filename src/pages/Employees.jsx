@@ -697,21 +697,21 @@ export default function Employees() {
                           <span>Username</span>
                           <div className="ef-control">
                             <User size={16} className="ef-icon" />
-                            <input maxLength={INPUT_LIMITS.USERNAME} type="text" value={form.username} onChange={updateField('username')} placeholder="e.g. anagha.k" required />
+                            <input maxLength={INPUT_LIMITS.USERNAME} type="text" value={form.username} onChange={updateField('username')} placeholder="Enter a username" required />
                           </div>
                         </label>
                         <label className="form-field">
                           <span>Email</span>
                           <div className="ef-control">
                             <Mail size={16} className="ef-icon" />
-                            <input maxLength={INPUT_LIMITS.EMAIL} type="email" value={form.email} onChange={updateField('email')} placeholder="name@company.com" required />
+                            <input maxLength={INPUT_LIMITS.EMAIL} type="email" value={form.email} onChange={updateField('email')} placeholder="Enter work email" required />
                           </div>
                         </label>
                         <label className="form-field">
                           <span>Temporary Password</span>
                           <div className="ef-control">
                             <Lock size={16} className="ef-icon" />
-                            <input maxLength={INPUT_LIMITS.PASSWORD} className="ef-has-eye" type={showPw ? 'text' : 'password'} value={form.password} onChange={updateField('password')} placeholder="Min. 6 characters" required />
+                            <input maxLength={INPUT_LIMITS.PASSWORD} className="ef-has-eye" type={showPw ? 'text' : 'password'} value={form.password} onChange={updateField('password')} placeholder="Enter a temporary password" required />
                             <button type="button" className="ef-eye" tabIndex={-1} onClick={() => setShowPw((v) => !v)} aria-label={showPw ? 'Hide password' : 'Show password'}>
                               {showPw ? <EyeOff size={16} /> : <Eye size={16} />}
                             </button>
@@ -722,7 +722,7 @@ export default function Employees() {
                           <div className="ef-control">
                             <ShieldCheck size={16} className="ef-icon" />
                             <select value={form.role} onChange={updateField('role')} required>
-                              <option value="">Select role</option>
+                              <option value="">Select a role</option>
                               {ROLE_OPTIONS.map((r) => <option key={r} value={r}>{r.replace('_', ' ')}</option>)}
                             </select>
                           </div>
@@ -737,26 +737,26 @@ export default function Employees() {
                           <div className="ef-grid ef-grid--3">
                             <label className="form-field">
                               <span>First Name</span>
-                              <input maxLength={INPUT_LIMITS.NAME} type="text" value={form.firstName} onChange={updateField('firstName')} required />
+                              <input maxLength={INPUT_LIMITS.NAME} type="text" value={form.firstName} onChange={updateField('firstName')} placeholder="Enter first name" required />
                             </label>
                             <label className="form-field">
                               <span>Last Name</span>
-                              <input maxLength={INPUT_LIMITS.NAME} type="text" value={form.lastName} onChange={updateField('lastName')} />
+                              <input maxLength={INPUT_LIMITS.NAME} type="text" value={form.lastName} onChange={updateField('lastName')} placeholder="Enter last name" />
                             </label>
                             <label className="form-field">
                               <span>Gender</span>
                               <select value={form.gender} onChange={updateField('gender')} required>
-                                <option value="">Select</option>
+                                <option value="">Select gender</option>
                                 {GENDER_OPTIONS.map((g) => <option key={g} value={g}>{g[0] + g.slice(1).toLowerCase()}</option>)}
                               </select>
                             </label>
                             <label className="form-field ef-span-2">
                               <span>Phone Number</span>
-                              <input maxLength={INPUT_LIMITS.PHONE} type="tel" value={form.phoneNumber} onChange={updateField('phoneNumber')} placeholder="10-digit mobile" required />
+                              <input maxLength={INPUT_LIMITS.PHONE} type="tel" value={form.phoneNumber} onChange={updateField('phoneNumber')} placeholder="Enter 10-digit mobile number" required />
                             </label>
                             <label className="form-field">
                               <span>Date of Birth</span>
-                              <DatePicker id="employee-dob" value={form.dateOfBirth} onChange={updateField('dateOfBirth')} required />
+                              <DatePicker id="employee-dob" value={form.dateOfBirth} onChange={updateField('dateOfBirth')} placeholder="Select date of birth" required />
                             </label>
                           </div>
                         </section>
@@ -766,19 +766,19 @@ export default function Employees() {
                           <div className="ef-grid ef-grid--3">
                             <label className="form-field">
                               <span>Date of Joining</span>
-                              <DatePicker id="employee-doj" value={form.dateOfJoining} onChange={updateField('dateOfJoining')} required />
+                              <DatePicker id="employee-doj" value={form.dateOfJoining} onChange={updateField('dateOfJoining')} placeholder="Select joining date" required />
                             </label>
                             <label className="form-field">
                               <span>Employment Type</span>
                               <select value={form.employmentType} onChange={updateField('employmentType')} required>
-                                <option value="">Select</option>
+                                <option value="">Select employment type</option>
                                 {EMPLOYMENT_TYPE_OPTIONS.map((t) => <option key={t} value={t}>{t.replace('_', ' ')}</option>)}
                               </select>
                             </label>
                             <label className="form-field">
                               <span>Reporting Manager</span>
                               <select value={form.reportingManagerId} onChange={updateField('reportingManagerId')}>
-                                <option value="">None</option>
+                                <option value="">Select reporting manager (optional)</option>
                                 {managerOptions.map((m) => (
                                   <option key={m.id} value={m.id}>Anagha Pothi ({m.employeeCode})</option>
                                 ))}
@@ -792,7 +792,7 @@ export default function Employees() {
                                 disabled={deptLoading}
                                 required
                               >
-                                <option value="">{deptLoading ? 'Loading…' : departments.length ? 'Select' : 'No departments found'}</option>
+                                <option value="">{deptLoading ? 'Loading…' : departments.length ? 'Select department' : 'No departments found'}</option>
                                 {departments.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
                               </select>
                             </label>
@@ -805,7 +805,7 @@ export default function Employees() {
                                 required
                               >
                                 <option value="">
-                                  {!form.departmentId ? 'Select department first' : desigLoading ? 'Loading…' : designations.length ? 'Select' : 'No designations found'}
+                                  {!form.departmentId ? 'Select department first' : desigLoading ? 'Loading…' : designations.length ? 'Select designation' : 'No designations found'}
                                 </option>
                                 {designations.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
                               </select>
@@ -819,7 +819,7 @@ export default function Employees() {
                                 required
                               >
                                 <option value="">
-                                  {!form.designationId ? 'Select designation first' : titleLoading ? 'Loading…' : jobTitles.length ? 'Select' : 'No job titles found'}
+                                  {!form.designationId ? 'Select designation first' : titleLoading ? 'Loading…' : jobTitles.length ? 'Select job title' : 'No job titles found'}
                                 </option>
                                 {jobTitles.map((j) => <option key={j.id} value={j.id}>{j.name}</option>)}
                               </select>
