@@ -92,3 +92,18 @@ export async function revertRegularizationDetail(regularizationId, detailId) {
   );
   return data.data;
 }
+
+// ---- Employee: edit / cancel own request (only while still PENDING) ----
+
+// Edit a pending regularization request.
+// payload: { fromDate, toDate, reason, details?: [{ attendanceId, requestedStatus }] }
+export async function updateRegularization(id, payload) {
+  const { data } = await api.put(`/attendance-regularizations/${id}`, payload);
+  return data.data;
+}
+
+// Cancel a pending regularization request (status becomes CANCELLED). No request body.
+export async function cancelRegularization(id) {
+  const { data } = await api.patch(`/attendance-regularizations/${id}/cancel`);
+  return data.data;
+}
