@@ -186,3 +186,49 @@
   .form16-page *, .form16-page *::before, .f16-fullview, .f16-fullview-card { animation: none !important; }
   .f16-draw, .f16-tick { stroke-dashoffset: 0; }
 }
+
+/* ---------- Employee summary: Employee Code + PAN only ---------- */
+.form16-page .f16-employee-card { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+
+/* ---------- Preview header: "View Full Page" button ---------- */
+.f16-panel-head-actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+.f16-viewfull-btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 6px 12px; border: 1px solid #cfe0fb; border-radius: 10px;
+  background: #eef4ff; color: #1d56b7;
+  font-size: 11.5px; font-weight: 600; cursor: pointer; white-space: nowrap;
+}
+.f16-viewfull-btn:hover:not(:disabled) { background: #dfeaff; }
+.f16-viewfull-btn:disabled { opacity: .5; cursor: not-allowed; }
+
+/* ---------- Full-page preview modal (rendered in a portal on document.body) ---------- */
+.f16-fullview {
+  position: fixed; inset: 0; z-index: 10100;
+  display: flex; align-items: center; justify-content: center;
+  padding: 20px; background: rgba(15, 23, 42, .55);
+}
+.f16-fullview-card {
+  width: min(1100px, 100%); height: min(94vh, 100%);
+  display: flex; flex-direction: column; overflow: hidden;
+  background: #fff; box-shadow: 0 24px 60px rgba(15, 23, 42, .35);
+}
+.f16-fullview-head {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 14px 18px; border-bottom: 1px solid #e5eaf2; background: #fff; flex-shrink: 0;
+}
+.f16-fullview-title { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.f16-fullview-title h3 { margin: 0; font-size: 16px; font-weight: 700; color: #1b2a4a; }
+.f16-fullview-actions { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+.f16-fullview-close {
+  width: 36px; height: 36px; display: grid; place-items: center;
+  border: 1px solid #dbe4f3; border-radius: 10px; background: #fff; color: #475569; cursor: pointer;
+}
+.f16-fullview-close:hover { background: #f1f5f9; color: #0f172a; }
+.f16-fullview-body { flex: 1; min-height: 0; overflow: auto; padding: 18px; background: #f3f6fb; }
+.f16-fullview-body .form16-paper { max-width: 900px; margin: 0 auto; min-height: auto; zoom: 1.25; box-shadow: 0 10px 28px rgba(30, 55, 90, .10); }
+@media (max-width: 760px) {
+  .f16-fullview { padding: 0; }
+  .f16-fullview-card { height: 100%; border-radius: 0; }
+  .f16-fullview-body { padding: 8px; }
+  .f16-fullview-body .form16-paper { zoom: 1; }
+}

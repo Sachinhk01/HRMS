@@ -10,14 +10,19 @@ import {
   Inbox,
   RefreshCw,
   Eye,
+  Pencil,
+  Ban,
 } from 'lucide-react';
 import { useToast } from '../context/ToastContext';
+import { useConfirm } from '../context/ConfirmContext';
 import Pagination from '../components/Pagination';
 import StatusBadge from '../components/StatusBadge';
 import usePagination, { sortRecent } from '../hooks/usePagination';
 import { getAttendanceHistory } from '../services/attendanceService';
 import {
+  cancelRegularization,
   createRegularization,
+  updateRegularization,
   getMyRegularizations,
   getRegularizationById,
   REGULARIZABLE_STATUSES,
@@ -46,6 +51,9 @@ const fmtDateTime = (value) => {
   return d.toLocaleString('en-US', { month: 'short', day: '2-digit', year: 'numeric', hour: 'numeric', minute: '2-digit' });
 };
 
+// Only a request that is still waiting for the manager can be edited or cancelled.
+const isModifiable = (r) => r?.status === 'PENDING';
+
 const STATUS_META = {
   PENDING: { tone: 'pending', label: 'Pending' },
   PARTIALLY_APPROVED: { tone: 'partial', label: 'Partially Approved' },
@@ -68,6 +76,7 @@ function detailTally(details = []) {
 
 export default function Regularization() {
   const { showToast } = useToast();
+  const { confirm } = useConfirm();
 
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -87,6 +96,12 @@ export default function Regularization() {
   // ---- Detail drawer ----
   const [viewItem, setViewItem] = useState(null);
   const [viewLoading, setViewLoading] = useState(false);
+
+  // ---- Edit / cancel (pending requests only) ----
+  const [editItem, setEditItem] = useState(null);
+  const [editReason, setEditReason] = useState('');
+  const [savingEdit, setSavingEdit] = useState(false);
+  const [cancellingId, setCancellingId] = useState(null);
 
   const load = async () => {
     setLoading(true);
@@ -251,6 +266,79 @@ export default function Regularization() {
       setViewItem(null);
     } finally {
       setViewLoading(false);
+    }
+  };
+
+  const beginEdit = (item) => {
+    if (!isModifiable(item)) {
+      showToast('Only pending requests can be edited.', 'error');
+      return;
+    }
+    setViewItem(null);
+    setEditItem(item);
+    setEditReason(item.reason || '');
+  };
+
+  const closeEdit = () => {
+    if (savingEdit) return;
+    setEditItem(null);
+    setEditReason('');
+  };
+
+  const saveEdit = async (event) => {
+    event.preventDefault();
+    if (!editItem) return;
+    if (!editReason.trim()) {
+      showToast('Please provide a reason.', 'error');
+      return;
+    }
+    const payload = {
+      fromDate: editItem.fromDate,
+      toDate: editItem.toDate,
+      reason: editReason.trim(),
+    };
+    // Keep the selected attendance lines as they are (only sent when the API returned their attendance IDs).
+    const lines = editItem.details || [];
+    if (lines.length > 0 && lines.every((d) => d.attendanceId != null)) {
+      payload.details = lines.map((d) => ({ attendanceId: d.attendanceId, requestedStatus: d.requestedStatus }));
+    }
+    setSavingEdit(true);
+    try {
+      await updateRegularization(editItem.id, payload);
+      setEditItem(null);
+      setEditReason('');
+      await load();
+      showToast('Regularization request updated successfully.', 'success');
+    } catch (error) {
+      showToast(error.message || 'Failed to update regularization request.', 'error');
+    } finally {
+      setSavingEdit(false);
+    }
+  };
+
+  const cancelRequest = async (item) => {
+    if (!isModifiable(item)) {
+      showToast('Only pending requests can be cancelled.', 'error');
+      return;
+    }
+    const ok = await confirm({
+      title: 'Cancel regularization request',
+      message: `Cancel request #${item.id}? Your manager will no longer review it.`,
+      confirmText: 'Cancel Request',
+      cancelText: 'Keep Request',
+      danger: true,
+    });
+    if (!ok) return;
+    setCancellingId(item.id);
+    try {
+      await cancelRegularization(item.id);
+      setViewItem(null);
+      await load();
+      showToast('Regularization request cancelled.', 'success');
+    } catch (error) {
+      showToast(error.message || 'Failed to cancel regularization request.', 'error');
+    } finally {
+      setCancellingId(null);
     }
   };
 
@@ -490,7 +578,7 @@ export default function Regularization() {
             onChange={(e) => setStatusFilter(e.target.value)}
           >
             <option value="ALL">All Statuses</option>
-            {Object.keys(STATUS_META).filter((k) => k !== 'CANCELLED' && k !== 'REVERTED').map((key) => (
+            {Object.keys(STATUS_META).filter((k) => k !== 'REVERTED').map((key) => (
               <option key={key} value={key}>{STATUS_META[key].label}</option>
             ))}
           </select>
@@ -542,9 +630,21 @@ export default function Regularization() {
                     </td>
                     <td>{fmtDateTime(r.createdAt)}</td>
                     <td>
-                      <button type="button" className="btn btn-icon btn-light" onClick={() => openDetails(r.id)} aria-label="View details">
-                        <Eye size={16} />
-                      </button>
+                      <div className="reg-row-actions">
+                        <button type="button" className="btn btn-icon btn-light" onClick={() => openDetails(r.id)} aria-label="View details" title="View details">
+                          <Eye size={16} />
+                        </button>
+                        {isModifiable(r) && (
+                          <>
+                            <button type="button" className="btn btn-icon btn-light" onClick={() => beginEdit(r)} aria-label="Edit request" title="Edit request">
+                              <Pencil size={16} />
+                            </button>
+                            <button type="button" className="btn btn-icon btn-light reg-btn-danger" onClick={() => cancelRequest(r)} disabled={cancellingId === r.id} aria-label="Cancel request" title="Cancel request">
+                              <Ban size={16} />
+                            </button>
+                          </>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 );
@@ -598,9 +698,75 @@ export default function Regularization() {
                     </tbody>
                   </table>
                 </div>
+
+                {isModifiable(viewItem) && (
+                  <div className="reg-detail-actions">
+                    <button type="button" className="btn btn-secondary" onClick={() => beginEdit(viewItem)}>
+                      <Pencil size={15} /> Edit Request
+                    </button>
+                    <button type="button" className="btn reg-btn-danger-solid" onClick={() => cancelRequest(viewItem)} disabled={cancellingId === viewItem.id}>
+                      <Ban size={15} /> {cancellingId === viewItem.id ? 'Cancelling…' : 'Cancel Request'}
+                    </button>
+                  </div>
+                )}
               </>
             )}
           </div>
+        </div>
+      )}
+
+      {/* ---------- Edit request modal ---------- */}
+      {editItem && (
+        <div className="modal-overlay" onClick={closeEdit}>
+          <form className="modal-card reg-detail-card reg-edit-card" onClick={(e) => e.stopPropagation()} onSubmit={saveEdit}>
+            <button type="button" className="reg-modal-close" onClick={closeEdit} aria-label="Close">
+              <X size={18} />
+            </button>
+            <h3>Edit Request #{editItem.id}</h3>
+            <p className="reg-detail-sub">
+              {fmtDate(editItem.fromDate)} – {fmtDate(editItem.toDate)} · <StatusBadge tone="pending">Pending</StatusBadge>
+            </p>
+
+            {(editItem.details || []).length > 0 && (
+              <div className="table-wrap">
+                <table>
+                  <thead>
+                    <tr><th>Date</th><th>Original</th><th>Requested</th></tr>
+                  </thead>
+                  <tbody>
+                    {editItem.details.map((d) => (
+                      <tr key={d.id}>
+                        <td>{fmtDate(d.attendanceDate)}</td>
+                        <td>{d.originalStatus}</td>
+                        <td>{d.requestedStatus}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            <div className="reg-field" style={{ marginTop: 14 }}>
+              <label htmlFor="reg-edit-reason">Reason</label>
+              <textarea
+                id="reg-edit-reason"
+                maxLength={INPUT_LIMITS.REASON}
+                rows={3}
+                placeholder="Enter the reason for this request"
+                value={editReason}
+                onChange={(e) => setEditReason(e.target.value)}
+                autoFocus
+              />
+              <small className="reg-char-count">{editReason.length}/{INPUT_LIMITS.REASON}</small>
+            </div>
+
+            <div className="reg-detail-actions">
+              <button type="button" className="btn btn-secondary" onClick={closeEdit} disabled={savingEdit}>Close</button>
+              <button type="submit" className="btn btn-primary" disabled={savingEdit || !editReason.trim()}>
+                {savingEdit ? 'Saving…' : 'Save Changes'}
+              </button>
+            </div>
+          </form>
         </div>
       )}
     </div>
