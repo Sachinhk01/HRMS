@@ -16,9 +16,23 @@ export async function getLeaveType(leaveTypeId) {
   return data.data;
 }
 
+// Settings → Leave → monthlyGuideline is the single source of truth.
+// Used to force every leave type to the same value. If settings can't be read
+// (e.g. 403), the value passed in is kept.
+async function resolveGuideline(fallback) {
+  try {
+    const { data } = await api.get("/settings/leave");
+    const value = Number(data?.data?.monthlyGuideline);
+    if (Number.isFinite(value) && value >= 0) return value;
+  } catch {
+    // ignore, use fallback
+  }
+  return fallback;
+}
+
 // POST /leave-types  (HR_ADMIN, MANAGER)
 // name: required, max 50 · description: max 255 · paid: required
-// allocatedDays: required, >= 0 · monthlyGuideline: >= 0 (backend defaults to 2)
+// allocatedDays: required, >= 0 · monthlyGuideline always follows Settings → Leave
 export async function createLeaveType({
   name,
   description,
@@ -27,12 +41,13 @@ export async function createLeaveType({
   monthlyGuideline,
   carryForwardAllowed,
 }) {
+  const guideline = await resolveGuideline(monthlyGuideline);
   const { data } = await api.post("/leave-types", {
     name,
     description,
     paid,
     allocatedDays,
-    monthlyGuideline,
+    monthlyGuideline: guideline,
     // Primitive boolean on the backend: if omitted it silently becomes false.
     carryForwardAllowed: !!carryForwardAllowed,
   });
@@ -44,15 +59,47 @@ export async function updateLeaveType(
   leaveTypeId,
   { name, description, paid, allocatedDays, monthlyGuideline, carryForwardAllowed }
 ) {
+  const guideline = await resolveGuideline(monthlyGuideline);
   const { data } = await api.put(`/leave-types/${leaveTypeId}`, {
     name,
     description,
     paid,
     allocatedDays,
-    monthlyGuideline,
+    monthlyGuideline: guideline,
     carryForwardAllowed: !!carryForwardAllowed,
   });
   return data.data;
+}
+
+// Makes every leave type (active and inactive) carry the same monthlyGuideline
+// as Settings → Leave, so employees (who cannot read settings) see the same number.
+// Best effort: roles that cannot manage leave types (e.g. SUPER_ADMIN) just skip.
+export async function syncLeaveTypeGuidelines(guideline) {
+  const value = Number(guideline);
+  if (!Number.isFinite(value) || value < 0) return { updated: 0, failed: 0 };
+
+  const { data } = await api.get("/leave-types");
+  const types = Array.isArray(data?.data) ? data.data : [];
+  let updated = 0;
+  let failed = 0;
+
+  for (const type of types) {
+    if (Number(type.monthlyGuideline) === value) continue;
+    try {
+      await api.put(`/leave-types/${type.id}`, {
+        name: type.name,
+        description: type.description,
+        paid: type.paid,
+        allocatedDays: type.allocatedDays,
+        monthlyGuideline: value,
+        carryForwardAllowed: !!type.carryForwardAllowed,
+      });
+      updated += 1;
+    } catch {
+      failed += 1;
+    }
+  }
+  return { updated, failed };
 }
 
 // PATCH — 400 if the type is already in that state.

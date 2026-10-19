@@ -16,6 +16,24 @@ const listOf = (value) => {
   return [];
 };
 
+// Backend sends action as APPROVE / REJECT.
+const ACTION_LABELS = {
+  APPROVE: 'Approved',
+  REJECT: 'Rejected',
+};
+
+// Backend LeaveTransactionType values.
+const TRANSACTION_LABELS = {
+  ALLOCATION: 'Allocation',
+  LEAVE_APPROVED: 'Leave approved',
+  LEAVE_CANCELLED: 'Leave cancelled',
+  HR_ADJUSTMENT: 'HR adjustment',
+  CARRY_FORWARD: 'Carry forward',
+  EXPIRED: 'Expired',
+  EXPIRY: 'Expiry',
+  ALLOCATION_ADJUSTED: 'Allocation adjusted',
+};
+
 export default function LeaveRequestDetails() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -71,6 +89,21 @@ export default function LeaveRequestDetails() {
 
   const range = useMemo(() => formatRange(request?.startDate, request?.endDate), [request]);
 
+  // LeaveApprovalResponse: { id, approvedByName, approvalLevel, action, remarks, createdAt }
+  const approvals = useMemo(() => history.map((item) => ({
+    ...item,
+    title: ACTION_LABELS[item.action] || item.action || 'Approval update',
+    person: item.approvedByName || 'Approver',
+    date: item.createdAt,
+    note: item.remarks,
+  })), [history]);
+
+  // The request object has no rejection reason; it lives in the REJECT history row.
+  const rejection = useMemo(
+    () => [...history].reverse().find((item) => item.action === 'REJECT'),
+    [history],
+  );
+
   if (loading) return <div className="lr-page"><div className="lr-card">Loading leave request…</div></div>;
   if (!request) {
     return (
@@ -80,13 +113,8 @@ export default function LeaveRequestDetails() {
     );
   }
 
-  const approvals = history.map((item) => ({
-    ...item,
-    title: item.action || item.status || item.decision || 'Approval update',
-    person: item.approverName || item.managerName || item.actorName || item.employeeName || 'Approver',
-    date: item.actionAt || item.approvedAt || item.createdAt || item.updatedAt || item.timestamp,
-    note: item.reason || item.comments || item.note,
-  }));
+  // The backend response has no "applied on" field, so only show it if one ever arrives.
+  const appliedRaw = request.appliedOn || request.appliedAt || request.createdAt;
 
   return (
     <div className="lr-page page-reveal">
@@ -94,7 +122,7 @@ export default function LeaveRequestDetails() {
         <div>
           <button type="button" className="lr-link-btn lr-back" onClick={() => navigate(-1)}><ArrowLeft size={15} /> Back to requests</button>
           <div className="lr-title-row"><h1>Leave Request Details</h1><StatusChip status={request.status} /></div>
-          <p>Request #{request.id} · Applied {formatDateTime(request.appliedOn || request.appliedAt || request.createdAt)}</p>
+          <p>Request #{request.id}{appliedRaw ? ` · Applied ${formatDateTime(appliedRaw)}` : ''}</p>
         </div>
       </header>
 
@@ -112,8 +140,14 @@ export default function LeaveRequestDetails() {
         <div className="lr-detail-notes">
           <h2><FileText size={16} /> Reason and Notes</h2>
           <p><b>Request reason</b><span>{request.reason || 'No reason provided.'}</span></p>
-          {(request.notes || request.managerNotes || request.rejectionReason) && (
-            <p><b>Approval notes</b><span>{request.notes || request.managerNotes || request.rejectionReason}</span></p>
+          {request.approvedByName && (
+            <p><b>Approved by</b><span>{request.approvedByName}{request.approvedByCode ? ` (${request.approvedByCode})` : ''}</span></p>
+          )}
+          {rejection && (
+            <p>
+              <b>Rejection reason</b>
+              <span>{rejection.remarks || 'No reason provided.'}{rejection.approvedByName ? ` — ${rejection.approvedByName}` : ''}</span>
+            </p>
           )}
         </div>
       </section>
@@ -144,15 +178,15 @@ export default function LeaveRequestDetails() {
                 : transactions.length ? (
                   <div className="lr-table-wrap">
                     <table className="lr-table">
-                      <thead><tr><th>Date</th><th>Transaction</th><th>Paid</th><th>LOP</th><th>Balance</th><th>Notes</th></tr></thead>
+                      <thead><tr><th>Date</th><th>Transaction</th><th>Days</th><th>Balance Before</th><th>Balance After</th><th>Notes</th></tr></thead>
                       <tbody>{transactions.map((transaction, index) => (
                         <tr key={transaction.id ?? index}>
-                          <td>{formatDateTime(transaction.createdAt || transaction.transactionDate || transaction.date)}</td>
-                          <td>{transaction.transactionType || transaction.type || transaction.description || 'Leave transaction'}</td>
-                          <td>{transaction.paidDays ?? transaction.paidAmount ?? '—'}</td>
-                          <td>{transaction.lopDays ?? transaction.lopAmount ?? '—'}</td>
-                          <td>{transaction.balanceAfter ?? transaction.remainingLeaves ?? '—'}</td>
-                          <td>{transaction.notes || transaction.reason || '—'}</td>
+                          <td>{formatDateTime(transaction.createdAt)}</td>
+                          <td>{TRANSACTION_LABELS[transaction.transactionType] || transaction.transactionType || 'Leave transaction'}</td>
+                          <td>{transaction.days ?? '—'}</td>
+                          <td>{transaction.balanceBefore ?? '—'}</td>
+                          <td>{transaction.balanceAfter ?? '—'}</td>
+                          <td>{transaction.remarks || '—'}</td>
                         </tr>
                       ))}</tbody>
                     </table>

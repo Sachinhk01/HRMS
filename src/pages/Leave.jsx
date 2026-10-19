@@ -1,11 +1,12 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import {
-  AlertTriangle, CalendarCheck2, CalendarClock, CalendarPlus, ChevronDown, ChevronLeft,
-  ChevronRight, Eye, Info, Leaf, Plus, X,
+  AlertTriangle, CalendarCheck2, CalendarClock, CalendarPlus, Check, ChevronDown, ChevronLeft,
+  ChevronRight, Eye, Info, Leaf, Plane, Send, X,
 } from 'lucide-react';
 import DatePicker from '../components/DatePicker';
+import LeaveHero from '../components/LeaveHero';
 import Pagination from '../components/Pagination';
 import { KebabMenu, PaidLop, StatusChip } from '../components/LeaveBits';
 import { useAuth } from '../context/AuthContext';
@@ -16,35 +17,114 @@ import {
   applyLeave, cancelLeave, getActiveLeaveTypes, getMyLeaveBalances, getMyLeaveRequests,
 } from '../services/leaveService';
 import {
-  MONTH_NAMES, approxWeekdays, formatDate, formatRange,
+  MONTH_NAMES, appliedOnOf, approxWeekdays, formatDate, formatDateTime, formatRange, todayIso,
   isPending, leaveErrorMessage,
 } from '../utils/leaveFormat';
 import './Leave.css';
 import './LeaveRequests.css';
+import './LeaveModern.css';
 
 const now = new Date();
 const CURRENT_MONTH = now.getMonth() + 1;
 const CURRENT_YEAR = now.getFullYear();
 const YEARS = Array.from({ length: 7 }, (_, index) => CURRENT_YEAR - 3 + index);
+const easeOut = [0.16, 1, 0.3, 1];
 
-function ApplyLeaveDrawer({ open, onClose, leaveTypes, balances, policy, onApplied }) {
+const SANDWICH_EXAMPLES = [
+  { key: 'monday', title: 'Monday leave', parts: 'Mon + Sat + Sun', days: 3 },
+  { key: 'friday', title: 'Friday leave', parts: 'Fri + Sat + Sun', days: 3 },
+  { key: 'fridayMonday', title: 'Friday + Monday', parts: 'Fri + Sat + Sun + Mon', days: 4 },
+];
+
+function useCountUp(target, duration = 900) {
+  const end = Number(target) || 0;
+  const [value, setValue] = useState(0);
+
+  useEffect(() => {
+    if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) {
+      setValue(end);
+      return undefined;
+    }
+
+    let frame;
+    const start = performance.now();
+    const tick = (time) => {
+      const progress = Math.min(1, (time - start) / duration);
+      const eased = 1 - (1 - progress) ** 3;
+      setValue(Number.isInteger(end) ? Math.round(end * eased) : Number((end * eased).toFixed(1)));
+      if (progress < 1) frame = requestAnimationFrame(tick);
+    };
+    frame = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(frame);
+  }, [end, duration]);
+
+  return value;
+}
+
+function CountUp({ value }) {
+  return <>{useCountUp(value)}</>;
+}
+
+function StatCard({ icon: Icon, tone, label, value, total, sub, ratio, loading, index }) {
+  const warn = ratio != null && ratio >= 1;
+  return (
+    <motion.article
+      className={`lv2-stat lv2-stat--${tone}`}
+      initial={{ opacity: 0, y: 18 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.45, delay: 0.08 * index, ease: easeOut }}
+      whileHover={{ y: -4 }}
+    >
+      <span className="lv2-stat-icon"><Icon size={21} /></span>
+      <div className="lv2-stat-body">
+        <small>{label}</small>
+        <strong>
+          {loading ? '…' : <CountUp value={value} />}
+          {!loading && total != null && <em> / {total}</em>}
+        </strong>
+        <span>{sub}</span>
+        {ratio != null && !loading && (
+          <div className="lv2-bar" aria-hidden="true">
+            <motion.i
+              className={warn ? 'is-full' : ''}
+              initial={{ width: 0 }}
+              animate={{ width: `${Math.max(0, Math.min(1, ratio)) * 100}%` }}
+              transition={{ duration: 0.9, delay: 0.3 + 0.08 * index, ease: easeOut }}
+            />
+          </div>
+        )}
+      </div>
+    </motion.article>
+  );
+}
+
+function ApplyLeaveModal({ open, onClose, leaveTypes, balances, policy, onApplied }) {
   const { showToast } = useToast();
   const [leaveTypeId, setLeaveTypeId] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [reason, setReason] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [done, setDone] = useState(false);
   const [showExamples, setShowExamples] = useState(false);
+  const closeTimer = useRef(null);
+  const today = useMemo(() => todayIso(), []);
+  const close = useCallback(() => {
+    clearTimeout(closeTimer.current);
+    onClose();
+  }, [onClose]);
 
   const selectedType = leaveTypes.find((type) => String(type.id) === leaveTypeId);
   const balance = balances.find((item) => (
     String(item.leaveTypeId) === leaveTypeId ||
     (selectedType?.name && String(item.leaveType || '').toLowerCase() === selectedType.name.toLowerCase())
   ));
-  const estimatedDays = approxWeekdays(startDate, endDate);
+  const allocated = Number(balance?.allocatedLeaves ?? 0);
   const remaining = Number(balance?.remainingLeaves ?? balance?.remaining ?? 0);
+  const estimatedDays = approxWeekdays(startDate, endDate);
+  const validRange = Boolean(startDate && endDate && endDate >= startDate);
   const mayIncludeLop = Boolean(
-    startDate && endDate && estimatedDays > 0 &&
+    validRange && estimatedDays > 0 &&
     ((balance && estimatedDays > remaining) || estimatedDays > policy.guideline)
   );
 
@@ -55,8 +135,26 @@ function ApplyLeaveDrawer({ open, onClose, leaveTypes, balances, policy, onAppli
       setEndDate('');
       setReason('');
       setShowExamples(false);
+      setDone(false);
+      setSubmitting(false);
     }
   }, [open]);
+
+  useEffect(() => () => clearTimeout(closeTimer.current), []);
+
+  useEffect(() => {
+    if (!open) return undefined;
+    const onKey = (event) => {
+      if (event.key === 'Escape' && !submitting && !document.querySelector('.dp-popup')) close();
+    };
+    document.addEventListener('keydown', onKey);
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.removeEventListener('keydown', onKey);
+      document.body.style.overflow = previous;
+    };
+  }, [open, submitting, close]);
 
   const submit = async (event) => {
     event.preventDefault();
@@ -77,7 +175,6 @@ function ApplyLeaveDrawer({ open, onClose, leaveTypes, balances, policy, onAppli
         endDate,
         reason: reason.trim(),
       });
-      onApplied(result);
       const totalDays = result?.totalDays;
       showToast(
         totalDays == null
@@ -85,7 +182,9 @@ function ApplyLeaveDrawer({ open, onClose, leaveTypes, balances, policy, onAppli
           : `Leave request submitted for ${totalDays} day${Number(totalDays) === 1 ? '' : 's'}.`,
         'success',
       );
-      onClose();
+      setDone(true);
+      onApplied(result);
+      closeTimer.current = setTimeout(close, 1500);
     } catch (error) {
       showToast(leaveErrorMessage(error, 'Failed to submit leave request.'), 'error');
     } finally {
@@ -93,109 +192,203 @@ function ApplyLeaveDrawer({ open, onClose, leaveTypes, balances, policy, onAppli
     }
   };
 
+  const sandwichChips = [
+    { key: 'monday', label: 'Monday' },
+    { key: 'friday', label: 'Friday' },
+    { key: 'fridayMonday', label: 'Fri + Mon' },
+  ];
+
   return (
     <AnimatePresence>
       {open && (
-        <motion.div className="lr-overlay" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onMouseDown={(event) => {
-          if (event.target === event.currentTarget && !submitting) onClose();
-        }}>
-          <motion.aside
-            className="lr-drawer"
+        <motion.div
+          className="lv2-overlay"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.2 }}
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget && !submitting) close();
+          }}
+        >
+          <motion.div
+            className="lv2-modal"
             role="dialog"
             aria-modal="true"
-            aria-labelledby="lr-apply-title"
-            initial={{ x: '100%' }}
-            animate={{ x: 0 }}
-            exit={{ x: '100%' }}
-            transition={{ type: 'tween', duration: 0.25 }}
+            aria-labelledby="lv2-apply-title"
+            initial={{ opacity: 0, scale: 0.94, y: 24 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.96, y: 12 }}
+            transition={{ type: 'spring', stiffness: 360, damping: 30 }}
           >
-            <header className="lr-drawer-head">
-              <div><span>New request</span><h2 id="lr-apply-title">Apply for Leave</h2></div>
-              <button type="button" className="lr-icon-btn" aria-label="Close" onClick={onClose} disabled={submitting}><X size={18} /></button>
+            <header className="lv2-modal-head">
+              <span className="lv2-modal-badge"><Plane size={20} /></span>
+              <div>
+                <small>New request</small>
+                <h2 id="lv2-apply-title">Apply for Leave</h2>
+              </div>
+              <button type="button" className="lv2-close" aria-label="Close" onClick={close} disabled={submitting}>
+                <X size={18} />
+              </button>
             </header>
-            <form className="lr-drawer-form" onSubmit={submit}>
-              <div className="lr-drawer-body">
-                <section className="lr-balance">
-                  <div><small>Selected leave balance</small><strong>{balance ? `${balance.remainingLeaves ?? balance.remaining ?? 0} days` : 'Choose a leave type'}</strong></div>
-                  <span>{selectedType?.name || 'Available balance'}</span>
-                </section>
 
-                <label className="lr-field">
-                  <span>Leave Type</span>
-                  <div className="lr-select">
-                    <select value={leaveTypeId} required onChange={(event) => setLeaveTypeId(event.target.value)}>
-                      <option value="">Select leave type</option>
-                      {leaveTypes.map((type) => <option key={type.id} value={type.id}>{type.name}</option>)}
-                    </select>
-                    <ChevronDown size={15} />
+            {done ? (
+              <div className="lv2-success">
+                <div className="lv2-success-art">
+                  <motion.span
+                    className="lv2-success-plane"
+                    initial={{ x: -50, y: 30, opacity: 0 }}
+                    animate={{ x: 70, y: -40, opacity: [0, 1, 1, 0] }}
+                    transition={{ duration: 1.3, ease: 'easeInOut' }}
+                  >
+                    <Plane size={22} />
+                  </motion.span>
+                  <motion.span
+                    className="lv2-success-check"
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    transition={{ type: 'spring', stiffness: 420, damping: 18, delay: 0.15 }}
+                  >
+                    <Check size={34} strokeWidth={3} />
+                  </motion.span>
+                </div>
+                <h3>Request submitted</h3>
+                <p>Your manager has been notified. You can track the status in your requests.</p>
+              </div>
+            ) : (
+              <form className="lv2-form" onSubmit={submit}>
+                <div className="lv2-modal-body">
+                  <section className="lv2-balance">
+                    <div>
+                      <small>{selectedType ? `${selectedType.name} balance` : 'Leave balance'}</small>
+                      <strong>
+                        {selectedType
+                          ? balance ? `${remaining} of ${allocated} days left` : 'No balance record'
+                          : 'Choose a leave type'}
+                      </strong>
+                    </div>
+                    {selectedType && balance && allocated > 0 && (
+                      <div className="lv2-bar lv2-bar--lg" aria-hidden="true">
+                        <motion.i
+                          key={leaveTypeId}
+                          initial={{ width: 0 }}
+                          animate={{ width: `${Math.max(0, Math.min(1, remaining / allocated)) * 100}%` }}
+                          transition={{ duration: 0.7, ease: easeOut }}
+                        />
+                      </div>
+                    )}
+                  </section>
+
+                  <label className="lr-field">
+                    <span>Leave Type <b className="lv2-req">*</b></span>
+                    <div className="lr-select">
+                      <select value={leaveTypeId} required onChange={(event) => setLeaveTypeId(event.target.value)}>
+                        <option value="">Select leave type</option>
+                        {leaveTypes.map((type) => <option key={type.id} value={type.id}>{type.name}</option>)}
+                      </select>
+                      <ChevronDown size={15} />
+                    </div>
+                  </label>
+
+                  <div className="lv2-grid-2">
+                    <label className="lr-field">
+                      <span>From Date <b className="lv2-req">*</b></span>
+                      <DatePicker id="leave-from" required min={today} value={startDate} onChange={(event) => setStartDate(event.target.value)} />
+                    </label>
+                    <label className="lr-field">
+                      <span>To Date <b className="lv2-req">*</b></span>
+                      <DatePicker id="leave-to" required min={startDate || today} value={endDate} onChange={(event) => setEndDate(event.target.value)} />
+                    </label>
                   </div>
-                </label>
 
-                <div className="lr-form-grid">
+                  <AnimatePresence initial={false}>
+                    {validRange && (
+                      <motion.div
+                        className="lv2-estimate"
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: 'auto' }}
+                        exit={{ opacity: 0, height: 0 }}
+                      >
+                        <CalendarCheck2 size={15} />
+                        <span>About <b>{estimatedDays}</b> working day{estimatedDays === 1 ? '' : 's'} · the server calculates the final total.</span>
+                      </motion.div>
+                    )}
+                    {mayIncludeLop && (
+                      <motion.div
+                        className="lv2-warn"
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: 'auto' }}
+                        exit={{ opacity: 0, height: 0 }}
+                      >
+                        <AlertTriangle size={16} />
+                        <span>This request may include LOP, based on your balance or the monthly paid leave guideline. You can still submit it.</span>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+
                   <label className="lr-field">
-                    <span>From Date</span>
-                    <DatePicker id="leave-from" required value={startDate} onChange={(event) => setStartDate(event.target.value)} />
+                    <span>Reason <b className="lv2-req">*</b></span>
+                    <textarea value={reason} maxLength={500} required rows={3} onChange={(event) => setReason(event.target.value)} placeholder="Briefly describe the reason for your leave." />
+                    <small className="lr-char-count">{reason.length}/500</small>
                   </label>
-                  <label className="lr-field">
-                    <span>To Date</span>
-                    <DatePicker id="leave-to" required min={startDate || undefined} value={endDate} onChange={(event) => setEndDate(event.target.value)} />
-                  </label>
+
+                  <div className="lv2-policy">
+                    <div className="lv2-policy-tile">
+                      <span className="lv2-policy-num">{policy.guideline}</span>
+                      <div>
+                        <strong>Monthly Paid Leave Rule</strong>
+                        <p>{policy.guideline} paid day{policy.guideline === 1 ? '' : 's'} per month. Extra days may be recorded as LOP.</p>
+                      </div>
+                    </div>
+                    <div className="lv2-policy-tile lv2-policy-tile--sandwich">
+                      <div>
+                        <strong>Sandwich Leave Policy</strong>
+                        {policy.sandwichKnown ? (
+                          <div className="lv2-chips">
+                            {sandwichChips.map((chip) => (
+                              <span key={chip.key} className={policy.sandwich[chip.key] ? 'is-on' : ''}>{chip.label}</span>
+                            ))}
+                          </div>
+                        ) : <p>Weekend sandwich rules may apply. HR shows the exact rules.</p>}
+                      </div>
+                      <button type="button" className="lr-link-btn" onClick={() => setShowExamples((value) => !value)}>
+                        {showExamples ? 'Hide examples' : 'View examples'}
+                      </button>
+                    </div>
+                  </div>
+
+                  <AnimatePresence initial={false}>
+                    {showExamples && (
+                      <motion.div
+                        className="lv2-examples"
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: 'auto' }}
+                        exit={{ opacity: 0, height: 0 }}
+                      >
+                        {SANDWICH_EXAMPLES.map((example) => {
+                          const enabled = !policy.sandwichKnown || policy.sandwich[example.key];
+                          return (
+                            <div key={example.key} className={enabled ? '' : 'is-off'}>
+                              <small>{example.title}</small>
+                              <span>{example.parts}</span>
+                              <strong>{enabled ? `= ${example.days} chargeable days` : 'Not enabled'}</strong>
+                            </div>
+                          );
+                        })}
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
                 </div>
 
-                {startDate && endDate && endDate >= startDate && (
-                  <div className="lr-date-estimate">Approx. {estimatedDays} working day{estimatedDays === 1 ? '' : 's'}; the final total is calculated by the server.</div>
-                )}
-
-                {mayIncludeLop && (
-                  <div className="lr-note lr-note--warning"><AlertTriangle size={16} /><span>This request may include LOP based on your available balance or monthly paid leave guideline. You may still submit it.</span></div>
-                )}
-
-                <label className="lr-field">
-                  <span>Reason</span>
-                  <textarea value={reason} maxLength={500} required rows={4} onChange={(event) => setReason(event.target.value)} placeholder="Briefly describe the reason for your leave." />
-                  <small className="lr-char-count">{reason.length}/500</small>
-                </label>
-
-                <section className="lr-policy-box">
-                  <div><strong>Monthly Paid Leave Rule</strong><span>{policy.guideline} paid day{policy.guideline === 1 ? '' : 's'} per month. Extra eligible days may be recorded as LOP.</span></div>
-                  <Info size={17} />
-                </section>
-                <section className="lr-policy-box lr-policy-box--sandwich">
-                  <div>
-                    <strong>Sandwich Leave Policy</strong>
-                    <span>{policy.sandwichKnown
-                      ? [
-                        policy.sandwich.monday && 'Monday',
-                        policy.sandwich.friday && 'Friday',
-                        policy.sandwich.fridayMonday && 'Friday–Monday',
-                      ].filter(Boolean).join(', ') || 'No sandwich rules are currently enabled.'
-                      : 'Weekend sandwich rules may apply; your organization’s exact rules are shown by HR.'}</span>
-                  </div>
-                  <button type="button" className="lr-link-btn" onClick={() => setShowExamples(true)}>View Examples</button>
-                </section>
-              </div>
-              <footer className="lr-drawer-foot">
-                <button type="button" className="lr-btn lr-btn--ghost" onClick={onClose} disabled={submitting}>Cancel</button>
-                <button type="submit" className="lr-btn lr-btn--primary" disabled={submitting}>
-                  {submitting ? 'Submitting…' : 'Submit Request'}
-                </button>
-              </footer>
-            </form>
-          </motion.aside>
-          <AnimatePresence>
-            {showExamples && (
-              <motion.div className="lr-overlay lr-overlay--center lr-overlay--nested" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onMouseDown={(event) => {
-                if (event.target === event.currentTarget) setShowExamples(false);
-              }}>
-                <section className="lr-modal" role="dialog" aria-modal="true" aria-labelledby="lr-examples-title">
-                  <h3 id="lr-examples-title">Sandwich leave examples</h3>
-                  <p>A leave day next to a weekend may cause the weekend days to be included in the leave calculation when the corresponding sandwich rule is enabled.</p>
-                  <p>For example, Friday leave may include Saturday and Sunday; Monday leave may include the preceding weekend. The backend applies the configured rule when it calculates your request.</p>
-                  <button type="button" className="lr-btn lr-btn--primary" onClick={() => setShowExamples(false)}>Close</button>
-                </section>
-              </motion.div>
+                <footer className="lv2-modal-foot">
+                  <button type="button" className="lr-btn lr-btn--ghost" onClick={close} disabled={submitting}>Cancel</button>
+                  <button type="submit" className="lr-btn lr-btn--primary lv2-submit" disabled={submitting}>
+                    {submitting ? 'Submitting…' : <>Submit Request <Send size={15} /></>}
+                  </button>
+                </footer>
+              </form>
             )}
-          </AnimatePresence>
+          </motion.div>
         </motion.div>
       )}
     </AnimatePresence>
@@ -312,32 +505,43 @@ export default function Leave() {
     }
   };
 
+  const closeApply = useCallback(() => setApplyOpen(false), []);
+  const busy = loading || policy.loading;
   const cards = [
-    { icon: Leaf, tone: 'green', label: 'Annual Leave Balance', value: `${stats.remaining} / ${stats.allocated}`, sub: 'Leaves available' },
-    { icon: CalendarCheck2, tone: 'blue', label: 'This Month Usage', value: `${stats.paidUsed} / ${policy.guideline}`, sub: 'Paid leaves used' },
+    {
+      icon: Leaf, tone: 'green', label: 'Annual Leave Balance', value: stats.remaining, total: stats.allocated,
+      sub: 'Leaves available', ratio: stats.allocated ? stats.remaining / stats.allocated : 0,
+    },
+    {
+      icon: CalendarCheck2, tone: 'blue', label: 'This Month Usage', value: stats.paidUsed, total: policy.guideline,
+      sub: 'Paid leaves used', ratio: policy.guideline ? stats.paidUsed / policy.guideline : 0,
+    },
     { icon: CalendarClock, tone: 'red', label: 'LOP This Month', value: stats.lop, sub: 'Approved leave days' },
     { icon: CalendarPlus, tone: 'purple', label: 'Monthly Guideline', value: policy.guideline, sub: 'Paid leaves allowed' },
   ];
 
   return (
-    <div className="lr-page page-reveal">
-      <header className="lr-head">
-        <div><h1>My Leave Requests</h1><p>View and manage your leave requests and check your leave balance.</p></div>
-        <button type="button" className="lr-btn lr-btn--primary lr-btn--lg" onClick={() => setApplyOpen(true)}><Plus size={17} /> Apply for Leave</button>
-      </header>
+    <div className="lv2-page page-reveal">
+      <LeaveHero onApply={() => setApplyOpen(true)} />
 
       {policy.error && <div className="lr-note lr-note--warning"><Info size={15} /><span>{policy.error}</span></div>}
 
-      <section className="lr-stats">
-        {cards.map((card) => (
-          <article className="lr-stat" key={card.label}>
-            <span className={`lr-stat-icon tone-${card.tone}`}><card.icon size={22} /></span>
-            <div><small>{card.label}</small><strong>{loading || policy.loading ? '…' : card.value}</strong><small>{card.sub}</small></div>
-          </article>
+      <section className="lv2-stats">
+        {cards.map((card, index) => (
+          <StatCard key={card.label} {...card} index={index} loading={busy} />
         ))}
       </section>
 
-      <section className="lr-card">
+      <motion.section
+        className="lv2-card"
+        initial={{ opacity: 0, y: 18 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, delay: 0.35, ease: easeOut }}
+      >
+        <div className="lv2-card-head">
+          <div><h2>My Requests</h2><p>Filter by month, status or leave type.</p></div>
+        </div>
+
         <div className="lr-filters">
           <div className="lr-filter">
             <label>Select Month</label>
@@ -349,73 +553,140 @@ export default function Leave() {
           </div>
           <div className="lr-filter">
             <label htmlFor="lr-year">Select Year</label>
-            <div className="lr-select"><select id="lr-year" value={year} onChange={(event) => setYear(Number(event.target.value))}>{YEARS.map((item) => <option key={item} value={item}>{item}</option>)}</select><ChevronDown size={15} /></div>
+            <div className="lr-select">
+              <select id="lr-year" value={year} onChange={(event) => setYear(Number(event.target.value))}>
+                {YEARS.map((item) => <option key={item} value={item}>{item}</option>)}
+              </select>
+              <ChevronDown size={15} />
+            </div>
           </div>
           <div className="lr-filter">
             <label htmlFor="lr-status">Status</label>
-            <div className="lr-select"><select id="lr-status" value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>
-              <option value="ALL">All statuses</option><option value="PENDING">Pending</option><option value="APPROVED">Approved</option><option value="REJECTED">Rejected</option><option value="CANCELLED">Cancelled</option>
-            </select><ChevronDown size={15} /></div>
+            <div className="lr-select">
+              <select id="lr-status" value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>
+                <option value="ALL">All statuses</option>
+                <option value="PENDING">Pending</option>
+                <option value="APPROVED">Approved</option>
+                <option value="REJECTED">Rejected</option>
+                <option value="CANCELLED">Cancelled</option>
+              </select>
+              <ChevronDown size={15} />
+            </div>
           </div>
           <div className="lr-filter">
             <label htmlFor="lr-type">Leave Type</label>
-            <div className="lr-select"><select id="lr-type" value={typeFilter} onChange={(event) => setTypeFilter(event.target.value)}>
-              <option value="ALL">All leave types</option>{leaveTypes.map((type) => <option key={type.id} value={type.name}>{type.name}</option>)}
-            </select><ChevronDown size={15} /></div>
+            <div className="lr-select">
+              <select id="lr-type" value={typeFilter} onChange={(event) => setTypeFilter(event.target.value)}>
+                <option value="ALL">All leave types</option>
+                {leaveTypes.map((type) => <option key={type.id} value={type.name}>{type.name}</option>)}
+              </select>
+              <ChevronDown size={15} />
+            </div>
           </div>
           <button type="button" className="lr-btn lr-btn--ghost" onClick={clearFilters}>Clear</button>
         </div>
 
         <div className="lr-table-wrap">
-          <table className="lr-table">
-            <thead><tr><th>#</th><th>Leave Dates</th><th>Days</th><th>Reason</th><th>Leave Type</th><th>Status</th><th>Paid / LOP</th><th>Actions</th></tr></thead>
+          <table className="lr-table lv2-table">
+            <thead>
+              <tr>
+                <th>#</th><th>Leave Dates</th><th>Days</th><th>Reason</th><th>Leave Type</th>
+                <th>Status</th><th>Paid / LOP</th><th>Applied On</th><th>Actions</th>
+              </tr>
+            </thead>
             <tbody>
-              {loading && Array.from({ length: 5 }, (_, index) => <tr key={index} className="lr-skel"><td colSpan={8}><div /></td></tr>)}
+              {loading && Array.from({ length: 5 }, (_, index) => (
+                <tr key={index} className="lr-skel"><td colSpan={9}><div /></td></tr>
+              ))}
               {!loading && pageItems.map((row, index) => {
                 const range = formatRange(row.startDate, row.endDate);
+                const appliedOn = appliedOnOf(row);
                 return (
-                  <tr key={row.id}>
+                  <motion.tr
+                    key={row.id}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.3, delay: Math.min(index, 8) * 0.04, ease: easeOut }}
+                  >
                     <td>{(page - 1) * pageSize + index + 1}</td>
                     <td><span className="lr-dates">{range.main}<small>{range.sub}</small></span></td>
-                    <td>{row.totalDays ?? '—'}</td>
+                    <td><b>{row.totalDays ?? '—'}</b></td>
                     <td className="lr-reason" title={row.reason}>{row.reason || '—'}</td>
-                    <td>{row.leaveType || '—'}</td>
+                    <td><span className="lv2-type">{row.leaveType || '—'}</span></td>
                     <td><StatusChip status={row.status} /></td>
                     <td><PaidLop row={row} /></td>
+                    <td title={formatDateTime(appliedOn)}>{appliedOn ? formatDate(appliedOn) : '—'}</td>
                     <td>
                       <KebabMenu label={`Actions for leave request ${row.id}`} items={[
                         { label: 'View details', icon: <Eye size={15} />, onClick: () => navigate(`/leave/${row.id}`) },
                         isPending(row) ? { label: 'Cancel request', danger: true, onClick: () => setCancelTarget(row) } : null,
                       ]} />
                     </td>
-                  </tr>
+                  </motion.tr>
                 );
               })}
             </tbody>
           </table>
-          {!loading && !filtered.length && <div className="lr-empty"><CalendarPlus size={28} /><p>No leave requests found.</p><small>Try another month or filter.</small></div>}
+          {!loading && !filtered.length && (
+            <div className="lv2-empty">
+              <span><CalendarPlus size={30} /></span>
+              <p>No leave requests found</p>
+              <small>Try another month or filter, or apply for a new leave.</small>
+            </div>
+          )}
         </div>
-        <footer className="lr-table-foot"><span>Total Records: {filtered.length}</span><Pagination page={page} totalItems={filtered.length} pageSize={pageSize} onPageChange={setPage} /><span>Showing latest first</span></footer>
-      </section>
+        <footer className="lr-table-foot">
+          <span>Total Records: {filtered.length}</span>
+          <Pagination page={page} totalItems={filtered.length} pageSize={pageSize} onPageChange={setPage} />
+          <span>Showing latest first</span>
+        </footer>
+      </motion.section>
 
       <AnimatePresence>
         {cancelTarget && (
-          <motion.div className="lr-overlay lr-overlay--center" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onMouseDown={(event) => {
-            if (event.target === event.currentTarget && !cancelling) setCancelTarget(null);
-          }}>
-            <section className="lr-modal" role="dialog" aria-modal="true" aria-labelledby="lr-cancel-title">
-              <h3 id="lr-cancel-title">Cancel this leave request?</h3>
-              <p>{formatDate(cancelTarget.startDate)} – {formatDate(cancelTarget.endDate)} · {cancelTarget.leaveType}</p>
-              <div className="lr-modal-actions">
-                <button type="button" className="lr-btn lr-btn--ghost" onClick={() => setCancelTarget(null)} disabled={cancelling}>Keep request</button>
-                <button type="button" className="lr-btn lr-btn--danger" onClick={cancelRequest} disabled={cancelling}>{cancelling ? 'Cancelling…' : 'Cancel request'}</button>
+          <motion.div
+            className="lv2-overlay"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onMouseDown={(event) => {
+              if (event.target === event.currentTarget && !cancelling) setCancelTarget(null);
+            }}
+          >
+            <motion.section
+              className="lv2-modal lv2-modal--sm"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="lv2-cancel-title"
+              initial={{ opacity: 0, scale: 0.94, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.96, y: 10 }}
+              transition={{ type: 'spring', stiffness: 380, damping: 30 }}
+            >
+              <div className="lv2-confirm">
+                <span className="lv2-confirm-icon"><AlertTriangle size={24} /></span>
+                <h3 id="lv2-cancel-title">Cancel this leave request?</h3>
+                <p>{formatDate(cancelTarget.startDate)} – {formatDate(cancelTarget.endDate)} · {cancelTarget.leaveType}</p>
+                <div className="lv2-confirm-actions">
+                  <button type="button" className="lr-btn lr-btn--ghost" onClick={() => setCancelTarget(null)} disabled={cancelling}>Keep request</button>
+                  <button type="button" className="lr-btn lr-btn--danger" onClick={cancelRequest} disabled={cancelling}>
+                    {cancelling ? 'Cancelling…' : 'Cancel request'}
+                  </button>
+                </div>
               </div>
-            </section>
+            </motion.section>
           </motion.div>
         )}
       </AnimatePresence>
 
-      <ApplyLeaveDrawer open={applyOpen} onClose={() => setApplyOpen(false)} leaveTypes={leaveTypes} balances={balances} policy={policy} onApplied={refresh} />
+      <ApplyLeaveModal
+        open={applyOpen}
+        onClose={closeApply}
+        leaveTypes={leaveTypes}
+        balances={balances}
+        policy={policy}
+        onApplied={refresh}
+      />
     </div>
   );
 }

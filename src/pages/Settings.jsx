@@ -25,6 +25,7 @@ import {
 import PageHeader from '../components/PageHeader';
 import { hrmsService } from '../services/hrmsService';
 import { useToast } from '../context/ToastContext';
+import { useConfirm } from '../context/ConfirmContext';
 import { useAuth } from '../context/AuthContext';
 import MasterDataSettings from './settings/MasterDataSettings';
 import LeaveTypesSettings from './settings/LeaveTypesSettings';
@@ -467,6 +468,7 @@ export default function Settings() {
   const [savedSection, setSavedSection] = useState('');
   const returnFocusRef = useRef(null);
   const { showToast } = useToast();
+  const { confirm } = useConfirm();
   const { user } = useAuth();
 
   const userRole = user?.role || user?.roles?.[0];
@@ -565,9 +567,16 @@ export default function Settings() {
       if (
         group.key === 'leave' &&
         section.fields.includes('monthlyGuideline') &&
-        Number(payload.monthlyGuideline) !== Number(latest.monthlyGuideline) &&
-        !window.confirm('Changing the monthly paid leave guideline affects future leave requests. Continue?')
-      ) return;
+        Number(payload.monthlyGuideline) !== Number(latest.monthlyGuideline)
+      ) {
+        const ok = await confirm({
+          title: 'Change monthly guideline?',
+          message: 'Changing the monthly paid leave guideline affects future leave requests.',
+          confirmText: 'Yes, change it',
+          cancelText: 'Cancel',
+        });
+        if (!ok) return;
+      }
 
       const validationError = group.fields
         .filter((field) => field.required && (payload[field.name] === null || payload[field.name] === undefined || String(payload[field.name]).trim() === ''))

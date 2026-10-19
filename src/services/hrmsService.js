@@ -1,5 +1,6 @@
 import { getMyProfile, updateMyProfile, uploadMyProfilePhoto } from './employeeService';
 import { getEmployeePayrollHistory } from './payrollService';
+import { syncLeaveTypeGuidelines } from './leaveService';
 import api from './api';
 
 const normalizePayslip = (item, index = 0) => {
@@ -65,7 +66,15 @@ export const hrmsService = {
   },
   updateLeaveSettings: async (settings) => {
     const { data } = await api.put('/settings/leave', settings);
-    return data.data;
+    const saved = data.data;
+    // Employees cannot read /settings/leave, so mirror the guideline onto the
+    // leave types they can read. Best effort — never blocks saving settings.
+    try {
+      await syncLeaveTypeGuidelines(saved?.monthlyGuideline ?? settings?.monthlyGuideline);
+    } catch {
+      // ignore
+    }
+    return saved;
   },
 
   getCompanySettings: async () => {

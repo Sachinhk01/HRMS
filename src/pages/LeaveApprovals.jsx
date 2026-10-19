@@ -9,7 +9,7 @@ import { useToast } from '../context/ToastContext';
 import usePagination, { sortRecent } from '../hooks/usePagination';
 import { getAllLeaveRequests, getTeamLeaveRequests, managerLeaveAction, exportLeaveReport } from '../services/leaveService';
 import { capitalizeName } from '../utils/formatName';
-import { formatDate, isOwnRequest, isPending, leaveErrorMessage } from '../utils/leaveFormat';
+import { appliedOnOf, formatDate, formatDateTime, isOwnRequest, isPending, leaveErrorMessage } from '../utils/leaveFormat';
 import './LeaveApprovals.css';
 import './LeaveRequests.css';
 import { INPUT_LIMITS } from '../utils/inputLimits';
@@ -244,12 +244,12 @@ export default function LeaveApprovals() {
           <table className="la-table">
             <thead>
               <tr>
-                <th>Employee</th><th>Leave Type</th><th>Date Range</th><th>Days</th><th>Reason</th><th>Status</th><th>Actions</th>
+                <th>Employee</th><th>Leave Type</th><th>Date Range</th><th>Days</th><th>Reason</th><th>Status</th><th>Applied On</th><th>Actions</th>
               </tr>
             </thead>
             <tbody>
               {loading && Array.from({ length: 4 }).map((_, i) => (
-                <tr key={`lsk-${i}`} className="skeleton-row"><td colSpan={7}><div className="skeleton-bar" /></td></tr>
+                <tr key={`lsk-${i}`} className="skeleton-row"><td colSpan={8}><div className="skeleton-bar" /></td></tr>
               ))}
               {!loading && pageItems.map((row, i) => (
                 <motion.tr key={row.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, delay: i * 0.04, ease: easeOut }}>
@@ -264,6 +264,7 @@ export default function LeaveApprovals() {
                   <td><strong>{row.totalDays}</strong></td>
                   <td className="reason-cell"><span title={row.reason}>{row.reason}</span></td>
                   <td><span className={`status-pill ${String(row.status || '').toLowerCase()}`}><StatusBadge>{row.status}</StatusBadge></span></td>
+                  <td title={formatDateTime(appliedOnOf(row))}>{appliedOnOf(row) ? formatDate(appliedOnOf(row)) : '—'}</td>
                   <td>
                     {canAct ? (
                       <div className="la-actions">
@@ -381,7 +382,7 @@ export default function LeaveApprovals() {
                 <div className="drawer-section">
                   <span className="ds-label"><History size={14} /> Timeline</span>
                   <div className="timeline">
-                    <div className="tl-item"><span className="tl-dot" /><div><strong>Request Submitted</strong><small>{drawerItem.startDate}</small></div></div>
+                    <div className="tl-item"><span className="tl-dot" /><div><strong>Request Submitted</strong><small>{appliedOnOf(drawerItem) ? formatDateTime(appliedOnOf(drawerItem)) : drawerItem.startDate}</small></div></div>
                     <div className="tl-item"><span className="tl-dot pending" /><div><strong>Awaiting Manager Decision</strong><small>{drawerItem.status}</small></div></div>
                   </div>
                 </div>
