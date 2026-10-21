@@ -102,8 +102,9 @@ function safePayload(obj) {
 }
 
 function Field({ label, value, onChange, type = 'text', full = false, readOnly = false, children, placeholder, maxLength, inputMode, error }) {
+  const isReq = typeof label === 'string' && /\*\s*$/.test(label);   // labels ending in "*" are mandatory -> red asterisk
   return <label className={`f16-field ${full ? 'full' : ''}`}>
-    <span>{label}</span>
+    <span>{isReq ? String(label).replace(/\s*\*\s*$/, '') : label}{isReq && <b className="f16-req"> *</b>}</span>
     {children || (readOnly ? <div className="f16-readonly">{value || '—'}</div> : type === 'date' ? <DatePicker id={`f16-${String(label).toLowerCase().replace(/[^a-z0-9]+/g, '-')}`} value={value ?? ''} onChange={(e) => onChange?.(e.target.value)} placeholder={placeholder} /> : <input maxLength={maxLength ?? INPUT_LIMITS.SHORT_TEXT} inputMode={inputMode} type={type} value={value ?? ''} onChange={(e) => onChange?.(e.target.value)} onWheel={type === 'number' ? (e) => e.currentTarget.blur() : undefined} placeholder={placeholder} />)}
     {error && <small style={{ color: '#dc2626', fontSize: 11, marginTop: 4 }}>{error}</small>}
   </label>;

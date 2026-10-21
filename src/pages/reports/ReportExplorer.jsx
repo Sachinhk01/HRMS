@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
   Users, UserCheck, UserX, Clock3, CalendarDays, Percent, CheckCircle2, Hourglass,
-  XCircle, Ban, Timer, ArrowUp, ArrowDown, ChevronsUpDown, AlertTriangle, Info, RotateCcw,
+  XCircle, Ban, Timer, AlertTriangle, Info, RotateCcw,
 } from 'lucide-react';
 import DatePicker, { MonthPicker } from '../../components/DatePicker';
 import ExportMenu from '../../components/ExportMenu';
@@ -11,7 +11,7 @@ import Pagination from '../../components/Pagination';
 import { useToast } from '../../context/ToastContext';
 import { daysInMonth, formatDate, makeISO, pad } from '../../utils/dateUtils';
 import {
-  ATTENDANCE_STATUSES, LEAVE_STATUSES, PAGE_SIZES, EMPTY,
+  ATTENDANCE_STATUSES, LEAVE_STATUSES, EMPTY,
   calculateAttendanceShare, defaultReportFilters, validateReportFilters, fetchReport, downloadReportFile,
   getReportDepartments, getReportEmployees, formatMinutes, timeOfDay, statusLabel,
 } from '../../services/reportService';
@@ -177,12 +177,6 @@ export default function ReportExplorer({ kind }) {
     return change({ year: Number(match[1]), month: Number(match[2]) });
   }
 
-  function sortBy(field) {
-    setFilters((f) => (f.sortBy === field
-      ? { ...f, sortDir: f.sortDir === 'ASC' ? 'DESC' : 'ASC', page: 0 }
-      : { ...f, sortBy: field, sortDir: 'ASC', page: 0 }));
-  }
-
   async function handleExport(format) {
     if (validation) { showToast(validation, 'error'); return; }
     try {
@@ -210,7 +204,7 @@ export default function ReportExplorer({ kind }) {
     .some((key) => String(filters[key]) !== String(defaults[key]));
 
   function resetFilters() {
-    setFilters({ ...defaults, size: filters.size, sortBy: filters.sortBy, sortDir: filters.sortDir });
+    setFilters({ ...defaults });
   }
 
   return (
@@ -299,14 +293,6 @@ export default function ReportExplorer({ kind }) {
             <span className="eyebrow">{kind === 'attendance' ? 'One row per person-day' : 'One row per leave request'}</span>
             <h2>{cfg.title}</h2>
           </div>
-          <div className="rx-table-meta">
-            <label className="rx-size">
-              <span>Rows</span>
-              <select className="compact-select" value={filters.size} onChange={(e) => change({ size: Number(e.target.value) })}>
-                {PAGE_SIZES.map((n) => <option key={n} value={n}>{n}</option>)}
-              </select>
-            </label>
-          </div>
         </div>
 
         {error && !validation && (
@@ -321,16 +307,7 @@ export default function ReportExplorer({ kind }) {
             <thead>
               <tr>
                 {cfg.columns.map((col) => (
-                  <th key={col.key} className={col.align ? `rx-${col.align}` : ''}>
-                    {col.sortField ? (
-                      <button type="button" className="rx-sort" onClick={() => sortBy(col.sortField)}>
-                        {col.label}
-                        {filters.sortBy === col.sortField
-                          ? (filters.sortDir === 'ASC' ? <ArrowUp size={13} /> : <ArrowDown size={13} />)
-                          : <ChevronsUpDown size={13} className="rx-sort-idle" />}
-                      </button>
-                    ) : col.label}
-                  </th>
+                  <th key={col.key} className={col.align ? `rx-${col.align}` : ''}>{col.label}</th>
                 ))}
               </tr>
             </thead>
