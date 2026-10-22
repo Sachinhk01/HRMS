@@ -817,3 +817,22 @@
   font-weight: 600;
   line-height: 1.5;
 }
+
+
+/* Mandatory-field asterisk */
+.f16-field .f16-req { color: #dc2626; font-weight: 700; }
+
+/* No scroll bars / spinner arrows inside the text fields */
+.f16-field input,
+.f16-field textarea,
+.f16-quarter-table input { overflow: hidden; scrollbar-width: none; }
+.f16-field input::-webkit-scrollbar,
+.f16-field textarea::-webkit-scrollbar,
+.f16-quarter-table input::-webkit-scrollbar { display: none; }
+.f16-field textarea { resize: none; }
+.f16-field input[type="number"],
+.f16-quarter-table input[type="number"] { -moz-appearance: textfield; appearance: textfield; }
+.f16-field input[type="number"]::-webkit-inner-spin-button,
+.f16-field input[type="number"]::-webkit-outer-spin-button,
+.f16-quarter-table input[type="number"]::-webkit-inner-spin-button,
+.f16-quarter-table input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }

@@ -76,10 +76,10 @@
 .rx-size { display: flex; align-items: center; gap: 8px; }
 .rx-size .compact-select { width: auto; padding: 7px 12px; }
 
-.rx-table-wrap { overflow-x: auto; border-radius: 14px; border: 1px solid #eef2f7; }
+.rx-table-wrap { overflow: auto; max-height: 460px; border-radius: 14px; border: 1px solid #eef2f7; }
 .rx-table { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 780px; font-variant-numeric: tabular-nums; }
 .rx-table thead th {
-  position: sticky; top: 0; background: #f8fafc; padding: 11px 12px; text-align: left;
+  position: sticky; top: 0; z-index: 2; background: #f8fafc; padding: 11px 12px; text-align: left;
   font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: .05em;
   border-bottom: 1px solid #eef2f7; white-space: nowrap;
 }
