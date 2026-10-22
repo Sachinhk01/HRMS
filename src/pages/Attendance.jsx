@@ -190,6 +190,33 @@ function isResolvedLocation(text) {
   return Boolean(text) && text !== 'Fetching location...' && text !== 'Location unavailable' && text !== 'Location permission denied';
 }
 
+function formatCoordinates({ latitude, longitude }) {
+  return `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`;
+}
+
+async function resolveLocationText(coords) {
+  const fallback = formatCoordinates(coords);
+  try {
+    const params = new URLSearchParams({
+      format: 'json',
+      lat: String(coords.latitude),
+      lon: String(coords.longitude),
+    });
+    const response = await fetch(`https://nominatim.openstreetmap.org/reverse?${params}`);
+    if (!response.ok) throw new Error(`Reverse geocoding failed (${response.status}).`);
+
+    const data = await response.json();
+    const address = data.address || {};
+    const readable = [address.suburb || address.neighbourhood, address.city || address.town, address.state]
+      .filter(Boolean)
+      .join(', ');
+    return readable || fallback;
+  } catch (error) {
+    console.warn('Unable to resolve attendance location to an address:', error);
+    return fallback;
+  }
+}
+
 function formatLiveClock(date) {
   return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true });
 }
@@ -360,18 +387,11 @@ export default function Attendance() {
     }
     navigator.geolocation.getCurrentPosition(
       async (position) => {
-        const { latitude, longitude } = position.coords;
-        try {
-          const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`);
-          const data = await response.json();
-          const address = data.address || {};
-          const readable = [address.suburb || address.neighbourhood, address.city || address.town, address.state]
-            .filter(Boolean)
-            .join(', ');
-          setLocationText(readable || `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`);
-        } catch {
-          setLocationText(`${latitude.toFixed(4)}, ${longitude.toFixed(4)}`);
-        }
+        const coords = {
+          latitude: position.coords.latitude,
+          longitude: position.coords.longitude,
+        };
+        setLocationText(await resolveLocationText(coords));
       },
       () => setLocationText('Location permission denied'),
       { enableHighAccuracy: true, timeout: 10000 }
@@ -550,12 +570,19 @@ if (failures.length) {
               return;
             }
             navigator.geolocation.getCurrentPosition(
-              (position) => resolve({ latitude: position.coords.latitude, longitude: position.coords.longitude }),
+              (position) => resolve({
+                latitude: position.coords.latitude,
+                longitude: position.coords.longitude,
+              }),
               (geoError) => reject(new Error(geoError.code === 1 ? 'Location Permission Denied.' : 'Unable to Fetch Your Current Location.')),
               { enableHighAccuracy: true, timeout: 10000 }
             );
           })
         : null;
+      if (coords) {
+        setLocationText(formatCoordinates(coords));
+        void resolveLocationText(coords).then(setLocationText);
+      }
       const actionResult = await action(coords);
       if (actionName === 'checkOut' && actionResult && actionResult.overtimeMinutes != null) {
         setTodayOvertimeMinutes(actionResult.overtimeMinutes);
