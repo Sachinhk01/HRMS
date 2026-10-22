@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Heart, MessageCircle, PartyPopper, Share2, Bookmark,
-  Gift, Cake, Award, Sparkles, UserPlus, Megaphone, CalendarDays, Send, Plus, X, ImagePlus, Users, EyeOff, RefreshCw, Expand,
+  Gift, Cake, Award, Sparkles, UserPlus, Megaphone, CalendarDays, Send, Plus, X, ImagePlus, Users, EyeOff, RefreshCw, Expand, Trash2,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import PageHeader from '../components/PageHeader';
@@ -12,7 +12,7 @@ import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import { useConfirm } from '../context/ConfirmContext';
 import {
-  createCelebration, getAllNotifications, selectCelebrations, getCelebrationMessageLimit,
+  createCelebration, deleteAnnouncement, canDeleteAnnouncement, getAllNotifications, selectCelebrations, getCelebrationMessageLimit,
   getImageUrls, isUrlExpired, PHOTO_ACCEPT, validatePhotos,
 } from '../services/notificationService';
 import { getEmployeeDropdown } from '../services/employeeService';
@@ -24,9 +24,9 @@ import DatePicker from '../components/DatePicker';
 const types = ['ALL', 'BIRTHDAY', 'WORK_ANNIVERSARY', 'GENERAL'];
 const CELEBRATION_BANNER_PHOTO = 'https://images.unsplash.com/photo-1764175760157-d27ce39e7955?q=80&w=1170&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D';
 
-// The backend has no edit or delete endpoint for announcements/celebrations
-// (only create + read), so a post cannot be removed for everyone from the UI.
-// "Hide for me" removes it from this browser's view only, and says so plainly.
+// Managers / HR / Super Admin can delete celebration posts for everyone.
+// Other roles (and system birthday/anniversary posts) can only "Hide for me",
+// which removes the post from this browser's view only, and says so plainly.
 const HIDDEN_POSTS_KEY = 'celebrationWall.locallyHiddenPostIds';
 
 // Keys match backend NotificationType enum exactly
@@ -100,8 +100,12 @@ export default function CelebrationWall() {
   // Full-size photo preview overlay — set to a src to open, null to close.
   const [lightboxSrc, setLightboxSrc] = useState(null);
   const canCreateCelebration = ['HR_ADMIN', 'SUPER_ADMIN'].includes(user?.role || user?.roles?.[0]);
-  // Any post can be hidden locally; nothing is deleted on the server.
-  const canHidePost = () => true;
+  // MANAGER / HR_ADMIN / SUPER_ADMIN can delete a user-created post for everyone
+  // (DELETE /notifications/announcement/{announcementId}). Everything else, including
+  // system birthday/anniversary posts, can only be hidden from this browser.
+  const role = user?.role || user?.roles?.[0];
+  const canDeletePost = (post) => canDeleteAnnouncement(role) && post.referenceType === 'ANNOUNCEMENT' && post.announcementId != null;
+  const canHidePost = (post) => !canDeletePost(post);
 
   const loadData = async () => {
     setLoading(true);
@@ -196,6 +200,23 @@ export default function CelebrationWall() {
       showToast(err.message || 'Failed to Add Celebration.', 'error');
     } finally {
       setCreating(false);
+    }
+  };
+
+  const deleteWallPost = async (item) => {
+    const ok = await confirm({
+      title: 'Delete post',
+      message: `Delete "${item.title}" for everyone? This cannot be undone.`,
+      confirmText: 'Delete',
+      danger: true,
+    });
+    if (!ok) return;
+    try {
+      await deleteAnnouncement(item.announcementId);
+      showToast('Post deleted.', 'success');
+      await loadData();
+    } catch (err) {
+      showToast(err.message || 'Failed to delete post.', 'error');
     }
   };
 
@@ -340,6 +361,11 @@ export default function CelebrationWall() {
                       <span className="post-category-badge" style={{ background: meta.bg, color: meta.color }}>
                         <TIcon size={13} /> {meta.label}
                       </span>
+                      {canDeletePost(post) && (
+                        <div className="celebration-card-admin">
+                          <button type="button" onClick={() => deleteWallPost(post)}><Trash2 size={15} /> Delete</button>
+                        </div>
+                      )}
                       {canHidePost(post) && (
                         <div className="celebration-card-admin">
                           <button type="button" onClick={() => hideWallPost(post)}><EyeOff size={15} /> Hide for me</button>

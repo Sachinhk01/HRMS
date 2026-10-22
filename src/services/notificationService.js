@@ -119,6 +119,17 @@ async function postAnnouncement({ title, message, uploadType = 'POST', attachmen
   return data.data;
 }
 
+// DELETE /notifications/announcement/{announcementId}  (MANAGER, HR_ADMIN, SUPER_ADMIN)
+// NOTE: {announcementId} is the notification's `referenceId`, NOT the notification `id`.
+// The backend also removes the broadcast notifications for every user.
+export const ANNOUNCEMENT_DELETE_ROLES = ['MANAGER', 'HR_ADMIN', 'SUPER_ADMIN'];
+export const canDeleteAnnouncement = (role) => ANNOUNCEMENT_DELETE_ROLES.includes(role);
+
+export async function deleteAnnouncement(announcementId) {
+  const { data } = await api.delete(`/notifications/announcement/${announcementId}`);
+  return data;
+}
+
 export function createAnnouncement({ title, message, uploadType = 'POST', attachments = [] }) {
   return postAnnouncement({ title, message, uploadType, attachments });
 }
@@ -234,6 +245,7 @@ export function selectAnnouncements(notifications = []) {
       createdAt: item.createdAt,
       attachmentUrls: item.attachmentUrls || [],
       isRead: Boolean(item.isRead),
+      announcementId: item.referenceType === 'ANNOUNCEMENT' ? item.referenceId : null,
     }));
 }
 
@@ -251,6 +263,7 @@ export function selectEvents(notifications = []) {
       eventDate: meta.eventDate,
       createdAt: item.createdAt,
       attachmentUrls: item.attachmentUrls || [],
+      announcementId: item.referenceType === 'ANNOUNCEMENT' ? item.referenceId : null,
     };
     const when = new Date(meta.eventDate || item.createdAt);
     (when >= today ? upcoming : past).push(event);

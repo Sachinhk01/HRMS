@@ -1,14 +1,15 @@
 import { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import {
-  Megaphone, Plus, X, Send, ImagePlus,
+  Megaphone, Plus, X, Send, ImagePlus, Trash2,
 } from 'lucide-react';
 import Pagination from '../components/Pagination';
 import usePagination, { sortRecent } from '../hooks/usePagination';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
+import { useConfirm } from '../context/ConfirmContext';
 import PostAttachments from '../components/PostAttachments';
-import { getAllNotifications, selectAnnouncements, createAnnouncement, PHOTO_ACCEPT, validatePhotos } from '../services/notificationService';
+import { getAllNotifications, selectAnnouncements, createAnnouncement, deleteAnnouncement, canDeleteAnnouncement, PHOTO_ACCEPT, validatePhotos } from '../services/notificationService';
 import { getFriendlyError, validatePostText, POST_TITLE_MAX, POST_MESSAGE_MAX } from '../utils/postValidation';
 import './Announcements.css';
 
@@ -23,6 +24,8 @@ const stagger = { hidden: {}, show: { transition: { staggerChildren: 0.07, delay
 export default function Announcements() {
   const { user } = useAuth();
   const { showToast } = useToast();
+  const { confirm } = useConfirm();
+  const [deletingId, setDeletingId] = useState(null);
 
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -32,6 +35,7 @@ export default function Announcements() {
   // SUPER_ADMIN / HR_ADMIN / MANAGER, but on this page the composer is
   // surfaced for HR only (mirrors the canCreateCelebration check on the
   // Celebration Wall).
+  const canDelete = canDeleteAnnouncement(user?.role || user?.roles?.[0]);
   const canCreateAnnouncement = ['HR_ADMIN', 'SUPER_ADMIN'].includes(user?.role || user?.roles?.[0]);
 
   const [composerOpen, setComposerOpen] = useState(false);
@@ -88,6 +92,30 @@ export default function Announcements() {
       showToast(getFriendlyError(err, 'Could not publish the announcement. Please try again in a moment.'), 'error');
     } finally {
       setCreating(false);
+    }
+  };
+
+  const handleDelete = async (item) => {
+    if (!item.announcementId) {
+      showToast('This announcement cannot be deleted.', 'error');
+      return;
+    }
+    const ok = await confirm({
+      title: 'Delete announcement',
+      message: `Delete "${item.title}" for everyone? This cannot be undone.`,
+      confirmText: 'Delete',
+      danger: true,
+    });
+    if (!ok) return;
+    setDeletingId(item.id);
+    try {
+      await deleteAnnouncement(item.announcementId);
+      showToast('Announcement deleted.', 'success');
+      await loadData();
+    } catch (err) {
+      showToast(getFriendlyError(err, 'Could not delete the announcement. Please try again.'), 'error');
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -235,6 +263,16 @@ export default function Announcements() {
                 <PostAttachments urls={item.attachmentUrls} title={item.title} />
                 <div className="ann-card-foot">
                   <small>{item.createdAt ? new Date(item.createdAt).toLocaleString() : ''}</small>
+                  {canDelete && (
+                    <button
+                      type="button"
+                      className="post-delete-btn"
+                      disabled={deletingId === item.id}
+                      onClick={() => handleDelete(item)}
+                    >
+                      <Trash2 size={14} /> {deletingId === item.id ? 'Deleting…' : 'Delete'}
+                    </button>
+                  )}
                 </div>
               </motion.article>
           ))}

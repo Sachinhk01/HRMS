@@ -104,6 +104,6 @@ export async function updateRegularization(id, payload) {
 
 // Cancel a pending regularization request (status becomes CANCELLED). No request body.
 export async function cancelRegularization(id) {
-  const { data } = await api.patch(`/attendance-regularizations/${id}/cancel`);
+  const { data } = await api.put(`/attendance-regularizations/${id}/cancel`);
   return data.data;
 }

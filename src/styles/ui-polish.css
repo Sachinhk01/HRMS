@@ -44,3 +44,15 @@ input:focus, select:focus, textarea:focus { box-shadow: 0 0 0 4px rgba(37, 99, 2
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { transition-duration: .01ms !important; animation-duration: .01ms !important; }
 }
+
+/* ---------- Delete button for announcements / events ---------- */
+.post-delete-btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  margin-left: auto; padding: 6px 12px;
+  font-size: 12px; font-weight: 600; line-height: 1;
+  color: #dc2626; background: #fef2f2;
+  border: 1px solid #fecaca; border-radius: 8px; cursor: pointer;
+  transition: background .15s ease, color .15s ease;
+}
+.post-delete-btn:hover:not(:disabled) { background: #dc2626; color: #fff; }
+.post-delete-btn:disabled { opacity: .6; cursor: not-allowed; }

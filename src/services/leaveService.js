@@ -158,8 +158,8 @@ export async function getMyLeaveRequests(filters = {}) {
   return data.data;
 }
 
-export async function getTeamLeaveRequests() {
-  const { data } = await api.get("/leave-requests/team");
+export async function getTeamLeaveRequests(filters = {}) {
+  const { data } = await api.get("/leave-requests/team", { params: monthYearParams(filters) });
   return data.data;
 }
 

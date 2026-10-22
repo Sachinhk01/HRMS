@@ -1,14 +1,15 @@
 import { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import {
-  CalendarDays, Heart, Share2, Plus, X, ImagePlus, Send,
+  CalendarDays, Heart, Share2, Plus, X, ImagePlus, Send, Trash2,
 } from 'lucide-react';
 import Pagination from '../components/Pagination';
 import usePagination from '../hooks/usePagination';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
+import { useConfirm } from '../context/ConfirmContext';
 import PostAttachments from '../components/PostAttachments';
-import { getAllNotifications, selectEvents, createEvent, getCelebrationMessageLimit, PHOTO_ACCEPT, validatePhotos } from '../services/notificationService';
+import { getAllNotifications, selectEvents, createEvent, deleteAnnouncement, canDeleteAnnouncement, getCelebrationMessageLimit, PHOTO_ACCEPT, validatePhotos } from '../services/notificationService';
 import './Events.css';
 import DatePicker from '../components/DatePicker';
 
@@ -22,6 +23,8 @@ const stagger = { hidden: {}, show: { transition: { staggerChildren: 0.07, delay
 export default function Events() {
   const { user } = useAuth();
   const { showToast } = useToast();
+  const { confirm } = useConfirm();
+  const [deletingId, setDeletingId] = useState(null);
 
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -32,6 +35,7 @@ export default function Events() {
   // the message), which the backend restricts to
   // SUPER_ADMIN/HR_ADMIN/MANAGER — but the "Add Event" button on this
   // page is surfaced for HR only.
+  const canDelete = canDeleteAnnouncement(user?.role || user?.roles?.[0]);
   const canCreateEvent = ['HR_ADMIN', 'SUPER_ADMIN'].includes(user?.role || user?.roles?.[0]);
 
   const [composerOpen, setComposerOpen] = useState(false);
@@ -87,6 +91,30 @@ export default function Events() {
       showToast(err.message || 'Failed To Add Event.', 'error');
     } finally {
       setCreating(false);
+    }
+  };
+
+  const handleDelete = async (item) => {
+    if (!item.announcementId) {
+      showToast('This event cannot be deleted.', 'error');
+      return;
+    }
+    const ok = await confirm({
+      title: 'Delete event',
+      message: `Delete "${item.title}" for everyone? This cannot be undone.`,
+      confirmText: 'Delete',
+      danger: true,
+    });
+    if (!ok) return;
+    setDeletingId(item.id);
+    try {
+      await deleteAnnouncement(item.announcementId);
+      showToast('Event deleted.', 'success');
+      await loadData();
+    } catch (err) {
+      showToast(err.message || 'Could not delete the event. Please try again.', 'error');
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -275,6 +303,16 @@ export default function Events() {
                     <button className="btn btn-small btn-gradient"><Heart size={14} /> Interested</button>
                     <button className="icon-btn" title="Share"><Share2 size={15} /></button>
                     <button className="icon-btn" title="Add to Calendar"><CalendarDays size={15} /></button>
+                    {canDelete && (
+                      <button
+                        type="button"
+                        className="post-delete-btn"
+                        disabled={deletingId === item.id}
+                        onClick={() => handleDelete(item)}
+                      >
+                        <Trash2 size={14} /> {deletingId === item.id ? 'Deleting…' : 'Delete'}
+                      </button>
+                    )}
                   </div>
                 </div>
               </motion.article>

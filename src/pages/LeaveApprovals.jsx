@@ -51,13 +51,13 @@ export default function LeaveApprovals() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      let requests;
-      try {
-        requests = await getAllLeaveRequests({ month: applied.month, year: applied.year });
-      } catch (error) {
-        if (error?.status !== 403) throw error;
-        requests = await getTeamLeaveRequests();
-      }
+      // Backend GET /leave-requests is NOT scoped to the manager (it returns the whole
+      // company), so a MANAGER must use /leave-requests/team (direct reports only).
+      // HR_ADMIN / SUPER_ADMIN see everyone.
+      const filters = { month: applied.month, year: applied.year };
+      const requests = role === 'MANAGER'
+        ? await getTeamLeaveRequests(filters)
+        : await getAllLeaveRequests(filters);
       setRows(Array.isArray(requests) ? requests : []);
     } catch (error) {
       showToast(error.message || 'Failed to load leave requests.', 'error');
@@ -65,7 +65,7 @@ export default function LeaveApprovals() {
     } finally {
       setLoading(false);
     }
-  }, [applied.month, applied.year, showToast]);
+  }, [applied.month, applied.year, role, showToast]);
 
   useEffect(() => { load(); }, [load]);
 
