@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -120,6 +120,7 @@ export default function Employees() {
   const [form, setForm] = useState(EMPTY_FORM);
   const [submitting, setSubmitting] = useState(false);
   const [showPw, setShowPw] = useState(false);
+  const addFormRef = useRef(null); // lets goNext() read what is really typed in the step-1 fields
   useEffect(() => { if (!showAdd) setShowPw(false); }, [showAdd]);
 
   // Each lookup list is fetched and tracked independently, so one failing
@@ -333,12 +334,13 @@ export default function Employees() {
     setForm((f) => ({ ...f, [key]: value }));
   };
 
-  function validateStep1() {
-    if (!form.username.trim() || form.username.trim().length < 3) return 'Username must be at least 3 characters.';
-    if (!/^\S+@\S+\.\S+$/.test(form.email)) return 'Enter a valid email address.';
-    if (!form.password || form.password.length < 6) return 'Password must be at least 6 characters.';
-    if (!form.role) return 'Select a role.';
-    return '';
+  // Returns null when OK, otherwise { field, message } so the exact field can be focused.
+  function validateStep1(v = form) {
+    if (!v.username.trim() || v.username.trim().length < 3) return { field: 'username', message: 'Username must be at least 3 characters.' };
+    if (!/^\S+@\S+\.\S+$/.test(v.email.trim())) return { field: 'email', message: 'Enter a valid email address.' };
+    if (!v.password || v.password.length < 6) return { field: 'password', message: 'Password must be at least 6 characters.' };
+    if (!v.role) return { field: 'role', message: 'Select a role.' };
+    return null;
   }
 
   function validateStep2() {
@@ -354,9 +356,29 @@ export default function Employees() {
     return '';
   }
 
+  // Step 1 -> step 2.
+  // The browser's built-in validation is switched off for step 1 (noValidate on the form). With it on, a
+  // click on Continue was first judged by the browser and, when it disliked a field, focus jumped to the
+  // first "invalid" one (the e-mail box) before our own code ran. That happens with automation tools that
+  // set values without real key events. We now read the values straight from the inputs, so what is on the
+  // screen is what gets validated, and then focus the field that is actually wrong.
   function goNext() {
-    const error = validateStep1();
-    if (error) { showToast(error, 'error'); return; }
+    const f = addFormRef.current;
+    const domValue = (name, fallback) => (f?.elements?.[name] ? f.elements[name].value : fallback);
+    const values = {
+      ...form,
+      username: domValue('username', form.username).trim(),
+      email: domValue('email', form.email).trim(),
+      password: domValue('password', form.password),
+      role: domValue('role', form.role),
+    };
+    const problem = validateStep1(values);
+    if (problem) {
+      showToast(problem.message, 'error');
+      f?.elements?.[problem.field]?.focus();
+      return;
+    }
+    setForm(values);
     setAddStep(2);
   }
 
@@ -683,7 +705,7 @@ export default function Employees() {
                 </li>
               </ol>
 
-              <form onSubmit={addStep === 1 ? (e) => { e.preventDefault(); goNext(); } : handleSubmit}>
+              <form ref={addFormRef} noValidate={addStep === 1} onSubmit={addStep === 1 ? (e) => { e.preventDefault(); goNext(); } : handleSubmit}>
                 <div className="ef-body">
                   <motion.div
                     key={addStep}
@@ -697,21 +719,21 @@ export default function Employees() {
                           <span>Username</span>
                           <div className="ef-control">
                             <User size={16} className="ef-icon" />
-                            <input maxLength={INPUT_LIMITS.USERNAME} type="text" value={form.username} onChange={updateField('username')} placeholder="Enter a username" required />
+                            <input id="add-emp-username" name="username" data-testid="add-emp-username" autoComplete="off" maxLength={INPUT_LIMITS.USERNAME} type="text" value={form.username} onChange={updateField('username')} placeholder="Enter a username" required />
                           </div>
                         </label>
                         <label className="form-field">
                           <span>Email</span>
                           <div className="ef-control">
                             <Mail size={16} className="ef-icon" />
-                            <input maxLength={INPUT_LIMITS.EMAIL} type="email" value={form.email} onChange={updateField('email')} placeholder="Enter work email" required />
+                            <input id="add-emp-email" name="email" data-testid="add-emp-email" autoComplete="off" maxLength={INPUT_LIMITS.EMAIL} type="email" value={form.email} onChange={updateField('email')} placeholder="Enter work email" required />
                           </div>
                         </label>
                         <label className="form-field">
                           <span>Temporary Password</span>
                           <div className="ef-control">
                             <Lock size={16} className="ef-icon" />
-                            <input maxLength={INPUT_LIMITS.PASSWORD} className="ef-has-eye" type={showPw ? 'text' : 'password'} value={form.password} onChange={updateField('password')} placeholder="Enter a temporary password" required />
+                            <input id="add-emp-password" name="password" data-testid="add-emp-password" autoComplete="new-password" maxLength={INPUT_LIMITS.PASSWORD} className="ef-has-eye" type={showPw ? 'text' : 'password'} value={form.password} onChange={updateField('password')} placeholder="Enter a temporary password" required />
                             <button type="button" className="ef-eye" tabIndex={-1} onClick={() => setShowPw((v) => !v)} aria-label={showPw ? 'Hide password' : 'Show password'}>
                               {showPw ? <EyeOff size={16} /> : <Eye size={16} />}
                             </button>
@@ -721,7 +743,7 @@ export default function Employees() {
                           <span>Role</span>
                           <div className="ef-control">
                             <ShieldCheck size={16} className="ef-icon" />
-                            <select value={form.role} onChange={updateField('role')} required>
+                            <select id="add-emp-role" name="role" data-testid="add-emp-role" value={form.role} onChange={updateField('role')} required>
                               <option value="">Select a role</option>
                               {ROLE_OPTIONS.map((r) => <option key={r} value={r}>{r.replace('_', ' ')}</option>)}
                             </select>
@@ -842,7 +864,7 @@ export default function Employees() {
                   ) : (
                     <>
                       <button key="cancel" type="button" formNoValidate className="ef-btn ef-btn--ghost" onClick={closeAddModal}>Cancel</button>
-                      <button key="continue" type="submit" className="ef-btn ef-btn--primary">
+                      <button key="continue" id="add-emp-continue" data-testid="add-emp-continue" type="submit" className="ef-btn ef-btn--primary">
                         Continue <ChevronRight size={16} />
                       </button>
                     </>

@@ -101,6 +101,32 @@ function safePayload(obj) {
   }));
 }
 
+// ---- Employer used on every Form 16 ----
+// The employer printed on Form 16 (name, address, phone, e-mail) comes from the backend Employer Master.
+// Before a Form 16 is generated we make sure the employer named below exists there and is the active one.
+const FORM16_EMPLOYER_NAME = 'Harshitha';
+const employerNameOf = (e) => String(e?.employerName ?? e?.name ?? '').trim();
+const isEmployerActive = (e) => !!(e?.active ?? e?.isActive);
+const listOf = (res) => (Array.isArray(res) ? res : res?.content || res?.employers || res?.items || []);
+
+// Returns { found: boolean, employer }. Activates the matching employer when it is not the active one yet.
+async function ensureFormEmployer(name = FORM16_EMPLOYER_NAME) {
+  const wanted = name.trim().toLowerCase();
+  const employers = listOf(await form16Service.getEmployers());
+  const match = employers.find((e) => employerNameOf(e).toLowerCase() === wanted);
+  if (!match) return { found: false, employer: null };
+  if (!isEmployerActive(match)) {
+    await form16Service.activateEmployer(match.id);
+    // Only one employer can be "the" employer on a certificate: switch the others off if the backend kept them active.
+    const active = await form16Service.getActiveEmployer().catch(() => null);
+    if (active && employerNameOf(active).toLowerCase() !== wanted) {
+      await Promise.all(employers.filter((e) => e.id !== match.id && isEmployerActive(e)).map((e) => form16Service.deactivateEmployer(e.id)));
+      await form16Service.activateEmployer(match.id);
+    }
+  }
+  return { found: true, employer: match };
+}
+
 function Field({ label, value, onChange, type = 'text', full = false, readOnly = false, children, placeholder, maxLength, inputMode, error }) {
   const isReq = typeof label === 'string' && /\*\s*$/.test(label);   // labels ending in "*" are mandatory -> red asterisk
   return <label className={`f16-field ${full ? 'full' : ''}`}>
@@ -225,12 +251,31 @@ export default function Form16() {
     finally { setLoading(false); }
   };
 
+  // Friendly message used whenever a Form 16 already exists (instead of the raw backend exception text).
+  const alreadyGeneratedMessage = () => `Form 16 is already generated for this employee for assessment year ${baseDraft.assessmentYear || assessmentYear}. Use Load to view it.`;
+  const isAlreadyExists = (e) => e?.status === 409 || /already exists|already generated/i.test(String(e?.message || ''));
+
   const generate = async () => {
     if (!canManage) { showToast('Only HR can generate Form 16.', 'error'); return; }
     if (!employeeId) { showToast('Select an employee before generating Form 16.', 'error'); return; }
     setSaving(true);
-    try { const d = await form16Service.create(employeeId, baseDraft); setBase(d); await loadChildren(d.id); showToast('Form 16 generated successfully. You can now edit Part A and Part B details.', 'success'); }
-    catch (e) { showToast(e.message, 'error'); } finally { setSaving(false); }
+    try {
+      // Check first, so the user is told straight away that this Form 16 was already generated.
+      let exists = false;
+      try { await form16Service.getByEmployeeYear(employeeId, baseDraft.assessmentYear || assessmentYear); exists = true; }
+      catch (lookupError) { if (lookupError.status !== 404) throw lookupError; }
+      if (exists) { showToast(alreadyGeneratedMessage(), 'error'); return; }
+
+      // Make sure the employer on the certificate is "Harshitha" (only if it exists in the backend Employer Master).
+      const { found } = await ensureFormEmployer();
+      if (!found) { showToast(`Employer "${FORM16_EMPLOYER_NAME}" was not found in the Employer Master. Add it first, then generate Form 16.`, 'error'); return; }
+
+      const d = await form16Service.create(employeeId, baseDraft);
+      setBase(d); await loadChildren(d.id);
+      showToast('Form 16 generated successfully. You can now edit Part A and Part B details.', 'success');
+    } catch (e) {
+      showToast(isAlreadyExists(e) ? alreadyGeneratedMessage() : e.message, 'error');
+    } finally { setSaving(false); }
   };
 
   const toggleActive = async (active) => {
