@@ -286,7 +286,7 @@ export default function Leave() {
           <table className="lr-table lv2-table">
             <thead>
               <tr>
-                <th>#</th><th>Leave Dates</th><th>Days</th><th>Reason</th><th>Leave Type</th>
+                <th>Sl No</th><th>Leave Dates</th><th>Days</th><th>Reason</th><th>Leave Type</th>
                 <th>Status</th><th>Paid / LOP</th><th>Applied On</th><th>Actions</th>
               </tr>
             </thead>

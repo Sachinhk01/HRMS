@@ -1,18 +1,18 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { CalendarDays, CalendarRange, Check, CheckCircle2, Clock3, FileText, History, Inbox, Search, Timer, X, XCircle } from 'lucide-react';
+import { CalendarDays, CalendarRange, Check, CheckCircle2, Clock3, FileText, History, Inbox, Timer, X, XCircle } from 'lucide-react';
 import ExportMenu from '../components/ExportMenu';
 import Pagination from '../components/Pagination';
 import StatusBadge from '../components/StatusBadge';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import usePagination, { sortRecent } from '../hooks/usePagination';
+import { getEmployeeById } from '../services/employeeService';
 import { getAllLeaveRequests, getTeamLeaveRequests, managerLeaveAction, exportLeaveReport } from '../services/leaveService';
 import { capitalizeName } from '../utils/formatName';
 import { appliedOnOf, formatDate, formatDateTime, isOwnRequest, isPending, leaveErrorMessage } from '../utils/leaveFormat';
 import './LeaveApprovals.css';
 import './LeaveRequests.css';
-import { INPUT_LIMITS } from '../utils/inputLimits';
 
 const easeOut = [0.16, 1, 0.3, 1];
 
@@ -26,22 +26,40 @@ function initials(name = '') {
   return name.split(' ').map((p) => p[0]).join('').slice(0, 2).toUpperCase();
 }
 
+function EmployeeCell({ row, profile, onClick }) {
+  const name = profile?.employeeName || profile?.name || row.employeeName || row.employeeCode || `Employee ${row.employeeId}`;
+  const employeeId = profile?.employeeCode || profile?.code || row.employeeCode || row.employeeId || '—';
+  const designation = profile?.designationName || profile?.designation?.designationName || profile?.jobTitle;
+
+  return (
+    <button type="button" className="emp-cell" onClick={onClick}>
+      <span className="emp-avatar">{initials(name)}</span>
+      <span className="emp-info">
+        <span className="emp-name">{capitalizeName(name)}</span>
+        <span className="emp-meta">
+          <small>ID: {employeeId}</small>
+          <small>{designation || 'Designation unavailable'}</small>
+        </span>
+      </span>
+    </button>
+  );
+}
+
 export default function LeaveApprovals() {
   const { user } = useAuth();
   const { showToast } = useToast();
   const role = user?.role || user?.roles?.[0];
   const canAct = role === 'MANAGER';
   const [rows, setRows] = useState([]);
+  const [employeeProfiles, setEmployeeProfiles] = useState({});
   const [loading, setLoading] = useState(true);
-  const [draft, setDraft] = useState({
+  const [filters, setFilters] = useState({
     month: currentMonth,
     year: thisYear,
     employee: 'ALL',
     status: 'PENDING',
     type: 'ALL',
-    search: '',
   });
-  const [applied, setApplied] = useState(draft);
   const [rejectTarget, setRejectTarget] = useState(null);
   const [rejectReason, setRejectReason] = useState('');
   const [approveTarget, setApproveTarget] = useState(null);
@@ -54,18 +72,39 @@ export default function LeaveApprovals() {
       // Backend GET /leave-requests is NOT scoped to the manager (it returns the whole
       // company), so a MANAGER must use /leave-requests/team (direct reports only).
       // HR_ADMIN / SUPER_ADMIN see everyone.
-      const filters = { month: applied.month, year: applied.year };
+      const monthYear = { month: filters.month, year: filters.year };
       const requests = role === 'MANAGER'
-        ? await getTeamLeaveRequests(filters)
-        : await getAllLeaveRequests(filters);
-      setRows(Array.isArray(requests) ? requests : []);
+        ? await getTeamLeaveRequests(monthYear)
+        : await getAllLeaveRequests(monthYear);
+      const leaveRequests = Array.isArray(requests) ? requests : [];
+      setRows(leaveRequests);
+
+      const employeeIds = Array.from(new Set(
+        leaveRequests
+          .map((request) => request.employeeId)
+          .filter((employeeId) => employeeId != null)
+          .map(String)
+      ));
+      const profiles = await Promise.allSettled(
+        employeeIds.map((employeeId) => getEmployeeById(employeeId))
+      );
+      const profileMap = {};
+      let failedProfiles = 0;
+      profiles.forEach((result, index) => {
+        if (result.status === 'fulfilled') profileMap[employeeIds[index]] = result.value;
+        else failedProfiles += 1;
+      });
+      setEmployeeProfiles(profileMap);
+      if (failedProfiles) {
+        showToast(`Could not load profile details for ${failedProfiles} employee${failedProfiles === 1 ? '' : 's'}.`, 'error');
+      }
     } catch (error) {
       showToast(error.message || 'Failed to load leave requests.', 'error');
       setRows([]);
     } finally {
       setLoading(false);
     }
-  }, [applied.month, applied.year, role, showToast]);
+  }, [filters.month, filters.year, role, showToast]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -84,24 +123,15 @@ export default function LeaveApprovals() {
 
   const filtered = useMemo(() => {
     let list = ordered;
-    if (applied.employee !== 'ALL') list = list.filter((row) => String(row.employeeId) === String(applied.employee));
-    if (applied.status !== 'ALL') list = list.filter((row) => String(row.status || '').toUpperCase() === applied.status);
-    if (applied.type !== 'ALL') list = list.filter((row) => row.leaveType === applied.type);
-    if (applied.search.trim()) {
-      const query = applied.search.trim().toLowerCase();
-      list = list.filter((row) => (
-        String(row.employeeName || '').toLowerCase().includes(query) ||
-        String(row.employeeCode || '').toLowerCase().includes(query) ||
-        String(row.leaveType || '').toLowerCase().includes(query)
-      ));
-    }
+    if (filters.employee !== 'ALL') list = list.filter((row) => String(row.employeeId) === String(filters.employee));
+    if (filters.status !== 'ALL') list = list.filter((row) => String(row.status || '').toUpperCase() === filters.status);
+    if (filters.type !== 'ALL') list = list.filter((row) => row.leaveType === filters.type);
     return list;
-  }, [ordered, applied]);
+  }, [ordered, filters]);
 
   const { page, setPage, pageItems, pageSize } = usePagination(filtered, 6);
 
-  // Go back to page 1 whenever a new search is applied.
-  useEffect(() => { setPage(1); }, [applied, setPage]);
+  useEffect(() => { setPage(1); }, [filters, setPage]);
 
   // Summary cards derived from real backend data
   const summary = useMemo(() => {
@@ -135,21 +165,10 @@ export default function LeaveApprovals() {
     decide(rejectTarget, 'REJECT', rejectReason.trim() || 'Not approved');
   };
 
-  const handleSearch = (event) => {
-    event.preventDefault();
-    setApplied({ ...draft });
-  };
-
-  const stepMonth = (offset) => {
-    const date = new Date(draft.year, draft.month - 1 + offset, 1);
-    if (date.getFullYear() < years[0] || date.getFullYear() > years[years.length - 1]) return;
-    setDraft((current) => ({ ...current, month: date.getMonth() + 1, year: date.getFullYear() }));
-  };
-
   const exportReport = async (format) => {
     try {
-      const filters = applied.status === 'ALL' ? {} : { leaveStatus: applied.status };
-      const { blob, filename } = await exportLeaveReport(format, filters);
+      const reportFilters = filters.status === 'ALL' ? {} : { leaveStatus: filters.status };
+      const { blob, filename } = await exportLeaveReport(format, reportFilters);
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
@@ -177,7 +196,7 @@ export default function LeaveApprovals() {
   return (
     <div className="lr-page page-reveal">
       <header className="lr-head">
-        <div><h1>Team Leave Requests</h1><p>Search and review leave requests across your organization.</p></div>
+        <div><h1>Team Leave Requests</h1><p>Review and filter leave requests across your organization.</p></div>
       </header>
       {!canAct && <div className="lr-note lr-note--info"><CalendarDays size={15} /><span>This page is view-only for your role. Approvals are handled by the employee’s reporting manager.</span></div>}
 
@@ -186,27 +205,29 @@ export default function LeaveApprovals() {
       </section>
 
       <section className="lr-card">
-        <form className="lr-filters" onSubmit={handleSearch}>
+        <div className="lr-filters">
           <div className="lr-filter">
-            <label>Month</label>
-            <div className="lr-stepper">
-              <button type="button" aria-label="Previous month" onClick={() => stepMonth(-1)}>‹</button>
-              <span>{new Date(draft.year, draft.month - 1).toLocaleString(undefined, { month: 'long' })} {draft.year}</span>
-              <button type="button" aria-label="Next month" onClick={() => stepMonth(1)}>›</button>
-            </div>
-          </div>
-          <div className="lr-filter">
-            <label htmlFor="team-year">Year</label>
-            <div className="lr-select"><select id="team-year" value={draft.year} onChange={(event) => setDraft((value) => ({ ...value, year: Number(event.target.value) }))}>{years.map((year) => <option key={year} value={year}>{year}</option>)}</select></div>
+            <label htmlFor="team-month">Month &amp; year</label>
+            <input
+              id="team-month"
+              type="month"
+              min={`${years[0]}-01`}
+              max={`${years[years.length - 1]}-12`}
+              value={`${filters.year}-${String(filters.month).padStart(2, '0')}`}
+              onChange={(event) => {
+                const [year, month] = event.target.value.split('-').map(Number);
+                if (year && month) setFilters((value) => ({ ...value, month, year }));
+              }}
+            />
           </div>
           <div className="lr-filter">
             <label htmlFor="team-employee">Employee</label>
-            <div className="lr-select"><select id="team-employee" value={draft.employee} onChange={(event) => setDraft((value) => ({ ...value, employee: event.target.value }))}><option value="ALL">All employees</option>{employees.map((employee) => <option key={employee.id} value={employee.id}>{capitalizeName(employee.name)}</option>)}</select></div>
+            <div className="lr-select"><select id="team-employee" value={filters.employee} onChange={(event) => setFilters((value) => ({ ...value, employee: event.target.value }))}><option value="ALL">All employees</option>{employees.map((employee) => <option key={employee.id} value={employee.id}>{capitalizeName(employee.name)}</option>)}</select></div>
           </div>
           <div className="lr-filter">
             <label htmlFor="team-status">Status</label>
             <div className="lr-select">
-              <select id="team-status" value={draft.status} onChange={(event) => setDraft((value) => ({ ...value, status: event.target.value }))}>
+              <select id="team-status" value={filters.status} onChange={(event) => setFilters((value) => ({ ...value, status: event.target.value }))}>
                 <option value="ALL">All statuses</option>
                 <option value="PENDING">Pending</option>
                 <option value="APPROVED">Approved</option>
@@ -217,28 +238,16 @@ export default function LeaveApprovals() {
           <div className="lr-filter">
             <label htmlFor="team-type">Leave type</label>
             <div className="lr-select">
-              <select id="team-type" value={draft.type} onChange={(event) => setDraft((value) => ({ ...value, type: event.target.value }))}>
+              <select id="team-type" value={filters.type} onChange={(event) => setFilters((value) => ({ ...value, type: event.target.value }))}>
                 <option value="ALL">All leave types</option>
                 {leaveTypes.map((type) => <option key={type} value={type}>{type}</option>)}
               </select>
             </div>
           </div>
-          <div className="lr-filter">
-            <label htmlFor="team-search">Search</label>
-            <input
-              id="team-search"
-              type="text"
-              maxLength={INPUT_LIMITS.SEARCH}
-              placeholder="Search employee or leave type..."
-              value={draft.search}
-              onChange={(event) => setDraft((value) => ({ ...value, search: event.target.value }))}
-            />
-          </div>
           <div className="lr-filter lr-filter--actions">
-            <button type="submit" className="lr-btn lr-btn--approve"><Search size={15} /> Search</button>
             <ExportMenu onExport={exportReport} />
           </div>
-        </form>
+        </div>
 
         <div className="table-wrap">
           <table className="la-table">
@@ -254,10 +263,11 @@ export default function LeaveApprovals() {
               {!loading && pageItems.map((row, i) => (
                 <motion.tr key={row.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, delay: i * 0.04, ease: easeOut }}>
                   <td>
-                    <button type="button" className="emp-cell" onClick={() => setDrawerItem(row)}>
-                      <span className="emp-avatar">{initials(row.employeeName)}</span>
-                      <span className="emp-name">{capitalizeName(row.employeeName)}</span>
-                    </button>
+                    <EmployeeCell
+                      row={row}
+                      profile={employeeProfiles[String(row.employeeId)]}
+                      onClick={() => setDrawerItem(row)}
+                    />
                   </td>
                   <td><span className="lt-type">{row.leaveType}</span></td>
                   <td>{row.startDate} – {row.endDate}</td>

@@ -423,7 +423,7 @@ export default function Attendance() {
       page: historyPage - 1,
       size: PAGE_SIZE,
       sortBy: "attendanceDate",
-      sortDirection: "asc",
+      sortDirection: "desc",
       ...(statusFilter !== 'ALL' ? { status: statusFilter } : {}),
       ...dateRange,
     }),
@@ -538,11 +538,10 @@ if (failures.length) {
     && (state === ATTENDANCE_STATE.WORKING || state === ATTENDANCE_STATE.ON_BREAK || hasCheckedOut);
   const totalElapsedLabel = formatMinutesLabel((dashboard?.workingMinutes || 0) + (dashboard?.breakMinutes || 0));
 
-  // Filtering now happens server-side (status + search-derived date range are
-  // sent as query params in loadAttendanceData), and the table should always
-  // show the oldest dates first for a natural attendance timeline.
+  // Filtering and sorting happen server-side; keep the latest date first as
+  // a fallback in case the response isn't ordered as requested.
   const filteredHistory = useMemo(
-    () => [...historyItems].sort((a, b) => String(a.attendanceDate || '').localeCompare(String(b.attendanceDate || ''))),
+    () => [...historyItems].sort((a, b) => String(b.attendanceDate || '').localeCompare(String(a.attendanceDate || ''))),
     [historyItems]
   );
 

@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { motion, MotionConfig } from "framer-motion";
 import {
-  Banknote, Building2, CalendarCheck, CalendarDays, CalendarX, Clock, Download, FileText,
-  Hash, Landmark, Loader2, ShieldCheck, TrendingUp, UserCheck, WalletCards,
+  Banknote, Building2, CalendarCheck, CalendarDays, CalendarX, Clock, CreditCard, Download, FileText,
+  Fingerprint, Landmark, Loader2, ShieldCheck, TrendingUp, UserCheck, WalletCards,
 } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 import { getMyProfile } from "../../services/employeeService";
@@ -210,11 +210,11 @@ export default function EmployeePayslipView() {
   ];
   const details = payment && [
     [Landmark, "Bank", payment.bankName || "—"],
-    [Hash, "Account number", payment.accountNumber ? `•••• ${payment.accountNumber.slice(-4)}` : "—"],
+    [CreditCard, "Account number", payment.accountNumber ? `•••• ${payment.accountNumber.slice(-4)}` : "—"],
     [Building2, "IFSC", payment.ifscCode || "—"],
     [WalletCards, "Payment mode", MODE_LABELS[payment.paymentMode] || payment.paymentMode || "—"],
     [ShieldCheck, "PAN", payment.panNumber || "—"],
-    [Hash, "UAN / PF / ESI", [payment.uanNumber, payment.pfNumber, payment.esiNumber].filter(Boolean).join(" · ") || "—"],
+    [Fingerprint, "UAN / PF / ESI", [payment.uanNumber, payment.pfNumber, payment.esiNumber].filter(Boolean).join(" · ") || "—"],
   ];
 
   return (
