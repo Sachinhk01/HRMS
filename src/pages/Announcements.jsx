@@ -110,8 +110,9 @@ export default function Announcements() {
     setDeletingId(item.id);
     try {
       await deleteAnnouncement(item.announcementId);
+      // Remove it locally instead of re-downloading every notification (slow on the hosted backend).
+      setNotifications((prev) => prev.filter((n) => !(n.referenceType === 'ANNOUNCEMENT' && n.referenceId === item.announcementId)));
       showToast('Announcement deleted.', 'success');
-      await loadData();
     } catch (err) {
       showToast(getFriendlyError(err, 'Could not delete the announcement. Please try again.'), 'error');
     } finally {

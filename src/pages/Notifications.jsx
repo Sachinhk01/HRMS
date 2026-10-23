@@ -2,9 +2,12 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { AnimatePresence, MotionConfig, motion } from 'framer-motion';
 import {
   Bell, BellRing, BookOpen, CalendarCheck2, CalendarDays, CalendarX2, Check, CheckCheck, Inbox, Megaphone,
-  PartyPopper, RotateCw, TimerReset, UserX,
+  PartyPopper, RotateCw, TimerReset, Trash2, UserX,
 } from 'lucide-react';
-import { getNotifications, markAllNotificationsRead, markNotificationRead, isMagazineNotification } from '../services/notificationService';
+import { getNotifications, markAllNotificationsRead, markNotificationRead, isMagazineNotification, deleteAnnouncement, canDeleteAnnouncement } from '../services/notificationService';
+import { useAuth } from '../context/AuthContext';
+import { useToast } from '../context/ToastContext';
+import { useConfirm } from '../context/ConfirmContext';
 import { useNotifications } from '../context/NotificationContext';
 import { EASE_OUT } from '../components/Motion';
 import PageHero from '../components/PageHero';
@@ -84,6 +87,11 @@ export default function Notifications() {
   const [filter, setFilter] = useState('all');
   const [settled, setSettled] = useState(false);
   const { refreshUnreadCount, decrementUnreadCount, setUnreadCount } = useNotifications();
+  const { user } = useAuth();
+  const { showToast } = useToast();
+  const { confirm } = useConfirm();
+  const [deletingId, setDeletingId] = useState(null);
+  const canDelete = canDeleteAnnouncement(user?.role || user?.roles?.[0]);
 
   const load = useCallback(() => {
     setLoading(true);
@@ -131,6 +139,31 @@ export default function Notifications() {
     } catch {
       load();
       refreshUnreadCount();
+    }
+  };
+
+  // Only announcement notifications can be deleted (DELETE /notifications/announcement/{announcementId}).
+  // announcementId = the notification's referenceId. Deleting removes it for every user.
+  const canDeleteItem = (item) => canDelete && item.referenceType === 'ANNOUNCEMENT' && item.referenceId != null;
+
+  const handleDelete = async (item) => {
+    const ok = await confirm({
+      title: 'Delete announcement',
+      message: `Delete "${item.title}" for everyone? This cannot be undone.`,
+      confirmText: 'Delete',
+      danger: true,
+    });
+    if (!ok) return;
+    setDeletingId(item.id);
+    try {
+      await deleteAnnouncement(item.referenceId);
+      setItems((prev) => prev.filter((n) => !(n.referenceType === 'ANNOUNCEMENT' && n.referenceId === item.referenceId)));
+      refreshUnreadCount();
+      showToast('Announcement deleted.', 'success');
+    } catch (err) {
+      showToast(err.message || 'Could not delete the announcement.', 'error');
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -286,6 +319,17 @@ export default function Notifications() {
                                     {date && <em><CalendarDays size={12} />{date}</em>}
                                     {type && <em>{type}</em>}
                                   </span>
+                                )}
+                                {canDeleteItem(item) && (
+                                  <button
+                                    type="button"
+                                    className="post-delete-btn"
+                                    disabled={deletingId === item.id}
+                                    onClick={(e) => { e.stopPropagation(); handleDelete(item); }}
+                                    onKeyDown={(e) => e.stopPropagation()}
+                                  >
+                                    <Trash2 size={14} /> {deletingId === item.id ? 'Deleting…' : 'Delete'}
+                                  </button>
                                 )}
                               </div>
                               <time className="nt-time" dateTime={item.createdAt} title={item.createdAt ? new Date(item.createdAt).toLocaleString() : ''}>{timeLabel(item.createdAt)}</time>

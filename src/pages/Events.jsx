@@ -109,8 +109,8 @@ export default function Events() {
     setDeletingId(item.id);
     try {
       await deleteAnnouncement(item.announcementId);
+      setNotifications((prev) => prev.filter((n) => !(n.referenceType === 'ANNOUNCEMENT' && n.referenceId === item.announcementId)));
       showToast('Event deleted.', 'success');
-      await loadData();
     } catch (err) {
       showToast(err.message || 'Could not delete the event. Please try again.', 'error');
     } finally {

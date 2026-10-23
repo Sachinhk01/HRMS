@@ -99,3 +99,7 @@
 }
 
 .nt-page .ph-action .nt-head-actions { flex-wrap: wrap; }
+
+
+/* Delete button inside a notification row */
+.nt-body .post-delete-btn { margin: 8px 0 0; align-self: flex-start; }

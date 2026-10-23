@@ -213,8 +213,8 @@ export default function CelebrationWall() {
     if (!ok) return;
     try {
       await deleteAnnouncement(item.announcementId);
+      setNotifications((prev) => prev.filter((n) => !(n.referenceType === 'ANNOUNCEMENT' && n.referenceId === item.announcementId)));
       showToast('Post deleted.', 'success');
-      await loadData();
     } catch (err) {
       showToast(err.message || 'Failed to delete post.', 'error');
     }
