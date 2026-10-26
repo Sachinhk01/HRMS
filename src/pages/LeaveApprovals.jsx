@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { CalendarDays, CalendarRange, Check, CheckCircle2, Clock3, FileText, History, Inbox, Timer, X, XCircle } from 'lucide-react';
 import ExportMenu from '../components/ExportMenu';
@@ -8,7 +8,7 @@ import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import usePagination, { sortRecent } from '../hooks/usePagination';
 import { getEmployeeById } from '../services/employeeService';
-import { getAllLeaveRequests, getTeamLeaveRequests, managerLeaveAction, exportLeaveReport } from '../services/leaveService';
+import { getActiveLeaveTypes, getAllLeaveRequests, getTeamLeaveRequests, managerLeaveAction, exportLeaveReport } from '../services/leaveService';
 import { capitalizeName } from '../utils/formatName';
 import { appliedOnOf, formatDate, formatDateTime, isOwnRequest, isPending, leaveErrorMessage } from '../utils/leaveFormat';
 import './LeaveApprovals.css';
@@ -21,6 +21,9 @@ const now = new Date();
 const currentMonth = now.getMonth() + 1;
 const thisYear = now.getFullYear();
 const years = Array.from({ length: 5 }, (_, index) => thisYear - 3 + index);
+
+// Case/whitespace-insensitive key so "Sick Leave", "sick leave " and "SICK LEAVE" are one option.
+const normalize = (value) => String(value ?? '').trim().toLowerCase();
 
 function initials(name = '') {
   return name.split(' ').map((p) => p[0]).join('').slice(0, 2).toUpperCase();
@@ -52,7 +55,12 @@ export default function LeaveApprovals() {
   const canAct = role === 'MANAGER';
   const [rows, setRows] = useState([]);
   const [employeeProfiles, setEmployeeProfiles] = useState({});
+  // Dropdown sources that must NOT depend on the month currently loaded in the table.
+  const [knownEmployees, setKnownEmployees] = useState({});
+  const [masterLeaveTypes, setMasterLeaveTypes] = useState([]);
   const [loading, setLoading] = useState(true);
+  const loadSeq = useRef(0);        // ignores out-of-order responses when filters change quickly
+  const profileCache = useRef({});  // employeeId -> profile, so profiles are fetched once
   const [filters, setFilters] = useState({
     month: currentMonth,
     year: thisYear,
@@ -67,6 +75,7 @@ export default function LeaveApprovals() {
   const [acting, setActing] = useState(false);
 
   const load = useCallback(async () => {
+    const seq = ++loadSeq.current;
     setLoading(true);
     try {
       // Backend GET /leave-requests is NOT scoped to the manager (it returns the whole
@@ -76,56 +85,93 @@ export default function LeaveApprovals() {
       const requests = role === 'MANAGER'
         ? await getTeamLeaveRequests(monthYear)
         : await getAllLeaveRequests(monthYear);
+      if (seq !== loadSeq.current) return; // a newer load superseded this one
       const leaveRequests = Array.isArray(requests) ? requests : [];
       setRows(leaveRequests);
 
-      const employeeIds = Array.from(new Set(
-        leaveRequests
-          .map((request) => request.employeeId)
-          .filter((employeeId) => employeeId != null)
-          .map(String)
-      ));
-      const profiles = await Promise.allSettled(
-        employeeIds.map((employeeId) => getEmployeeById(employeeId))
-      );
-      const profileMap = {};
-      let failedProfiles = 0;
-      profiles.forEach((result, index) => {
-        if (result.status === 'fulfilled') profileMap[employeeIds[index]] = result.value;
-        else failedProfiles += 1;
+      // Remember every employee ever seen so the Employee dropdown keeps its options
+      // when the month changes (instead of shrinking to the current month only).
+      setKnownEmployees((current) => {
+        const next = { ...current };
+        leaveRequests.forEach((request) => {
+          if (request.employeeId == null) return;
+          next[String(request.employeeId)] = {
+            id: request.employeeId,
+            name: request.employeeName || request.employeeCode || `Employee ${request.employeeId}`,
+          };
+        });
+        return next;
       });
-      setEmployeeProfiles(profileMap);
-      if (failedProfiles) {
-        showToast(`Could not load profile details for ${failedProfiles} employee${failedProfiles === 1 ? '' : 's'}.`, 'error');
-      }
     } catch (error) {
+      if (seq !== loadSeq.current) return;
       showToast(error.message || 'Failed to load leave requests.', 'error');
       setRows([]);
     } finally {
-      setLoading(false);
+      // Table + dropdowns are usable as soon as the requests are in; profile details
+      // (designation etc.) are fetched separately below and no longer block the page.
+      if (seq === loadSeq.current) setLoading(false);
     }
   }, [filters.month, filters.year, role, showToast]);
 
   useEffect(() => { load(); }, [load]);
 
+  // Leave types come from the master list, so "Casual Leave" / "Sick Leave" are always
+  // selectable even in a month that has no request of that type yet.
+  useEffect(() => {
+    let ignore = false;
+    getActiveLeaveTypes()
+      .then((list) => {
+        if (ignore) return;
+        setMasterLeaveTypes((Array.isArray(list) ? list : []).map((type) => type?.name).filter(Boolean));
+      })
+      .catch(() => { /* fall back to the types found in the loaded requests */ });
+    return () => { ignore = true; };
+  }, []);
+
+  // Employee profile details load in the background, once per employee.
+  useEffect(() => {
+    let ignore = false;
+    const missing = Array.from(new Set(
+      rows.map((request) => request.employeeId).filter((id) => id != null).map(String)
+    )).filter((id) => !profileCache.current[id]);
+    if (!missing.length) return undefined;
+
+    Promise.allSettled(missing.map((id) => getEmployeeById(id))).then((results) => {
+      if (ignore) return;
+      let failed = 0;
+      results.forEach((result, index) => {
+        if (result.status === 'fulfilled') profileCache.current[missing[index]] = result.value;
+        else failed += 1;
+      });
+      setEmployeeProfiles({ ...profileCache.current });
+      if (failed) showToast(`Could not load profile details for ${failed} employee${failed === 1 ? '' : 's'}.`, 'error');
+    });
+    return () => { ignore = true; };
+  }, [rows, showToast]);
+
   const ordered = useMemo(() => sortRecent(rows, 'startDate'), [rows]);
   const employees = useMemo(() => {
-    const byId = new Map();
-    ordered.forEach((row) => {
-      if (row.employeeId != null) byId.set(String(row.employeeId), {
-        id: row.employeeId,
-        name: row.employeeName || row.employeeCode || `Employee ${row.employeeId}`,
-      });
-    });
-    return Array.from(byId.values()).sort((a, b) => a.name.localeCompare(b.name));
-  }, [ordered]);
-  const leaveTypes = useMemo(() => Array.from(new Set(ordered.map((row) => row.leaveType).filter(Boolean))), [ordered]);
+    const byId = { ...knownEmployees };
+    // Never lose the option that is currently selected.
+    if (filters.employee !== 'ALL' && !byId[String(filters.employee)]) {
+      byId[String(filters.employee)] = { id: filters.employee, name: `Employee ${filters.employee}` };
+    }
+    return Object.values(byId).sort((a, b) => a.name.localeCompare(b.name));
+  }, [knownEmployees, filters.employee]);
+
+  const leaveTypes = useMemo(() => {
+    const byKey = new Map();
+    [...masterLeaveTypes, ...ordered.map((row) => row.leaveType), filters.type !== 'ALL' ? filters.type : null]
+      .filter(Boolean)
+      .forEach((name) => { if (!byKey.has(normalize(name))) byKey.set(normalize(name), String(name).trim()); });
+    return Array.from(byKey.values()).sort((a, b) => a.localeCompare(b));
+  }, [masterLeaveTypes, ordered, filters.type]);
 
   const filtered = useMemo(() => {
     let list = ordered;
     if (filters.employee !== 'ALL') list = list.filter((row) => String(row.employeeId) === String(filters.employee));
     if (filters.status !== 'ALL') list = list.filter((row) => String(row.status || '').toUpperCase() === filters.status);
-    if (filters.type !== 'ALL') list = list.filter((row) => row.leaveType === filters.type);
+    if (filters.type !== 'ALL') list = list.filter((row) => normalize(row.leaveType) === normalize(filters.type));
     return list;
   }, [ordered, filters]);
 
@@ -204,7 +250,7 @@ export default function LeaveApprovals() {
         {cards.map((card) => <article className="lr-stat" key={card.label}><span className={`lr-stat-icon tone-${card.tone}`}><card.icon size={21} /></span><div><small>{card.label}</small><strong>{loading ? '…' : card.value}</strong></div></article>)}
       </section>
 
-      <section className="lr-card">
+      <section className="lr-card" data-testid="team-requests-card" data-state={loading ? 'loading' : 'ready'} aria-busy={loading}>
         <div className="lr-filters">
           <div className="lr-filter">
             <label htmlFor="team-month">Month &amp; year</label>
@@ -222,12 +268,12 @@ export default function LeaveApprovals() {
           </div>
           <div className="lr-filter">
             <label htmlFor="team-employee">Employee</label>
-            <div className="lr-select"><select id="team-employee" value={filters.employee} onChange={(event) => setFilters((value) => ({ ...value, employee: event.target.value }))}><option value="ALL">All employees</option>{employees.map((employee) => <option key={employee.id} value={employee.id}>{capitalizeName(employee.name)}</option>)}</select></div>
+            <div className="lr-select"><select id="team-employee" name="employee" data-testid="team-employee-filter" value={filters.employee} onChange={(event) => setFilters((value) => ({ ...value, employee: event.target.value }))}><option value="ALL">All employees</option>{employees.map((employee) => <option key={employee.id} value={String(employee.id)}>{capitalizeName(employee.name)}</option>)}</select></div>
           </div>
           <div className="lr-filter">
             <label htmlFor="team-status">Status</label>
             <div className="lr-select">
-              <select id="team-status" value={filters.status} onChange={(event) => setFilters((value) => ({ ...value, status: event.target.value }))}>
+              <select id="team-status" name="status" data-testid="team-status-filter" value={filters.status} onChange={(event) => setFilters((value) => ({ ...value, status: event.target.value }))}>
                 <option value="ALL">All statuses</option>
                 <option value="PENDING">Pending</option>
                 <option value="APPROVED">Approved</option>
@@ -238,7 +284,7 @@ export default function LeaveApprovals() {
           <div className="lr-filter">
             <label htmlFor="team-type">Leave type</label>
             <div className="lr-select">
-              <select id="team-type" value={filters.type} onChange={(event) => setFilters((value) => ({ ...value, type: event.target.value }))}>
+              <select id="team-type" name="leaveType" data-testid="team-leave-type-filter" value={filters.type} onChange={(event) => setFilters((value) => ({ ...value, type: event.target.value }))}>
                 <option value="ALL">All leave types</option>
                 {leaveTypes.map((type) => <option key={type} value={type}>{type}</option>)}
               </select>
@@ -250,7 +296,7 @@ export default function LeaveApprovals() {
         </div>
 
         <div className="table-wrap">
-          <table className="la-table">
+          <table className="la-table" data-testid="team-requests-table">
             <thead>
               <tr>
                 <th>Employee</th><th>Leave Type</th><th>Date Range</th><th>Days</th><th>Reason</th><th>Status</th><th>Applied On</th><th>Actions</th>

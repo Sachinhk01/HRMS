@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import {
   CalendarRange,
@@ -92,6 +92,10 @@ export default function Regularization() {
   const [selected, setSelected] = useState({}); // attendanceId -> true
   const [reason, setReason] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const submitLock = useRef(false);                 // blocks double-clicks before state updates
+  const [loadedRange, setLoadedRange] = useState(null); // the range the table was actually loaded for
+  const [showErrors, setShowErrors] = useState(false);  // inline validation after a submit attempt
+  const reasonRef = useRef(null);
 
   // ---- Detail drawer ----
   const [viewItem, setViewItem] = useState(null);
@@ -153,6 +157,23 @@ export default function Regularization() {
 
   const { page, setPage, pageItems } = usePagination(filtered, 5);
 
+  // Attendance days (by id or date) that already sit in a PENDING / PARTIALLY_APPROVED request.
+  const lockedDays = useMemo(() => {
+    const ids = new Set();
+    const dates = new Set();
+    requests
+      .filter((r) => r.status === 'PENDING' || r.status === 'PARTIALLY_APPROVED')
+      .forEach((r) => (r.details || [])
+        .filter((d) => d.status === 'PENDING' || d.status === 'APPROVED')
+        .forEach((d) => {
+          if (d.attendanceId != null) ids.add(String(d.attendanceId));
+          if (d.attendanceDate) dates.add(String(d.attendanceDate).slice(0, 10));
+        }));
+    return { ids, dates };
+  }, [requests]);
+  const isLocked = (rec) => lockedDays.ids.has(String(rec.attendanceId))
+    || lockedDays.dates.has(String(rec.attendanceDate || '').slice(0, 10));
+
   // ---- Load attendance for the chosen range ----
   const loadAttendance = async () => {
     if (!rangeFrom || !rangeTo) {
@@ -183,6 +204,8 @@ export default function Regularization() {
       const eligible = regularizable.filter((rec) => rec.attendanceId != null);
       setAttendanceOptions(eligible);
       setSelected({});
+      setLoadedRange({ from: rangeFrom, to: rangeTo });
+      setShowErrors(false);
       setAttendanceLoaded(true);
       if (regularizable.length > eligible.length) {
         showToast(`${regularizable.length - eligible.length} attendance record(s) skipped because no attendance ID was provided.`, 'info');
@@ -201,6 +224,18 @@ export default function Regularization() {
     setSelected((prev) => ({ ...prev, [attendanceId]: !prev[attendanceId] }));
   };
 
+  // Changing the dates after loading would make the table and the submitted range disagree,
+  // so the loaded records are dropped and must be loaded again.
+  const changeRange = (setter) => (event) => {
+    setter(event.target.value);
+    if (attendanceLoaded) {
+      setAttendanceLoaded(false);
+      setAttendanceOptions([]);
+      setSelected({});
+      setLoadedRange(null);
+    }
+  };
+
   const selectedCount = Object.values(selected).filter(Boolean).length;
 
   const resetForm = () => {
@@ -210,11 +245,19 @@ export default function Regularization() {
     setAttendanceLoaded(false);
     setSelected({});
     setReason('');
+    setLoadedRange(null);
+    setShowErrors(false);
   };
+
+  const reasonMissing = !reason.trim();
 
   const submit = async (event) => {
     event.preventDefault();
-    if (!rangeFrom || !rangeTo) {
+    if (submitLock.current || submitting) return;
+    setShowErrors(true);
+
+    const range = loadedRange || { from: rangeFrom, to: rangeTo };
+    if (!range.from || !range.to) {
       showToast('Please select a date range.', 'error');
       return;
     }
@@ -222,35 +265,38 @@ export default function Regularization() {
       showToast('Please select at least one attendance record.', 'error');
       return;
     }
-    if (!reason.trim()) {
-      showToast('Please provide a reason.', 'error');
+    if (reasonMissing) {
+      // Inline message under the textarea is the only feedback (no duplicate toast).
+      reasonRef.current?.focus();
       return;
     }
 
     const details = attendanceOptions
-      .filter((rec) => selected[rec.attendanceId] && rec.attendanceId != null)
+      .filter((rec) => selected[rec.attendanceId] && rec.attendanceId != null && !isLocked(rec))
       .map((rec) => ({ attendanceId: rec.attendanceId, requestedStatus: 'PRESENT' }));
 
     if (details.length === 0) {
-      showToast('Selected attendance records are missing a valid attendance ID.', 'error');
+      showToast('The selected records are already part of a pending request or have no valid attendance ID.', 'error');
       return;
     }
 
+    submitLock.current = true;
     setSubmitting(true);
     try {
       await createRegularization({
-        fromDate: rangeFrom,
-        toDate: rangeTo,
+        fromDate: range.from,
+        toDate: range.to,
         reason: reason.trim(),
         details,
       });
-      resetForm();
-      await load();
-      setPage(1);
       showToast('Regularization request submitted successfully.', 'success');
+      resetForm();
+      setPage(1);
+      await load();
     } catch (error) {
       showToast(error.message || 'Failed to submit regularization request.', 'error');
     } finally {
+      submitLock.current = false;
       setSubmitting(false);
     }
   };
@@ -466,11 +512,11 @@ export default function Regularization() {
         <div className="reg-range-row">
           <div className="reg-field">
             <label htmlFor="reg-from">From Date</label>
-            <DatePicker id="reg-from" value={rangeFrom} onChange={(e) => setRangeFrom(e.target.value)} />
+            <DatePicker id="reg-from" value={rangeFrom} onChange={changeRange(setRangeFrom)} />
           </div>
           <div className="reg-field">
             <label htmlFor="reg-to">To Date</label>
-            <DatePicker id="reg-to" value={rangeTo} onChange={(e) => setRangeTo(e.target.value)} />
+            <DatePicker id="reg-to" value={rangeTo} onChange={changeRange(setRangeTo)} />
           </div>
           <button type="button" className="btn btn-primary" onClick={loadAttendance} disabled={loadingAttendance}>
             <CalendarRange size={16} />
@@ -479,7 +525,7 @@ export default function Regularization() {
         </div>
 
         {attendanceLoaded && (
-          <form onSubmit={submit} className="reg-create-form">
+          <form onSubmit={submit} className="reg-create-form" noValidate data-testid="reg-create-form">
             {attendanceOptions.length === 0 ? (
               <div className="empty-state">
                 <Inbox size={30} />
@@ -501,11 +547,15 @@ export default function Regularization() {
                   </thead>
                   <tbody>
                     {attendanceOptions.map((rec) => (
-                      <tr key={rec.attendanceId}>
+                      <tr key={rec.attendanceId} className={isLocked(rec) ? 'is-locked' : undefined}>
                         <td>
                           <input
                             type="checkbox"
+                            data-testid={`reg-row-${rec.attendanceId}`}
+                            aria-label={`Select ${fmtDate(rec.attendanceDate)}`}
                             checked={!!selected[rec.attendanceId]}
+                            disabled={isLocked(rec)}
+                            title={isLocked(rec) ? 'Already part of a pending request' : undefined}
                             onChange={() => toggleRow(rec.attendanceId)}
                           />
                         </td>
@@ -513,7 +563,7 @@ export default function Regularization() {
                         <td><StatusBadge tone={rec.attendanceStatus}>{rec.attendanceStatus}</StatusBadge></td>
                         <td>{rec.checkInTime || '—'}</td>
                         <td>{rec.checkOutTime || '—'}</td>
-                        <td><span className="reg-target-pill">PRESENT</span></td>
+                        <td><span className="reg-target-pill">PRESENT</span>{isLocked(rec) && <small> · already requested</small>}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -525,6 +575,9 @@ export default function Regularization() {
               <label htmlFor="reg-reason">Reason</label>
               <textarea
                 id="reg-reason"
+                ref={reasonRef}
+                aria-invalid={showErrors && reasonMissing}
+                aria-describedby="reg-reason-error"
                 maxLength={INPUT_LIMITS.REASON}
                 rows={3}
                 placeholder="e.g. Biometric device was not working on these days"
@@ -532,11 +585,14 @@ export default function Regularization() {
                 onChange={(e) => setReason(e.target.value)}
               />
               <small className="reg-char-count">{reason.length}/{INPUT_LIMITS.REASON}</small>
+              {showErrors && reasonMissing && (
+                <small id="reg-reason-error" role="alert" style={{ color: '#dc2626' }}>Please enter a reason for the request.</small>
+              )}
             </div>
 
             <div className="reg-form-actions">
               <span className="reg-selected-count">{selectedCount} record{selectedCount === 1 ? '' : 's'} selected</span>
-              <button type="submit" className="btn btn-primary" disabled={submitting || selectedCount === 0}>
+              <button type="submit" className="btn btn-primary" data-testid="reg-submit" disabled={submitting || selectedCount === 0}>
                 {submitting ? 'Submitting…' : 'Submit Request'}
               </button>
             </div>
