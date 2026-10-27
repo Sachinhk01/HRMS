@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import {
   CalendarRange,
@@ -100,6 +100,9 @@ export default function Regularization() {
   // ---- Detail drawer ----
   const [viewItem, setViewItem] = useState(null);
   const [viewLoading, setViewLoading] = useState(false);
+  // Ticket for the latest "open details" request. Closing the modal bumps it, so a slow
+  // response that arrives after the user pressed Close can no longer re-open the modal.
+  const viewTicket = useRef(0);
 
   // ---- Edit / cancel (pending requests only) ----
   const [editItem, setEditItem] = useState(null);
@@ -301,17 +304,26 @@ export default function Regularization() {
     }
   };
 
+  const closeDetails = useCallback(() => {
+    viewTicket.current += 1;      // invalidate any in-flight "open details" request
+    setViewItem(null);
+    setViewLoading(false);
+  }, []);
+
   const openDetails = async (id) => {
+    const ticket = ++viewTicket.current;
     setViewLoading(true);
     setViewItem({ id });
     try {
       const data = await getRegularizationById(id);
+      if (ticket !== viewTicket.current) return;   // closed (or another request opened) meanwhile
       setViewItem(data);
     } catch (error) {
+      if (ticket !== viewTicket.current) return;
       showToast(error.message || 'Failed to load request details.', 'error');
       setViewItem(null);
     } finally {
-      setViewLoading(false);
+      if (ticket === viewTicket.current) setViewLoading(false);
     }
   };
 
@@ -320,7 +332,7 @@ export default function Regularization() {
       showToast('Only pending requests can be edited.', 'error');
       return;
     }
-    setViewItem(null);
+    closeDetails();
     setEditItem(item);
     setEditReason(item.reason || '');
   };
@@ -330,6 +342,24 @@ export default function Regularization() {
     setEditItem(null);
     setEditReason('');
   };
+
+  // Escape closes whichever modal is open (the edit modal wins if both somehow are).
+  useEffect(() => {
+    if (!viewItem && !editItem) return undefined;
+    const onKeyDown = (event) => {
+      if (event.key !== 'Escape') return;
+      if (editItem) {
+        if (!savingEdit) {
+          setEditItem(null);
+          setEditReason('');
+        }
+      } else {
+        closeDetails();
+      }
+    };
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
+  }, [viewItem, editItem, savingEdit, closeDetails]);
 
   const saveEdit = async (event) => {
     event.preventDefault();
@@ -378,7 +408,7 @@ export default function Regularization() {
     setCancellingId(item.id);
     try {
       await cancelRegularization(item.id);
-      setViewItem(null);
+      closeDetails();
       await load();
       showToast('Regularization request cancelled.', 'success');
     } catch (error) {
@@ -713,10 +743,27 @@ export default function Regularization() {
 
       {/* ---------- Detail drawer/modal ---------- */}
       {viewItem && (
-        <div className="modal-overlay" onClick={() => setViewItem(null)}>
-          <div className="modal-card reg-detail-card" onClick={(e) => e.stopPropagation()}>
-            <button type="button" className="reg-modal-close" onClick={() => setViewItem(null)} aria-label="Close">
-              <X size={18} />
+        <div
+          className="modal-overlay"
+          data-testid="reg-detail-overlay"
+          onMouseDown={(e) => { if (e.target === e.currentTarget) closeDetails(); }}
+        >
+          <div
+            className="modal-card reg-detail-card"
+            role="dialog"
+            aria-modal="true"
+            aria-label={viewItem.id ? `Request #${viewItem.id}` : 'Request details'}
+            data-testid="reg-detail-modal"
+          >
+            <button
+              type="button"
+              className="reg-modal-close"
+              data-testid="reg-detail-close"
+              onClick={closeDetails}
+              aria-label="Close"
+              title="Close"
+            >
+              <X size={18} aria-hidden="true" />
             </button>
             {viewLoading || !viewItem.details ? (
               <div className="reg-detail-loading">Loading…</div>
@@ -773,10 +820,28 @@ export default function Regularization() {
 
       {/* ---------- Edit request modal ---------- */}
       {editItem && (
-        <div className="modal-overlay" onClick={closeEdit}>
-          <form className="modal-card reg-detail-card reg-edit-card" onClick={(e) => e.stopPropagation()} onSubmit={saveEdit}>
-            <button type="button" className="reg-modal-close" onClick={closeEdit} aria-label="Close">
-              <X size={18} />
+        <div
+          className="modal-overlay"
+          data-testid="reg-edit-overlay"
+          onMouseDown={(e) => { if (e.target === e.currentTarget) closeEdit(); }}
+        >
+          <form
+            className="modal-card reg-detail-card reg-edit-card"
+            role="dialog"
+            aria-modal="true"
+            aria-label={`Edit request #${editItem.id}`}
+            data-testid="reg-edit-modal"
+            onSubmit={saveEdit}
+          >
+            <button
+              type="button"
+              className="reg-modal-close"
+              data-testid="reg-edit-close"
+              onClick={closeEdit}
+              aria-label="Close"
+              title="Close"
+            >
+              <X size={18} aria-hidden="true" />
             </button>
             <h3>Edit Request #{editItem.id}</h3>
             <p className="reg-detail-sub">
@@ -817,7 +882,7 @@ export default function Regularization() {
             </div>
 
             <div className="reg-detail-actions">
-              <button type="button" className="btn btn-secondary" onClick={closeEdit} disabled={savingEdit}>Close</button>
+              <button type="button" className="btn btn-secondary" data-testid="reg-edit-cancel" onClick={closeEdit} disabled={savingEdit}>Close</button>
               <button type="submit" className="btn btn-primary" disabled={savingEdit || !editReason.trim()}>
                 {savingEdit ? 'Saving…' : 'Save Changes'}
               </button>

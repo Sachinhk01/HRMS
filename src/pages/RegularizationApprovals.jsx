@@ -1,5 +1,5 @@
 import DatePicker from '../components/DatePicker';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import {
   ClipboardList,
@@ -100,6 +100,9 @@ export default function RegularizationApprovals() {
   // Detail modal
   const [selected, setSelected] = useState(null); // { id, ...full detail } or { id } while loading
   const [modalLoading, setModalLoading] = useState(false);
+  // Ticket for the latest open/refresh request; closing the modal bumps it so a late
+  // response can't re-open a modal the reviewer has already closed.
+  const reviewTicket = useRef(0);
 
   // Per-line action state
   const [actionTarget, setActionTarget] = useState(null); // { detailId, type: 'approve'|'reject'|'revert' }
@@ -180,23 +183,28 @@ export default function RegularizationApprovals() {
   ];
 
   const openRequest = async (id) => {
+    const ticket = ++reviewTicket.current;
     setModalLoading(true);
     setSelected({ id });
     try {
       const data = await getRegularizationById(id);
+      if (ticket !== reviewTicket.current) return;
       setSelected(data);
     } catch (error) {
+      if (ticket !== reviewTicket.current) return;
       showToast(error.message || 'Failed to load request details.', 'error');
       setSelected(null);
     } finally {
-      setModalLoading(false);
+      if (ticket === reviewTicket.current) setModalLoading(false);
     }
   };
 
   const refreshOpenRequest = async () => {
     if (!selected?.id) return;
+    const ticket = reviewTicket.current;
     try {
       const data = await getRegularizationById(selected.id);
+      if (ticket !== reviewTicket.current) return;   // modal was closed while refreshing
       setSelected(data);
     } catch {
       /* keep whatever is currently shown if refresh fails */
@@ -212,6 +220,22 @@ export default function RegularizationApprovals() {
     setActionTarget(null);
     setRemarks('');
   };
+
+  const closeReview = () => {
+    reviewTicket.current += 1;     // invalidate any in-flight open/refresh request
+    setSelected(null);
+    setModalLoading(false);
+    cancelAction();
+  };
+
+  // Escape closes the review modal.
+  useEffect(() => {
+    if (!selected) return undefined;
+    const onKeyDown = (event) => { if (event.key === 'Escape') closeReview(); };
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selected]);
 
   const confirmAction = async () => {
     if (!actionTarget || !selected?.id) return;
@@ -394,10 +418,27 @@ export default function RegularizationApprovals() {
 
       {/* ---------- Review modal ---------- */}
       {selected && (
-        <div className="modal-overlay" onClick={() => { setSelected(null); cancelAction(); }}>
-          <div className="modal-card reg-detail-card" onClick={(e) => e.stopPropagation()}>
-            <button type="button" className="reg-modal-close" onClick={() => { setSelected(null); cancelAction(); }} aria-label="Close">
-              <X size={18} />
+        <div
+          className="modal-overlay"
+          data-testid="reg-review-overlay"
+          onMouseDown={(e) => { if (e.target === e.currentTarget) closeReview(); }}
+        >
+          <div
+            className="modal-card reg-detail-card"
+            role="dialog"
+            aria-modal="true"
+            aria-label={selected.id ? `Request ${selected.id}` : 'Request details'}
+            data-testid="reg-review-modal"
+          >
+            <button
+              type="button"
+              className="reg-modal-close"
+              data-testid="reg-review-close"
+              onClick={closeReview}
+              aria-label="Close"
+              title="Close"
+            >
+              <X size={18} aria-hidden="true" />
             </button>
 
             {modalLoading || !selected.details ? (

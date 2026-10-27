@@ -241,11 +241,17 @@ tbody tr:last-child td { border-bottom: none; }
 }
 .reg-detail-reason strong { display: block; font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: #64748b; margin-bottom: 4px; font-weight: 700; }
 .reg-modal-close {
-  position: absolute; top: 16px; right: 16px;
+  /* Sticky + float keeps the X visible and clickable even when the card scrolls
+     (an absolutely positioned X scrolled away with the content). */
+  position: sticky; top: 0; float: right; z-index: 20;
+  margin: -10px -10px 0 8px;
   border: none; background: #f1f5f9; border-radius: 10px;
-  width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;
-  cursor: pointer; color: #64748b;
+  width: 32px; height: 32px; padding: 0; display: flex; align-items: center; justify-content: center;
+  cursor: pointer; color: #64748b; pointer-events: auto;
 }
+.reg-modal-close:hover { background: #e2e8f0; color: #0f172a; }
+.reg-modal-close:focus-visible { outline: 2px solid #2563eb; outline-offset: 2px; }
+.reg-modal-close svg { pointer-events: none; } /* the click always lands on the <button> itself */
 .reg-detail-loading { padding: 30px; text-align: center; color: #64748b; font-size: 14px; }
 .reg-char-count { align-self: flex-end; font-size: 11px; color: #64748b; }
 
@@ -463,6 +469,9 @@ tbody tr:last-child td { border-bottom: none; }
 .regularization-page .empty-state svg { animation: rg-float 4s ease-in-out infinite; }
 .regularization-page .modal-overlay { animation: rg-fade .2s ease both; }
 .regularization-page .modal-card { animation: rg-modal .3s cubic-bezier(.16, 1, .3, 1) both; }
+/* Detail / edit / review modals: fade only (no moving or scaling card), so the Close button
+   is never "moving" when a user or an automation tool clicks it. */
+.modal-overlay .modal-card.reg-detail-card { animation: rg-fade .15s ease both; transform: none; }
 
 /* ---------- KEYFRAMES ---------- */
 @keyframes rg-aurora { from { transform: translate(0, 0) scale(1); } to { transform: translate(-40px, 22px) scale(1.15); } }
