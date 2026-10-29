@@ -82,6 +82,7 @@ export default function CelebrationWall() {
   const [commentDrafts, setCommentDrafts] = useState({});
   const [composerOpen, setComposerOpen] = useState(false);
   const [creating, setCreating] = useState(false);
+  const [formErrors, setFormErrors] = useState({});
   const [celebrationForm, setCelebrationForm] = useState({ type: 'GENERAL', title: '', message: '', eventDate: '', taggedPeople: [] });
   const [celebrationFiles, setCelebrationFiles] = useState([]);
   const [employees, setEmployees] = useState([]);
@@ -182,6 +183,22 @@ export default function CelebrationWall() {
 
   const handleCreateCelebration = async (event) => {
     event.preventDefault();
+    // Custom validation (the form is noValidate) so the messages are real DOM
+    // elements that automation tools can read, and whitespace-only values are rejected.
+    const trimmedTitle = celebrationForm.title.trim();
+    const trimmedMessage = celebrationForm.message.trim();
+    const nextErrors = {};
+    if (!trimmedTitle) nextErrors.title = 'Title is required.';
+    if (!trimmedMessage) nextErrors.message = 'Message is required.';
+    setFormErrors(nextErrors);
+    if (nextErrors.title) {
+      document.getElementById('celebration-title')?.focus();
+      return;
+    }
+    if (nextErrors.message) {
+      document.getElementById('celebration-message')?.focus();
+      return;
+    }
     const photoError = validatePhotos(celebrationFiles);
     if (photoError) {
       showToast(photoError, 'error');
@@ -189,8 +206,9 @@ export default function CelebrationWall() {
     }
     setCreating(true);
     try {
-      await createCelebration({ ...celebrationForm, attachments: celebrationFiles });
+      await createCelebration({ ...celebrationForm, title: trimmedTitle, message: trimmedMessage, attachments: celebrationFiles });
       setCelebrationForm({ type: 'GENERAL', title: '', message: '', eventDate: '', taggedPeople: [] });
+      setFormErrors({});
       setCelebrationFiles([]);
       setTagSearch('');
       setComposerOpen(false);
@@ -250,14 +268,55 @@ export default function CelebrationWall() {
       {canCreateCelebration && composerOpen && (
         <section className="panel celebration-composer">
           <div className="celebration-composer-head"><div><span className="eyebrow">HR Celebration</span><h2>Add a Celebration</h2></div><button type="button" className="icon-btn" onClick={() => setComposerOpen(false)} aria-label="Close"><X size={18} /></button></div>
-          <form className="celebration-form" onSubmit={handleCreateCelebration}>
-            <label>Celebration Type<select value={celebrationForm.type} onChange={(e) => setCelebrationForm((value) => ({ ...value, type: e.target.value }))}><option value="GENERAL">General Celebration</option><option value="BIRTHDAY">Birthday</option><option value="WORK_ANNIVERSARY">Work Anniversary</option></select></label>
-            <label>Celebration Date<DatePicker id="celebration-date" value={celebrationForm.eventDate} onChange={(e) => setCelebrationForm((value) => ({ ...value, eventDate: e.target.value }))} /></label>
-            <label className="full-span">Title<input value={celebrationForm.title} maxLength={100} onChange={(e) => setCelebrationForm((value) => ({ ...value, title: e.target.value }))} required /></label>
-            <label className="full-span">Message<textarea rows={4} value={celebrationForm.message} maxLength={messageLimit} onChange={(e) => setCelebrationForm((value) => ({ ...value, message: e.target.value }))} required /></label>
+          <form className="celebration-form" onSubmit={handleCreateCelebration} noValidate data-testid="celebration-form">
+            <label htmlFor="celebration-type"><span>Celebration Type</span><select id="celebration-type" name="type" data-testid="celebration-type-select" value={celebrationForm.type} onChange={(e) => setCelebrationForm((value) => ({ ...value, type: e.target.value }))}><option value="GENERAL">General Celebration</option><option value="BIRTHDAY">Birthday</option><option value="WORK_ANNIVERSARY">Work Anniversary</option></select></label>
+            <label><span>Celebration Date</span><DatePicker id="celebration-date" value={celebrationForm.eventDate} onChange={(e) => setCelebrationForm((value) => ({ ...value, eventDate: e.target.value }))} /></label>
+            <label className="full-span" htmlFor="celebration-title">
+              <span>Title</span>
+              <input
+                id="celebration-title"
+                name="title"
+                type="text"
+                data-testid="celebration-title-input"
+                autoComplete="off"
+                value={celebrationForm.title}
+                maxLength={100}
+                aria-required="true"
+                aria-invalid={formErrors.title ? 'true' : 'false'}
+                aria-describedby={formErrors.title ? 'celebration-title-error' : undefined}
+                onChange={(e) => {
+                  const { value } = e.target;
+                  setCelebrationForm((current) => ({ ...current, title: value }));
+                  if (formErrors.title) setFormErrors((current) => ({ ...current, title: '' }));
+                }}
+                required
+              />
+              {formErrors.title && <small id="celebration-title-error" className="celebration-field-error" role="alert" data-testid="celebration-title-error">{formErrors.title}</small>}
+            </label>
+            <label className="full-span" htmlFor="celebration-message">
+              <span>Message</span>
+              <textarea
+                id="celebration-message"
+                name="message"
+                data-testid="celebration-message-input"
+                rows={4}
+                value={celebrationForm.message}
+                maxLength={messageLimit}
+                aria-required="true"
+                aria-invalid={formErrors.message ? 'true' : 'false'}
+                aria-describedby={formErrors.message ? 'celebration-message-error' : undefined}
+                onChange={(e) => {
+                  const { value } = e.target;
+                  setCelebrationForm((current) => ({ ...current, message: value }));
+                  if (formErrors.message) setFormErrors((current) => ({ ...current, message: '' }));
+                }}
+                required
+              />
+              {formErrors.message && <small id="celebration-message-error" className="celebration-field-error" role="alert" data-testid="celebration-message-error">{formErrors.message}</small>}
+            </label>
             <div className="full-span celebration-tags-field">
               <div className="celebration-tags-title"><span><Users size={17} /> Tag People</span><small>{celebrationForm.taggedPeople.length} selected</small></div>
-              <input maxLength={INPUT_LIMITS.SEARCH} className="celebration-tag-search" value={tagSearch} onChange={(e) => setTagSearch(e.target.value)} placeholder="Search employee name or ID" />
+              <input id="celebration-tag-search" name="tagSearch" data-testid="celebration-tag-search" aria-label="Search employee name or ID" maxLength={INPUT_LIMITS.SEARCH} className="celebration-tag-search" value={tagSearch} onChange={(e) => setTagSearch(e.target.value)} placeholder="Search employee name or ID" />
               <div className="celebration-tag-list">
                 {employees.filter((employee) => `${employee.employeeName} ${employee.employeeCode}`.toLowerCase().includes(tagSearch.toLowerCase())).map((employee) => {
                   const selected = celebrationForm.taggedPeople.some((person) => String(person.id) === String(employee.id));
@@ -270,8 +329,8 @@ export default function CelebrationWall() {
               <label className="celebration-file"><ImagePlus size={17} /> Add Photos (PNG or JPG)<input type="file" accept={PHOTO_ACCEPT} multiple hidden onChange={(e) => setCelebrationFiles(Array.from(e.target.files || []))} /></label>
               {celebrationFiles.length > 0 && <span>{celebrationFiles.length} photo{celebrationFiles.length > 1 ? 's' : ''} selected</span>}
               <div className="celebration-form-buttons">
-                <button type="button" className="btn btn-soft" onClick={() => setComposerOpen(false)}>Cancel</button>
-                <button className="btn celebration-publish-btn" disabled={creating}><Send size={17} />{creating ? 'Publishing…' : 'Publish Celebration'}</button>
+                <button type="button" className="btn btn-soft" data-testid="celebration-cancel-btn" onClick={() => setComposerOpen(false)}>Cancel</button>
+                <button type="submit" className="btn celebration-publish-btn" data-testid="celebration-publish-btn" disabled={creating}><Send size={17} />{creating ? 'Publishing…' : 'Publish Celebration'}</button>
               </div>
             </div>
           </form>

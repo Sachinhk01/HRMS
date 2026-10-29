@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { useToast } from '../../context/ToastContext';
 import { useConfirm } from '../../context/ConfirmContext';
+import { INPUT_LIMITS } from '../../utils/inputLimits';
 import {
   listDepartments, createDepartment, updateDepartment, setDepartmentStatus, deleteDepartment,
   listDesignations, createDesignation, updateDesignation, setDesignationStatus, deleteDesignation,
@@ -27,7 +28,6 @@ import {
 import './MasterDataSettings.css';
 
 const PAGE_SIZE = 10;
-const SEARCH_MAX_LENGTH = 100;
 
 // One config per resource drives the whole table + form — see
 // MasterModule_frontendGuide.pdf for the backend contract this mirrors.

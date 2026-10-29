@@ -60,7 +60,8 @@ export default function Payroll() {
   const role = user?.role || user?.roles?.[0];
   const isAdmin = ADMIN_ROLES.includes(role);
 
-  const [tab, setTab] = useState("runs");
+  // Open on Payment Details (the first tab) instead of Salary Slip.
+  const [tab, setTab] = useState("payment");
   const visibleTabs = TABS.filter((item) => item.roles.includes(role));
 
   if (!isAdmin) {
