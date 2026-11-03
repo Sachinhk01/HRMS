@@ -212,6 +212,11 @@ export default function TopBar() {
         <label className="searchbox">
           <Search size={17} />
           <input maxLength={INPUT_LIMITS.SEARCH}
+            id="global-search-input"
+            name="globalSearch"
+            type="text"
+            data-testid="global-search-input"
+            autoComplete="off"
             placeholder="Search anything..."
             value={query}
             onChange={(e) => {

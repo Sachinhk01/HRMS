@@ -191,13 +191,14 @@ export default function SalaryTemplatesPanel() {
         <div className="payroll-toolbar" style={{ marginBottom: 0 }}>
           <div className="payroll-search">
             <Search size={17} />
-            <input maxLength={INPUT_LIMITS.SEARCH} value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search by employee type" />
+            <input id="template-search" name="templateSearch" data-testid="template-search-input" maxLength={INPUT_LIMITS.SEARCH} value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search by employee type" autoComplete="off" />
           </div>
-          <StatusFilter value={statusFilter} onChange={setStatusFilter} counts={statusCounts} />
+          <StatusFilter testId="template-status-filter" value={statusFilter} onChange={setStatusFilter} counts={statusCounts} />
           {!showForm && (
             <button
               type="button"
               className="btn btn-primary"
+              data-testid="template-new-btn"
               onClick={() => { resetForm(); setShowForm(true); }}
             >
               <Plus size={18} /> New Template
@@ -281,7 +282,7 @@ export default function SalaryTemplatesPanel() {
                 </tr>
               )}
               {!loading && filtered.map((item) => (
-                <tr key={item.id}>
+                <tr key={item.id} data-testid={`template-row-${item.id}`} data-type={item.employeeType} data-active={item.active ? "true" : "false"}>
                   <td>
                     <strong>{item.employeeType.replace("_", " ")}</strong>
                   </td>
@@ -292,14 +293,14 @@ export default function SalaryTemplatesPanel() {
                     <strong>{formatINR(calculateTotalDeductions(item))}</strong>
                   </td>
                   <td>
-                    <span className={`payroll-badge st-${item.active ? "ACTIVE" : "INACTIVE"}`}>
+                    <span className={`payroll-badge st-${item.active ? "ACTIVE" : "INACTIVE"}`} data-testid={`template-status-${item.id}`}>
                       {item.active ? "ACTIVE" : "INACTIVE"}
                     </span>
                   </td>
                   <td>
                     <div className="payroll-actions">
-                      <button type="button" title="Edit template" onClick={() => beginEdit(item)}><Pencil size={16} /></button>
-                      <button type="button" title={item.active ? "Deactivate" : "Activate"} onClick={() => toggleActive(item)}>
+                      <button type="button" title="Edit template" data-testid={`template-edit-${item.id}`} onClick={() => beginEdit(item)}><Pencil size={16} /></button>
+                      <button type="button" title={item.active ? "Deactivate" : "Activate"} data-testid={`template-toggle-${item.id}`} onClick={() => toggleActive(item)}>
                         <Power size={16} />
                       </button>
                     </div>

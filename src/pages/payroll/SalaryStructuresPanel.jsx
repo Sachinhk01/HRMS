@@ -135,7 +135,7 @@ export default function SalaryStructuresPanel() {
             <Search size={17} />
             <input maxLength={INPUT_LIMITS.SEARCH} value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search employee or code" />
           </div>
-          <StatusFilter value={statusFilter} onChange={setStatusFilter} counts={statusCounts} />
+          <StatusFilter testId="structure-status-filter" value={statusFilter} onChange={setStatusFilter} counts={statusCounts} />
           <button type="button" className="btn btn-primary" onClick={beginCreate}>
             <Plus size={18} /> New Structure
           </button>

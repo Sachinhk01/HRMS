@@ -127,24 +127,39 @@ export function EmptyState({ icon: Icon, title, note }) {
   );
 }
 
-export function StatusFilter({ value, onChange, counts = {} }) {
+/**
+ * Active / Inactive / All filter.
+ * Automation hooks (the visible text "Active" is also inside "Inactive", "Activate", "Deactivate"
+ * and the ACTIVE row badges, so locate these buttons by test id, not by text):
+ *   group  : data-testid="<prefix>"                      (default "status-filter")
+ *   button : data-testid="<prefix>-active|inactive|all", data-filter="ACTIVE|INACTIVE|ALL"
+ *   count  : data-testid="<prefix>-active-count" ...      (button also has data-count)
+ * Accessible name of each button is exactly "Active", "Inactive" or "All".
+ */
+export function StatusFilter({ value, onChange, counts = {}, testId = "status-filter" }) {
   const options = [
     ["ACTIVE", "Active"],
     ["INACTIVE", "Inactive"],
     ["ALL", "All"],
   ];
   return (
-    <div className="payroll-status-filter" role="group" aria-label="Filter by status">
+    <div className="payroll-status-filter" role="group" aria-label="Filter by status" data-testid={testId} data-value={value}>
       {options.map(([key, label]) => (
         <button
           key={key}
           type="button"
+          id={`${testId}-${key.toLowerCase()}`}
+          name={`${testId}-${key.toLowerCase()}`}
           className={value === key ? "is-active" : ""}
           aria-pressed={value === key}
+          aria-label={label}
+          data-testid={`${testId}-${key.toLowerCase()}`}
+          data-filter={key}
+          data-count={counts[key] != null ? counts[key] : undefined}
           onClick={() => onChange(key)}
         >
           {label}
-          {counts[key] != null && <span>{counts[key]}</span>}
+          {counts[key] != null && <span aria-hidden="true" data-testid={`${testId}-${key.toLowerCase()}-count`}>{counts[key]}</span>}
         </button>
       ))}
     </div>

@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { Landmark, Pencil, Plus, Search, Trash2 } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Check, ChevronDown, Landmark, Pencil, Plus, Search, Trash2 } from "lucide-react";
 import {
   createPaymentDetails,
   deletePaymentDetails,
@@ -12,6 +12,7 @@ import { EmptyState } from "./payrollUi";
 import { useConfirm } from "../../context/ConfirmContext";
 import { useToast } from "../../context/ToastContext";
 import { INPUT_LIMITS } from '../../utils/inputLimits';
+import './PaymentDetailsPanel.css';
 
 const EMPTY_FORM = {
   panNumber: "",
@@ -55,6 +56,126 @@ function validatePaymentDetails(form) {
     return "ESI number must contain exactly 17 digits.";
   }
   return "";
+}
+
+/**
+ * Employee dropdown for Payment Details.
+ *
+ * Replaces the native <select>: a native select opens an OS-drawn popup that is not part of the
+ * page DOM, so Selenium / Playwright / Cypress cannot click its options. This one is plain DOM:
+ *   button  : data-testid="payment-employee-select"  (role="combobox", aria-expanded)
+ *   list    : data-testid="payment-employee-list"    (role="listbox")
+ *   option  : data-testid="payment-employee-option-<employeeId>", data-value="<employeeId>"
+ *   reset   : data-testid="payment-employee-option-none"
+ */
+function EmployeeSelect({ employees, value, onChange, loading }) {
+  const [open, setOpen] = useState(false);
+  const [active, setActive] = useState(0);
+  const wrapRef = useRef(null);
+  const listRef = useRef(null);
+
+  const placeholder = loading
+    ? "Loading employees…"
+    : employees.length === 0
+      ? "No employees found"
+      : "Select an employee…";
+
+  const selected = employees.find((item) => String(item.id) === String(value)) || null;
+  const options = useMemo(() => [{ id: "", none: true }, ...employees], [employees]);
+
+  useEffect(() => {
+    if (!open) return undefined;
+    const onDown = (event) => {
+      if (wrapRef.current && !wrapRef.current.contains(event.target)) setOpen(false);
+    };
+    document.addEventListener("mousedown", onDown);
+    return () => document.removeEventListener("mousedown", onDown);
+  }, [open]);
+
+  useEffect(() => {
+    if (open) listRef.current?.querySelector('[data-active="true"]')?.scrollIntoView({ block: "nearest" });
+  }, [active, open]);
+
+  function openList() {
+    if (loading) return;
+    const index = selected ? options.findIndex((o) => String(o.id) === String(selected.id)) : 0;
+    setActive(Math.max(index, 0));
+    setOpen(true);
+  }
+
+  function choose(option) {
+    onChange(option.none ? "" : String(option.id));
+    setOpen(false);
+  }
+
+  function onKeyDown(event) {
+    if (event.key === "ArrowDown") {
+      event.preventDefault();
+      if (!open) openList();
+      else setActive((i) => Math.min(i + 1, options.length - 1));
+    } else if (event.key === "ArrowUp") {
+      event.preventDefault();
+      if (open) setActive((i) => Math.max(i - 1, 0));
+    } else if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      if (!open) openList();
+      else if (options[active]) choose(options[active]);
+    } else if (event.key === "Escape" || event.key === "Tab") {
+      setOpen(false);
+    }
+  }
+
+  return (
+    <div className="pd-select" ref={wrapRef}>
+      <button
+        type="button"
+        id="payment-employee-select"
+        name="employeeId"
+        className={`pd-select-btn${open ? " is-open" : ""}`}
+        role="combobox"
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        aria-controls="payment-employee-list"
+        aria-label="Select an employee"
+        data-testid="payment-employee-select"
+        data-value={selected ? String(selected.id) : ""}
+        disabled={loading}
+        onClick={() => (open ? setOpen(false) : openList())}
+        onKeyDown={onKeyDown}
+      >
+        <span className={selected ? "" : "pd-select-placeholder"}>
+          {selected ? `${selected.employeeCode} · ${selected.employeeName}` : placeholder}
+        </span>
+        <ChevronDown size={16} />
+      </button>
+
+      {open && (
+        <ul className="pd-select-list" id="payment-employee-list" role="listbox" ref={listRef} data-testid="payment-employee-list">
+          {options.map((option, index) => {
+            const isSelected = option.none ? !selected : selected && String(selected.id) === String(option.id);
+            return (
+              <li
+                key={option.none ? "none" : option.id}
+                role="option"
+                aria-selected={Boolean(isSelected)}
+                data-active={index === active}
+                data-value={option.none ? "" : String(option.id)}
+                data-testid={option.none ? "payment-employee-option-none" : `payment-employee-option-${option.id}`}
+                className={`pd-select-option${index === active ? " is-active" : ""}${isSelected ? " is-selected" : ""}`}
+                onMouseEnter={() => setActive(index)}
+                onMouseDown={(event) => event.preventDefault()}
+                onClick={() => choose(option)}
+              >
+                <span>{option.none ? placeholder : `${option.employeeCode} · ${option.employeeName}`}</span>
+                {isSelected && <Check size={15} />}
+              </li>
+            );
+          })}
+          {employees.length === 0 && !loading && <li className="pd-select-empty">No employees found</li>}
+        </ul>
+      )}
+    </div>
+  );
 }
 
 export default function PaymentDetailsPanel() {
@@ -207,26 +328,16 @@ export default function PaymentDetailsPanel() {
         <div className="payroll-toolbar" style={{ marginBottom: 0 }}>
           <div className="payroll-search">
             <Search size={17} />
-            <input maxLength={INPUT_LIMITS.SEARCH} value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search employee…" />
+            <input id="payment-employee-search" name="employeeSearch" data-testid="payment-employee-search" maxLength={INPUT_LIMITS.SEARCH} value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search employee…" autoComplete="off" />
           </div>
-          <select
-            className="compact-select payroll-employee-select"
+          <EmployeeSelect
+            employees={filtered}
             value={selectedId}
-            onChange={(event) => setSelectedId(event.target.value)}
-          >
-            <option value="">
-              {employeesLoading
-                ? "Loading employees…"
-                : filtered.length === 0
-                  ? "No employees found"
-                  : "Select an employee…"}
-            </option>
-            {filtered.map((item) => (
-              <option key={item.id} value={item.id}>{item.employeeCode} · {item.employeeName}</option>
-            ))}
-          </select>
+            onChange={setSelectedId}
+            loading={employeesLoading}
+          />
           {selectedId && !details && (
-            <button type="button" className="btn btn-primary" onClick={beginCreate}>
+            <button type="button" className="btn btn-primary" data-testid="payment-add-details-btn" onClick={beginCreate}>
               <Plus size={18} /> Add Details
             </button>
           )}
@@ -290,22 +401,22 @@ export default function PaymentDetailsPanel() {
               <h2>{details ? `Edit ${details.employeeName}'s details` : `Add payment details · ${selectedEmployee?.employeeName || ""}`}</h2>
             </div>
           </div>
-          <form className="payroll-form-grid" onSubmit={submit}>
-            <label>Bank name<input placeholder="Enter bank name" value={form.bankName} onChange={(event) => setForm({ ...form, bankName: event.target.value })} maxLength="100" required /></label>
-            <label>Account number<input placeholder="Enter account number" value={form.accountNumber} onChange={(event) => setForm({ ...form, accountNumber: event.target.value.replace(/\D/g, "") })} inputMode="numeric" minLength="9" maxLength="18" required /></label>
-            <label>IFSC code<input value={form.ifscCode} onChange={(event) => setForm({ ...form, ifscCode: event.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 11) })} placeholder="Enter IFSC code" minLength="11" maxLength="11" required /></label>
+          <form className="payroll-form-grid" onSubmit={submit} data-testid="payment-details-form">
+            <label>Bank name<input name="bankName" data-testid="payment-bankName-input" placeholder="Enter bank name" value={form.bankName} onChange={(event) => setForm({ ...form, bankName: event.target.value })} maxLength="100" required /></label>
+            <label>Account number<input name="accountNumber" data-testid="payment-accountNumber-input" placeholder="Enter account number" value={form.accountNumber} onChange={(event) => setForm({ ...form, accountNumber: event.target.value.replace(/\D/g, "") })} inputMode="numeric" minLength="9" maxLength="18" required /></label>
+            <label>IFSC code<input name="ifscCode" data-testid="payment-ifscCode-input" value={form.ifscCode} onChange={(event) => setForm({ ...form, ifscCode: event.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 11) })} placeholder="Enter IFSC code" minLength="11" maxLength="11" required /></label>
             <label>Payment mode
-              <select value={form.paymentMode} onChange={(event) => setForm({ ...form, paymentMode: event.target.value })} required>
+              <select name="paymentMode" data-testid="payment-mode-select" value={form.paymentMode} onChange={(event) => setForm({ ...form, paymentMode: event.target.value })} required>
                 {PAYMENT_MODES.map((mode) => <option key={mode} value={mode}>{MODE_LABELS[mode] || mode}</option>)}
               </select>
             </label>
-            <label>PAN number<input value={form.panNumber} onChange={(event) => setForm({ ...form, panNumber: event.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 10) })} placeholder="Enter PAN number" maxLength="10" /></label>
-            <label>UAN number<input placeholder="Enter UAN number" value={form.uanNumber} onChange={(event) => setForm({ ...form, uanNumber: event.target.value.replace(/\D/g, "").slice(0, 12) })} inputMode="numeric" maxLength="12" /></label>
-            <label>PF number<input placeholder="Enter PF number" value={form.pfNumber} onChange={(event) => setForm({ ...form, pfNumber: event.target.value.toUpperCase().slice(0, 22) })} maxLength="22" /></label>
-            <label>ESI number<input placeholder="Enter ESI number" value={form.esiNumber} onChange={(event) => setForm({ ...form, esiNumber: event.target.value.replace(/\D/g, "").slice(0, 17) })} inputMode="numeric" maxLength="17" /></label>
+            <label>PAN number<input name="panNumber" data-testid="payment-panNumber-input" value={form.panNumber} onChange={(event) => setForm({ ...form, panNumber: event.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 10) })} placeholder="Enter PAN number" maxLength="10" /></label>
+            <label>UAN number<input name="uanNumber" data-testid="payment-uanNumber-input" placeholder="Enter UAN number" value={form.uanNumber} onChange={(event) => setForm({ ...form, uanNumber: event.target.value.replace(/\D/g, "").slice(0, 12) })} inputMode="numeric" maxLength="12" /></label>
+            <label>PF number<input name="pfNumber" data-testid="payment-pfNumber-input" placeholder="Enter PF number" value={form.pfNumber} onChange={(event) => setForm({ ...form, pfNumber: event.target.value.toUpperCase().slice(0, 22) })} maxLength="22" /></label>
+            <label>ESI number<input name="esiNumber" data-testid="payment-esiNumber-input" placeholder="Enter ESI number" value={form.esiNumber} onChange={(event) => setForm({ ...form, esiNumber: event.target.value.replace(/\D/g, "").slice(0, 17) })} inputMode="numeric" maxLength="17" /></label>
             <div className="full-span payroll-form-actions">
-              <button type="button" className="btn btn-secondary" onClick={resetForm}>Cancel</button>
-              <button type="submit" className="btn btn-primary" disabled={saving}>
+              <button type="button" className="btn btn-secondary" data-testid="payment-cancel-btn" onClick={resetForm}>Cancel</button>
+              <button type="submit" className="btn btn-primary" data-testid="payment-save-btn" disabled={saving}>
                 {saving ? "Saving…" : details ? "Save Changes" : "Add Details"}
               </button>
             </div>
