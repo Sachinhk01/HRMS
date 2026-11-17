@@ -103,6 +103,13 @@ export default function SalaryTemplatesPanel() {
     setShowForm(false);
   }
 
+  // Cancel: close the form, discard unsaved edits and clear any stale alert from a previous action.
+  function cancelForm() {
+    setError("");
+    setMessage("");
+    resetForm();
+  }
+
   function beginEdit(item) {
     setEditing(item);
     setForm({
@@ -215,10 +222,11 @@ export default function SalaryTemplatesPanel() {
               <h2>{editing ? `Edit ${editing.employeeType} template` : "Create salary template"}</h2>
             </div>
           </div>
-          <form className="payroll-form-grid" onSubmit={submit}>
+          <form className="payroll-form-grid" onSubmit={submit} data-testid="template-form" data-mode={editing ? "edit" : "create"}>
                         {!editing && (
               <label>Employee type
                 <input maxLength={INPUT_LIMITS.SHORT_TEXT}
+                  id="template-employeeType" name="employeeType" data-testid="template-employeeType-input"
                   value={form.employeeType}
                   onChange={(event) => setForm({ ...form, employeeType: event.target.value })}
                   placeholder="e.g. FULL_TIME"
@@ -226,21 +234,21 @@ export default function SalaryTemplatesPanel() {
                 />
               </label>
             )}
-            <label>Basic salary<input type="number" min="0" max="999999" step="0.01" value={form.basicSalary} onChange={(event) => setForm({ ...form, basicSalary: event.target.value })} required /></label>
-            <label>HRA<input type="number" min="0" max="999999" step="0.01" value={form.hra} onChange={(event) => setForm({ ...form, hra: event.target.value })} required /></label>
-            <label>Special allowance<input type="number" min="0" max="999999" step="0.01" value={form.specialAllowance} onChange={(event) => setForm({ ...form, specialAllowance: event.target.value })} /></label>
-            <label>Medical allowance<input type="number" min="0" max="999999" step="0.01" value={form.medicalAllowance} onChange={(event) => setForm({ ...form, medicalAllowance: event.target.value })} /></label>
-            <label>Travel allowance<input type="number" min="0" max="999999" step="0.01" value={form.travelAllowance} onChange={(event) => setForm({ ...form, travelAllowance: event.target.value })} /></label>
-            <label>Bonus<input type="number" min="0" max="999999" step="0.01" value={form.bonus} onChange={(event) => setForm({ ...form, bonus: event.target.value })} /></label>
-            <label>Other allowance<input type="number" min="0" max="999999" step="0.01" value={form.otherAllowance} onChange={(event) => setForm({ ...form, otherAllowance: event.target.value })} /></label>
-            <label>PF<input type="number" min="0" max="999999" step="0.01" value={form.pf} onChange={(event) => setForm({ ...form, pf: event.target.value })} /></label>
-            <label>ESI<input type="number" min="0" max="999999" step="0.01" value={form.esi} onChange={(event) => setForm({ ...form, esi: event.target.value })} required /></label>
-            <label>Professional tax<input type="number" min="0" max="999999" step="0.01" value={form.professionalTax} onChange={(event) => setForm({ ...form, professionalTax: event.target.value })} /></label>
-            <label>Income tax<input type="number" min="0" max="999999" step="0.01" value={form.incomeTax} onChange={(event) => setForm({ ...form, incomeTax: event.target.value })} /></label>
-            <label>Other deduction<input type="number" min="0" max="999999" step="0.01" value={form.otherDeduction} onChange={(event) => setForm({ ...form, otherDeduction: event.target.value })} /></label>
+            <label>Basic salary<input type="number" id="template-basicSalary" name="basicSalary" data-testid="template-basicSalary-input" min="0" max="999999" step="0.01" value={form.basicSalary} onChange={(event) => setForm({ ...form, basicSalary: event.target.value })} required /></label>
+            <label>HRA<input type="number" id="template-hra" name="hra" data-testid="template-hra-input" min="0" max="999999" step="0.01" value={form.hra} onChange={(event) => setForm({ ...form, hra: event.target.value })} required /></label>
+            <label>Special allowance<input type="number" id="template-specialAllowance" name="specialAllowance" data-testid="template-specialAllowance-input" min="0" max="999999" step="0.01" value={form.specialAllowance} onChange={(event) => setForm({ ...form, specialAllowance: event.target.value })} /></label>
+            <label>Medical allowance<input type="number" id="template-medicalAllowance" name="medicalAllowance" data-testid="template-medicalAllowance-input" min="0" max="999999" step="0.01" value={form.medicalAllowance} onChange={(event) => setForm({ ...form, medicalAllowance: event.target.value })} /></label>
+            <label>Travel allowance<input type="number" id="template-travelAllowance" name="travelAllowance" data-testid="template-travelAllowance-input" min="0" max="999999" step="0.01" value={form.travelAllowance} onChange={(event) => setForm({ ...form, travelAllowance: event.target.value })} /></label>
+            <label>Bonus<input type="number" id="template-bonus" name="bonus" data-testid="template-bonus-input" min="0" max="999999" step="0.01" value={form.bonus} onChange={(event) => setForm({ ...form, bonus: event.target.value })} /></label>
+            <label>Other allowance<input type="number" id="template-otherAllowance" name="otherAllowance" data-testid="template-otherAllowance-input" min="0" max="999999" step="0.01" value={form.otherAllowance} onChange={(event) => setForm({ ...form, otherAllowance: event.target.value })} /></label>
+            <label>PF<input type="number" id="template-pf" name="pf" data-testid="template-pf-input" min="0" max="999999" step="0.01" value={form.pf} onChange={(event) => setForm({ ...form, pf: event.target.value })} /></label>
+            <label>ESI<input type="number" id="template-esi" name="esi" data-testid="template-esi-input" min="0" max="999999" step="0.01" value={form.esi} onChange={(event) => setForm({ ...form, esi: event.target.value })} required /></label>
+            <label>Professional tax<input type="number" id="template-professionalTax" name="professionalTax" data-testid="template-professionalTax-input" min="0" max="999999" step="0.01" value={form.professionalTax} onChange={(event) => setForm({ ...form, professionalTax: event.target.value })} /></label>
+            <label>Income tax<input type="number" id="template-incomeTax" name="incomeTax" data-testid="template-incomeTax-input" min="0" max="999999" step="0.01" value={form.incomeTax} onChange={(event) => setForm({ ...form, incomeTax: event.target.value })} /></label>
+            <label>Other deduction<input type="number" id="template-otherDeduction" name="otherDeduction" data-testid="template-otherDeduction-input" min="0" max="999999" step="0.01" value={form.otherDeduction} onChange={(event) => setForm({ ...form, otherDeduction: event.target.value })} /></label>
             <div className="full-span payroll-form-actions">
-              <button type="button" className="btn btn-secondary" onClick={resetForm}>Cancel</button>
-              <button type="submit" className="btn btn-primary" disabled={saving}>
+              <button type="button" id="template-cancel-btn" name="cancel" className="btn btn-secondary" data-testid="template-cancel-btn" onClick={cancelForm}>Cancel</button>
+              <button type="submit" id="template-save-btn" name="save" className="btn btn-primary" data-testid="template-save-btn" disabled={saving}>
                 {saving ? "Saving…" : editing ? "Save Changes" : "Create Template"}
               </button>
             </div>

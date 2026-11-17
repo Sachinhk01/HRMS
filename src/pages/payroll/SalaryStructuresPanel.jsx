@@ -12,6 +12,10 @@ import {
 import { DeductionsSection, EarningsSection, EmptyState, PayrollBadge, StatusFilter } from "./payrollUi";
 import { INPUT_LIMITS } from '../../utils/inputLimits';
 import DatePicker from '../../components/DatePicker';
+import SelectBox from '../../components/SelectBox';
+
+// FULL_TIME -> "FULL TIME" (replace every underscore, not just the first one)
+const formatTemplateLabel = (type) => String(type ?? "").replace(/_/g, " ").trim();
 
 const EMPTY_FORM = {
   employeeId: "",
@@ -26,6 +30,7 @@ export default function SalaryStructuresPanel() {
   const [employees, setEmployees] = useState([]);
   const [templates, setTemplates] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [lookupsLoading, setLookupsLoading] = useState(true);
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("ACTIVE");
   const [showForm, setShowForm] = useState(false);
@@ -50,9 +55,29 @@ export default function SalaryStructuresPanel() {
   useEffect(() => { refresh(); }, [refresh]);
 
   useEffect(() => {
-    getEmployeeDropdown().then(setEmployees).catch(() => setEmployees([]));
-    getSalaryTemplates({ activeOnly: false }).then(setTemplates).catch(() => setTemplates([]));
+    let cancelled = false;
+    Promise.all([
+      getEmployeeDropdown().catch(() => []),
+      getSalaryTemplates({ activeOnly: false }).catch(() => []),
+    ]).then(([employeeList, templateList]) => {
+      if (cancelled) return;
+      setEmployees(employeeList);
+      setTemplates(templateList);
+      setLookupsLoading(false);
+    });
+    return () => { cancelled = true; };
   }, []);
+
+  // options for the dropdowns (real DOM rows, so they can be clicked by automation tools)
+  const employeeOptions = useMemo(() => employees.map((item) => ({
+    value: item.id,
+    label: `${item.employeeCode} · ${item.employeeName}`,
+  })), [employees]);
+
+  const templateOptions = useMemo(() => templates.map((item) => ({
+    value: item.id,
+    label: formatTemplateLabel(item.employeeType),
+  })), [templates]);
 
   const statusCounts = useMemo(() => ({
     ACTIVE: structures.filter((item) => item.status === "ACTIVE").length,
@@ -100,6 +125,8 @@ export default function SalaryStructuresPanel() {
     event.preventDefault();
     setError("");
     setMessage("");
+    if (!form.employeeId) { setError("Please select an employee."); return; }
+    if (!form.salaryTemplateId) { setError("Please select a salary template."); return; }
     setSaving(true);
     try {
       const payload = {
@@ -135,7 +162,7 @@ export default function SalaryStructuresPanel() {
             <Search size={17} />
             <input maxLength={INPUT_LIMITS.SEARCH} value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search employee or code" />
           </div>
-          <StatusFilter testId="structure-status-filter" value={statusFilter} onChange={setStatusFilter} counts={statusCounts} />
+          <StatusFilter value={statusFilter} onChange={setStatusFilter} counts={statusCounts} />
           <button type="button" className="btn btn-primary" onClick={beginCreate}>
             <Plus size={18} /> New Structure
           </button>
@@ -152,23 +179,31 @@ export default function SalaryStructuresPanel() {
             <button type="button" className="payroll-modal-close" onClick={resetForm} aria-label="Close"><X size={18} /></button>
           </div>
           <form className="payroll-form-grid" onSubmit={submit}>
-            <label>Employee
-              <select value={form.employeeId} onChange={(event) => setForm({ ...form, employeeId: event.target.value })} required>
-                <option value="">Select employee…</option>
-                {employees.map((item) => (
-                  <option key={item.id} value={item.id}>{item.employeeCode} · {item.employeeName}</option>
-                ))}
-              </select>
+            <label htmlFor="salary-employee">Employee
+              <SelectBox
+                id="salary-employee"
+                name="employeeId"
+                value={form.employeeId}
+                onChange={(event) => setForm({ ...form, employeeId: event.target.value })}
+                options={employeeOptions}
+                placeholder="Select employee…"
+                emptyText="No employees found"
+                loading={lookupsLoading}
+                required
+              />
             </label>
-            <label>Salary template
-              <select value={form.salaryTemplateId} onChange={(event) => setForm({ ...form, salaryTemplateId: event.target.value })} required>
-                <option value="">Select template…</option>
-                {templates.map((item) => (
-                  <option key={item.id} value={item.id}>
-                    {item.employeeType.replace("_", " ")}
-                  </option>
-                ))}
-              </select>
+            <label htmlFor="salary-template">Salary template
+              <SelectBox
+                id="salary-template"
+                name="salaryTemplateId"
+                value={form.salaryTemplateId}
+                onChange={(event) => setForm({ ...form, salaryTemplateId: event.target.value })}
+                options={templateOptions}
+                placeholder="Select template…"
+                emptyText="No salary templates found"
+                loading={lookupsLoading}
+                required
+              />
             </label>
             <label>Effective from<DatePicker id="salary-effective-from" value={form.effectiveFrom} onChange={(event) => setForm({ ...form, effectiveFrom: event.target.value })} required /></label>
             <label>Effective to (optional)<DatePicker id="salary-effective-to" value={form.effectiveTo} onChange={(event) => setForm({ ...form, effectiveTo: event.target.value })} /></label>

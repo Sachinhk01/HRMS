@@ -25,6 +25,7 @@ import './Form16.css';
 import './Form16Polish.css';
 import { INPUT_LIMITS } from '../utils/inputLimits';
 import DatePicker from '../components/DatePicker';
+import SelectBox from '../components/SelectBox';
 import Form16Preview from './Form16Preview';
 import { downloadForm16Pdf } from '../utils/form16Pdf';
 
@@ -164,11 +165,16 @@ export default function Form16() {
   const canView = isHr || isManager;
   const period = useMemo(financialPeriod, []);
   const [employees, setEmployees] = useState([]);
-  const [employeesLoading, setEmployeesLoading] = useState(false);
+  const [employeesLoading, setEmployeesLoading] = useState(true);
   const [employeeListError, setEmployeeListError] = useState('');
   const [employeeId, setEmployeeId] = useState('');
+  const employeeOptions = useMemo(() => employees.map((e) => ({
+    value: e.id,
+    label: `${e.employeeCode ? `${e.employeeCode} — ` : ''}${e.employeeName || e.name}`,
+  })), [employees]);
   const [assessmentYear, setAssessmentYear] = useState(currentAssessmentYear());
   const ayOptions = useMemo(() => buildAssessmentYears(assessmentYear), [assessmentYear]);
+  const assessmentYearOptions = useMemo(() => ayOptions.map((ay) => ({ value: ay, label: ay })), [ayOptions]);
   const [baseDraft, setBaseDraft] = useState({ employeeAddress: '', assessmentYear: currentAssessmentYear(), employmentFrom: period.from, employmentTo: period.to, optingOutOfTaxation115BAC1A: false });
   const [base, setBase] = useState(null);
   const [quarter, setQuarter] = useState(null); const [quarterDraft, setQuarterDraft] = useState(emptyQuarter);
@@ -204,7 +210,7 @@ export default function Form16() {
   }, [showFull]);
 
   useEffect(() => {
-    if (!canView) return;
+    if (!canView) { setEmployeesLoading(false); return undefined; }
     let cancelled = false;
     setEmployeesLoading(true);
     setEmployeeListError('');
@@ -223,6 +229,35 @@ export default function Form16() {
     return () => { cancelled = true; };
   }, [canView]);
   useEffect(() => setBaseDraft((s) => ({ ...s, assessmentYear })), [assessmentYear]);
+
+  // Changing the employee or assessment year must drop the Form 16 that is on screen. Otherwise
+  // the preview / header draft of the previous employee stays visible, and Download, Activate,
+  // Deactivate and Generate would run against a different employee than the one selected.
+  const resetLoadedForm = (nextAssessmentYear) => {
+    setBase(null);
+    setBaseDraft({ employeeAddress: '', assessmentYear: nextAssessmentYear, employmentFrom: period.from, employmentTo: period.to, optingOutOfTaxation115BAC1A: false });
+    setQuarter(null); setQuarterDraft(emptyQuarter);
+    setSalary(null); setSalaryDraft(emptySalary);
+    setExemption(null); setExemptionDraft(emptyExemption);
+    setSection16(null); setSection16Draft(emptySection16);
+    setChapter(null); setChapterDraft(emptyChapter);
+    setLastFields(null); setLastDraft(emptyLast);
+    setVerification(null); setVerificationDraft(emptyVerification);
+    setChallans([]); setEditingChallan(null); setChallanDraft(emptyChallan); setChallanErrors({});
+    setError(''); setNotice('');
+  };
+  const handleEmployeeChange = (e) => {
+    const next = e.target.value;
+    if (String(next) === String(employeeId)) return;
+    setEmployeeId(next);
+    resetLoadedForm(assessmentYear);
+  };
+  const handleAssessmentYearChange = (e) => {
+    const next = e.target.value;
+    if (String(next) === String(assessmentYear)) return;
+    setAssessmentYear(next);
+    resetLoadedForm(next);
+  };
 
   const loadChildren = useCallback(async (id) => {
     const specs = [
@@ -336,8 +371,30 @@ export default function Form16() {
     <Form16Hero description={isManager ? 'View And Download Form 16. Only HR Can Generate Or Edit It.' : isHr ? 'HR Can Generate And Manage Form 16. Employees Can Only Download Their Own Form 16.' : 'View And Download Your Form 16.'} />
     {error && <div className="f16-alert error">{error}</div>}{notice && <div className="f16-alert success"><CheckCircle2 size={18}/>{notice}</div>}
     <section className="panel form16-toolbar">
-      <Field label="Employee" value={employeeId}>{<select value={employeeId} onChange={(e)=>setEmployeeId(e.target.value)}><option value="">Select Employee</option>{employees.map((e)=><option key={e.id} value={e.id}>{e.employeeCode ? `${e.employeeCode} — ` : ''}{e.employeeName || e.name}</option>)}</select>}</Field>
-      <Field label="Assessment Year" value={assessmentYear}>{<select value={assessmentYear} onChange={(e)=>setAssessmentYear(e.target.value)}>{ayOptions.map((ay)=><option key={ay} value={ay}>{ay}</option>)}</select>}</Field>
+      <Field label="Employee" value={employeeId}>
+        <SelectBox
+          id="f16-employee"
+          name="employeeId"
+          aria-label="Employee"
+          value={employeeId}
+          onChange={handleEmployeeChange}
+          options={employeeOptions}
+          placeholder="Select Employee"
+          emptyText={employeeListError || 'No employees found'}
+          loading={employeesLoading}
+        />
+      </Field>
+      <Field label="Assessment Year" value={assessmentYear}>
+        <SelectBox
+          id="f16-assessment-year"
+          name="assessmentYear"
+          aria-label="Assessment Year"
+          value={assessmentYear}
+          onChange={handleAssessmentYearChange}
+          options={assessmentYearOptions}
+          placeholder="Select Assessment Year"
+        />
+      </Field>
       <div className="form16-actions">
         <button className="btn btn-secondary" onClick={loadExisting} disabled={!canView || loading}><RefreshCw size={16}/>{loading?'Loading...':'Load'}</button>
         {canManage && <button className="btn btn-primary" onClick={generate} disabled={saving}><FileText size={16}/>Generate Form 16</button>}

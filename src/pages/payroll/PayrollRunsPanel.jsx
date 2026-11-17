@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { motion } from "framer-motion";
 import { EASE_OUT, fadeUp, staggerGrid } from "../../components/Motion";
@@ -27,7 +27,6 @@ import {
   getEmployeeDropdown,
   getPayrollById,
   getPayrollsByMonth,
-  getPayrollsByStatus,
   payrollMonthLabel,
   regeneratePayroll,
   triggerBlobDownload,
@@ -39,6 +38,7 @@ import { useConfirm } from "../../context/ConfirmContext";
 import { useToast } from "../../context/ToastContext";
 import { INPUT_LIMITS } from '../../utils/inputLimits';
 import { MonthPicker } from '../../components/DatePicker';
+import SelectBox from '../../components/SelectBox';
 import { getEmployeeAttendanceHistory } from "../../services/attendanceService";
 
 const EMPTY_EDIT_FORM = {
@@ -92,6 +92,16 @@ const NUMERIC_KEYS = [
   "pf", "esi", "professionalTax", "incomeTax", "otherDeduction",
 ];
 
+const STATUS_FILTER_OPTIONS = [
+  { value: "ALL", label: "All statuses" },
+  { value: "DRAFT", label: "Draft" },
+  { value: "GENERATED", label: "Generated" },
+  { value: "APPROVED", label: "Approved" },
+  { value: "PAID", label: "Paid" },
+  { value: "SUPERSEDED", label: "Superseded" },
+  { value: "CANCELLED", label: "Cancelled" },
+];
+
 const num = (value) => (value === "" || value === null || value === undefined ? undefined : Number(value));
 const formatINRWithPaise = (value) => new Intl.NumberFormat("en-IN", {
   style: "currency",
@@ -121,9 +131,9 @@ async function fetchHalfDayCount(employeeId, payrollMonth) {
 export default function PayrollRunsPanel() {
   const { confirm, promptDialog } = useConfirm();
   const { showToast } = useToast();
-  const [payrolls, setPayrolls] = useState([]);
   const [monthlyPayrolls, setMonthlyPayrolls] = useState([]);
   const [employees, setEmployees] = useState([]);
+  const [employeesLoading, setEmployeesLoading] = useState(true);
   const [month, setMonth] = useState(() => new Date().toISOString().slice(0, 7));
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [query, setQuery] = useState("");
@@ -151,33 +161,45 @@ export default function PayrollRunsPanel() {
   const [halfDaysLoadError, setHalfDaysLoadError] = useState("");
   const [saving, setSaving] = useState(false);
 
+  // Only the newest request may update the screen. Without this, a slow response for an
+  // earlier month/filter (easy to trigger when a test changes filters quickly) overwrote the
+  // newest one and the table showed the wrong records or none at all.
+  const requestRef = useRef(0);
+
   const refresh = useCallback(async (targetMonth = month) => {
+    const requestId = ++requestRef.current;
     setLoading(true);
     try {
-      const payrollMonth = `${targetMonth}-01`;
-      const [monthly, byStatus] = await Promise.all([
-        getPayrollsByMonth(payrollMonth),
-        statusFilter === "ALL" ? Promise.resolve(null) : getPayrollsByStatus(statusFilter),
-      ]);
+      const monthly = await getPayrollsByMonth(`${targetMonth}-01`);
+      if (requestId !== requestRef.current) return;
       setMonthlyPayrolls(monthly);
-      setPayrolls(monthly);
-      if (statusFilter !== "ALL") {
-        const inMonth = new Set(monthly.map((item) => item.id));
-        setPayrolls(byStatus.filter((item) => inMonth.has(item.id)));
-      }
     } catch (err) {
+      if (requestId !== requestRef.current) return;
+      setMonthlyPayrolls([]);
       setError(err.message || "Failed to load payroll records.");
     } finally {
-      setLoading(false);
+      if (requestId === requestRef.current) setLoading(false);
     }
-  }, [month, statusFilter]);
+  }, [month]);
+
+  // The status filter is applied here, on the month's records, so it can never hide records
+  // that belong to the selected month (and needs no second request to /payroll/status).
+  const payrolls = useMemo(
+    () => (statusFilter === "ALL"
+      ? monthlyPayrolls
+      : monthlyPayrolls.filter((item) => item.status === statusFilter)),
+    [monthlyPayrolls, statusFilter]
+  );
 
   useEffect(() => { refresh(); }, [refresh]);
 
   useEffect(() => {
+    let active = true;
     getEmployeeDropdown()
-      .then(setEmployees)
-      .catch(() => setEmployees([]));
+      .then((list) => { if (active) setEmployees(Array.isArray(list) ? list : []); })
+      .catch(() => { if (active) setEmployees([]); })
+      .finally(() => { if (active) setEmployeesLoading(false); });
+    return () => { active = false; };
   }, []);
 
   // The generation picker must offer only employees without an active payroll
@@ -218,15 +240,15 @@ export default function PayrollRunsPanel() {
     const net = monthlyPayrolls
       .filter((item) => item.status === "PAID")
       .reduce((sum, item) => sum + Number(item.netPayable || 0), 0);
-    const count = (status) => payrolls.filter((item) => item.status === status).length;
+    const count = (status) => monthlyPayrolls.filter((item) => item.status === status).length;
     return {
-      total: payrolls.length,
+      total: monthlyPayrolls.length,
       net,
       drafts: count("DRAFT"),
       approved: count("APPROVED"),
       paid: count("PAID"),
     };
-  }, [payrolls, monthlyPayrolls]);
+  }, [monthlyPayrolls]);
 
   // Live preview of the payslip totals while editing (mirrors backend maths).
   const editPreview = useMemo(() => {
@@ -262,33 +284,44 @@ export default function PayrollRunsPanel() {
     setSelectedIds((current) => current.filter((id) => !generatedEmployeeIds.has(String(id))));
   }, [generatedEmployeeIds]);
 
+  // Compare ids as strings so a number from the API and a string from the DOM never mismatch.
+  const selectedSet = useMemo(() => new Set(selectedIds.map(String)), [selectedIds]);
+  const isSelected = useCallback((id) => selectedSet.has(String(id)), [selectedSet]);
+
+  // The employee list is still being fetched (employees + this month's payrolls).
+  const listLoading = employeesLoading || loadingEligibleEmployees;
+
   function toggleEmployee(id) {
     setSelectedIds((current) =>
-      current.includes(id) ? current.filter((value) => value !== id) : [...current, id]
+      current.some((value) => String(value) === String(id))
+        ? current.filter((value) => String(value) !== String(id))
+        : [...current, id]
     );
   }
 
-  const allMatchedSelected = matchedEmployees.length > 0
-    && matchedEmployees.every((item) => selectedIds.includes(item.id));
+  const matchedSelectedCount = matchedEmployees.filter((item) => isSelected(item.id)).length;
+  const allMatchedSelected = matchedEmployees.length > 0 && matchedSelectedCount === matchedEmployees.length;
+  const someMatchedSelected = matchedSelectedCount > 0 && !allMatchedSelected;
+
+  // Select All is a tri-state checkbox: unchecked / checked / indeterminate (some rows ticked).
+  const selectAllRef = useRef(null);
+  useEffect(() => {
+    if (selectAllRef.current) selectAllRef.current.indeterminate = someMatchedSelected;
+  }, [someMatchedSelected]);
 
   function toggleAllMatched() {
-    const matchedIdList = matchedEmployees.map((item) => item.id);
-    setSelectedIds((current) => allMatchedSelected
-      ? current.filter((id) => !matchedIdList.includes(id))
-      : [...new Set([...current, ...matchedIdList])]);
+    const matchedIdList = matchedEmployees.map((item) => String(item.id));
+    setSelectedIds((current) => {
+      if (allMatchedSelected) {
+        return current.filter((id) => !matchedIdList.includes(String(id)));
+      }
+      const have = new Set(current.map(String));
+      return [...current, ...matchedEmployees.filter((item) => !have.has(String(item.id))).map((item) => item.id)];
+    });
   }
 
   function initials(name = "") {
     return name.split(" ").filter(Boolean).slice(0, 2).map((part) => part[0]).join("").toUpperCase() || "?";
-  }
-
-  function selectAllEmployees(event) {
-    const action = event.target.value;
-    if (action === "ALL") {
-      setSelectedIds(availableEmployees.map((item) => item.id));
-    } else if (action === "NONE") {
-      setSelectedIds([]);
-    }
   }
 
   async function submitGenerate(event) {
@@ -309,6 +342,8 @@ export default function PayrollRunsPanel() {
       setSelectedIds([]);
       setGenRemarks("");
       setMonth(genMonth);
+      setStatusFilter("ALL"); // a leftover filter would hide the records that were just generated
+      setQuery("");
       await refresh(genMonth);
     } catch (err) {
       setError(err.message || "Failed to generate payroll.");
@@ -609,6 +644,10 @@ export default function PayrollRunsPanel() {
                   <label className="gen-draft">
                     <input
                       type="checkbox"
+                      id="gen-save-as-draft"
+                      name="saveAsDraft"
+                      data-testid="gen-save-as-draft"
+                      aria-label="Save as draft"
                       checked={genSaveAsDraft}
                       onChange={(event) => setGenSaveAsDraft(event.target.checked)}
                     />
@@ -624,11 +663,27 @@ export default function PayrollRunsPanel() {
                 <header className="gen-card-head gen-employees-head">
                   <span className="gen-title"><Users size={18} /> Employees</span>
                   <span className="gen-head-actions">
-                    <label className="gen-select-all">
-                      <input type="checkbox" checked={allMatchedSelected} onChange={toggleAllMatched} disabled={matchedEmployees.length === 0} />
+                    <label className="gen-select-all" htmlFor="gen-select-all">
+                      <input
+                        ref={selectAllRef}
+                        type="checkbox"
+                        id="gen-select-all"
+                        name="selectAllEmployees"
+                        data-testid="gen-select-all"
+                        aria-label="Select all employees"
+                        aria-checked={someMatchedSelected ? "mixed" : allMatchedSelected}
+                        checked={allMatchedSelected}
+                        onChange={toggleAllMatched}
+                        disabled={listLoading || generating || matchedEmployees.length === 0}
+                      />
                       <span>Select All</span>
                     </label>
-                    <span className="gen-selected-pill">{selectedIds.length} Selected</span>
+                    <span
+                      className="gen-selected-pill"
+                      data-testid="gen-selected-count"
+                      data-count={selectedIds.length}
+                      aria-live="polite"
+                    >{selectedIds.length} Selected</span>
                   </span>
                 </header>
                 <div className="gen-card-body">
@@ -642,12 +697,10 @@ export default function PayrollRunsPanel() {
                     />
                   </div>
                   <div className="gen-table-wrap">
-                    <table className="gen-table">
+                    <table className="gen-table" data-testid="gen-employee-table" data-loading={listLoading ? "true" : "false"} aria-busy={listLoading}>
                       <thead>
                         <tr>
-                          <th className="gen-col-check">
-                            <input type="checkbox" aria-label="Select all employees" checked={allMatchedSelected} onChange={toggleAllMatched} disabled={matchedEmployees.length === 0} />
-                          </th>
+                          <th className="gen-col-check" aria-label="Select" />
                           <th>Employee</th>
                           <th>Emp Code</th>
                           <th>Name</th>
@@ -657,8 +710,10 @@ export default function PayrollRunsPanel() {
                         {matchedEmployees.length === 0 && (
                           <tr>
                             <td colSpan={4} className="gen-empty">
-                              {loadingEligibleEmployees
+                              {listLoading
                                 ? "Loading employees eligible for payroll…"
+                                : employees.length === 0
+                                ? "No employees found."
                                 : availableEmployees.length === 0
                                 ? "All employees already have a payroll for this month."
                                 : "No employees match."}
@@ -668,16 +723,23 @@ export default function PayrollRunsPanel() {
                         {matchedEmployees.map((item, index) => (
                           <tr
                             key={item.id}
-                            className={selectedIds.includes(item.id) ? "is-selected" : ""}
-                            onClick={() => toggleEmployee(item.id)}
+                            className={isSelected(item.id) ? "is-selected" : ""}
+                            data-testid={`gen-employee-row-${item.id}`}
+                            data-selected={isSelected(item.id) ? "true" : "false"}
+                            onClick={() => { if (!generating) toggleEmployee(item.id); }}
                           >
                             <td className="gen-col-check">
                               <input
                                 type="checkbox"
-                                checked={selectedIds.includes(item.id)}
+                                id={`gen-employee-${item.id}`}
+                                name="employeeIds"
+                                value={item.id}
+                                data-testid={`gen-employee-checkbox-${item.id}`}
+                                aria-label={`Select ${item.employeeName}`}
+                                checked={isSelected(item.id)}
+                                disabled={generating}
                                 onClick={(event) => event.stopPropagation()}
                                 onChange={() => toggleEmployee(item.id)}
-                                aria-label={`Select ${item.employeeName}`}
                               />
                             </td>
                             <td><span className={`gen-avatar gen-avatar-${index % 5}`}>{initials(item.employeeName)}</span></td>
@@ -733,23 +795,25 @@ export default function PayrollRunsPanel() {
             onChange={(event) => { setMonth(event.target.value); setStatusFilter("ALL"); }}
             style={{ width: "auto" }}
           />
-          <select
+          <SelectBox
+            id="payroll-status-filter"
+            name="statusFilter"
             className="compact-select"
+            aria-label="Filter by status"
             value={statusFilter}
-            onChange={(event) => setStatusFilter(event.target.value)}
-          >
-            <option value="ALL">All statuses</option>
-            <option value="DRAFT">Draft</option>
-            <option value="GENERATED">Generated</option>
-            <option value="APPROVED">Approved</option>
-            <option value="PAID">Paid</option>
-            <option value="SUPERSEDED">Superseded</option>
-            <option value="CANCELLED">Cancelled</option>
-          </select>
+            onChange={(event) => setStatusFilter(event.target.value || "ALL")}
+            options={STATUS_FILTER_OPTIONS}
+            placeholder="All statuses"
+          />
         </div>
 
         <div className="table-wrap">
-          <table>
+          <table
+            data-testid="payroll-records-table"
+            data-loading={loading ? "true" : "false"}
+            data-count={filtered.length}
+            aria-busy={loading}
+          >
             <thead>
               <tr>
                 <th>Payroll No.</th>
@@ -767,17 +831,35 @@ export default function PayrollRunsPanel() {
               {!loading && filtered.length === 0 && (
                 <tr>
                   <td colSpan="6">
-                    <EmptyState
-                      icon={FileText}
-                      title="No payroll records"
-                      note="Pick a month above or generate a new payroll run."
-                    />
+                    <div data-testid="payroll-empty-state">
+                      <EmptyState
+                        icon={FileText}
+                        title={monthlyPayrolls.length > 0 ? "No payroll records match" : "No payroll records"}
+                        note={monthlyPayrolls.length > 0
+                          ? `${monthlyPayrolls.length} record(s) exist for this month, but none match the current ${statusFilter !== "ALL" ? "status filter" : "search"}.`
+                          : "Pick a month above or generate a new payroll run."}
+                      />
+                      {monthlyPayrolls.length > 0 && (
+                        <div style={{ textAlign: "center", paddingBottom: 12 }}>
+                          <button
+                            type="button"
+                            className="btn"
+                            data-testid="payroll-clear-filters"
+                            onClick={() => { setStatusFilter("ALL"); setQuery(""); }}
+                          >
+                            Clear filters
+                          </button>
+                        </div>
+                      )}
+                    </div>
                   </td>
                 </tr>
               )}
               {!loading && filtered.map((item, index) => (
                 <motion.tr
                   key={item.id}
+                  data-testid={`payroll-row-${item.id}`}
+                  data-status={item.status}
                   initial={{ opacity: 0, y: 8 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.3, delay: Math.min(index, 12) * 0.035, ease: EASE_OUT }}
