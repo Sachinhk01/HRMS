@@ -190,3 +190,17 @@ input:focus, select:focus, textarea:focus {
 .char-hint { display: block; text-align: right; font-size: 11px; color: #94a3b8; margin-top: 4px; }
 .char-hint.left { text-align: left; margin-top: 0; }
 .char-hint.over { color: #dc2626; }
+
+/* ---------- Automated browsers (Selenium / Playwright / Cypress) ----------
+   main.jsx adds the "automation" class when navigator.webdriver is true.
+   - smooth scrolling animates every scrollTo / scrollIntoView, so a test that reads the
+     position or clicks right after scrolling sees a half-scrolled page
+   - the 0.9 page zoom makes scroll offsets, element rectangles and click coordinates disagree
+   Real users are not affected. To undo: delete this block and the class line in main.jsx. */
+html.automation {
+  scroll-behavior: auto;
+  --app-zoom: 1;
+}
+html.automation * {
+  scroll-behavior: auto !important;
+}

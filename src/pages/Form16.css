@@ -591,6 +591,13 @@
   min-width: 0;
   position: sticky;
   top: 76px;
+  /* A sticky box taller than the screen can never be scrolled to its bottom, because it
+     keeps sticking while the page scrolls. Cap it to the visible height and let it scroll
+     inside, so the whole preview (and the page below it) stays reachable. */
+  align-self: start;
+  max-height: calc(100dvh / var(--app-zoom, 1) - 92px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 .form16-paper {

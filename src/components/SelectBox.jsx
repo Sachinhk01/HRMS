@@ -115,6 +115,8 @@ export default function SelectBox({
     const popup = popupRef.current;
     if (!anchor || !popup) return;
     const rect = anchor.getBoundingClientRect();
+    // the field was scrolled out of view: close instead of leaving the list floating
+    if (rect.bottom < 0 || rect.top > window.innerHeight) { closeList(); return; }
     const height = popup.offsetHeight;
     const gap = 4;
     const margin = 8;
@@ -126,7 +128,7 @@ export default function SelectBox({
     const width = Math.max(rect.width, 180);
     const left = Math.max(margin, Math.min(rect.left, window.innerWidth - width - margin));
     setPos({ top, left, width });
-  }, []);
+  }, [closeList]);
 
   useLayoutEffect(() => {
     if (open) place();
@@ -165,7 +167,14 @@ export default function SelectBox({
   useEffect(() => {
     if (!open || active < 0) return;
     const row = listRef.current?.querySelector(`[data-index="${active}"]`);
-    if (row && typeof row.scrollIntoView === 'function') row.scrollIntoView({ block: 'nearest' });
+    const list = listRef.current;
+    if (!row || !list) return;
+    // Scroll only the list itself. scrollIntoView() would also scroll (and, with smooth
+    // scrolling on, animate) the page behind it.
+    const top = row.offsetTop;
+    const bottom = top + row.offsetHeight;
+    if (top < list.scrollTop) list.scrollTop = top - 4;
+    else if (bottom > list.scrollTop + list.clientHeight) list.scrollTop = bottom - list.clientHeight + 4;
   }, [open, active]);
 
   /* ---------- input handlers ---------- */

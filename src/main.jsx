@@ -14,6 +14,11 @@ import './styles/ui-polish.css';
 import './styles/motion-kit.css';
 import { installFormValidationMessages, installDefaultInputLimits } from './utils/formValidation';
 
+// Let the stylesheet switch off smooth scrolling and page zoom for automated browsers.
+if (typeof navigator !== 'undefined' && navigator.webdriver) {
+  document.documentElement.classList.add('automation');
+}
+
 installFormValidationMessages();
 installDefaultInputLimits();
 
