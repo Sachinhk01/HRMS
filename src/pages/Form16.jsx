@@ -20,7 +20,7 @@ import { motion } from 'framer-motion';
 import Form16Hero from './Form16Hero';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
-import { form16Service, getForm16EmployeeDropdown } from '../services/form16Service';
+import { form16Service, getForm16EmployeeDropdown, getCachedForm16Employees } from '../services/form16Service';
 import './Form16.css';
 import './Form16Polish.css';
 import { INPUT_LIMITS } from '../utils/inputLimits';
@@ -164,9 +164,10 @@ export default function Form16() {
   const canManage = isHr;
   const canView = isHr || isManager;
   const period = useMemo(financialPeriod, []);
-  const [employees, setEmployees] = useState([]);
-  const [employeesLoading, setEmployeesLoading] = useState(true);
+  const [employees, setEmployees] = useState(() => getCachedForm16Employees() || []);
+  const [employeesLoading, setEmployeesLoading] = useState(() => !getCachedForm16Employees());
   const [employeeListError, setEmployeeListError] = useState('');
+  const [employeeReload, setEmployeeReload] = useState(0); // bumped by the Retry button
   const [employeeId, setEmployeeId] = useState('');
   const employeeOptions = useMemo(() => employees.map((e) => ({
     value: e.id,
@@ -212,22 +213,24 @@ export default function Form16() {
   useEffect(() => {
     if (!canView) { setEmployeesLoading(false); return undefined; }
     let cancelled = false;
-    setEmployeesLoading(true);
+    // When a saved list exists the names are already on screen; refresh quietly behind them.
+    if (!getCachedForm16Employees()) setEmployeesLoading(true);
     setEmployeeListError('');
-    getForm16EmployeeDropdown()
+    getForm16EmployeeDropdown({ force: employeeReload > 0 })
       .then((items) => {
         if (cancelled) return;
-        setEmployees(Array.isArray(items) ? items : []);
-        if (!items?.length) setEmployeeListError('No Employees Were Returned By The Backend.');
+        const list = Array.isArray(items) ? items : [];
+        setEmployees(list);
+        if (!list.length) setEmployeeListError('No Employees Were Returned By The Backend.');
       })
       .catch((err) => {
         if (cancelled) return;
-        setEmployees([]);
+        // keep any names we already have; only report the failure
         setEmployeeListError(err?.message || 'Unable To Load Employee List.');
       })
       .finally(() => { if (!cancelled) setEmployeesLoading(false); });
     return () => { cancelled = true; };
-  }, [canView]);
+  }, [canView, employeeReload]);
   useEffect(() => setBaseDraft((s) => ({ ...s, assessmentYear })), [assessmentYear]);
 
   // Changing the employee or assessment year must drop the Form 16 that is on screen. Otherwise
@@ -383,6 +386,15 @@ export default function Form16() {
           emptyText={employeeListError || 'No employees found'}
           loading={employeesLoading}
         />
+        {employeeListError && !employeesLoading && employees.length === 0 && (
+          <small data-testid="f16-employee-error" style={{ color: '#dc2626', fontSize: 11, marginTop: 4 }}>
+            {employeeListError}{' '}
+            <button type="button" data-testid="f16-employee-retry" onClick={() => setEmployeeReload((n) => n + 1)}
+              style={{ border: 0, background: 'none', color: '#2468d9', fontWeight: 600, cursor: 'pointer', padding: 0, fontSize: 11 }}>
+              Retry
+            </button>
+          </small>
+        )}
       </Field>
       <Field label="Assessment Year" value={assessmentYear}>
         <SelectBox

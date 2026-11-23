@@ -135,9 +135,10 @@ function normalizeEmployeeOptions(payload) {
     .filter((employee) => employee.id != null && employee.id !== '');
 }
 
-export async function getForm16EmployeeDropdown() {
+async function fetchForm16EmployeeOptions() {
   try {
-    const { data } = await api.get('/employees/dropdown');
+    // short timeout: if this endpoint hangs we move on to the fallback instead of waiting 15s
+    const { data } = await api.get('/employees/dropdown', { timeout: 10000 });
     const options = normalizeEmployeeOptions(data);
     if (options.length) return options;
   } catch (error) {
@@ -148,4 +149,29 @@ export async function getForm16EmployeeDropdown() {
     params: { page: 0, size: 500, search: '', sortBy: 'employeeCode', sortDirection: 'asc' },
   });
   return normalizeEmployeeOptions(data);
+}
+
+// The list is kept for the session and shared between callers:
+//  - a second call while one is already running re-uses that request (React StrictMode runs
+//    effects twice in development, which used to start two slow requests and throw one away)
+//  - coming back to the page shows the names instantly while a fresh copy loads in the background
+let employeeListCache = null;
+let employeeListInflight = null;
+
+export function getCachedForm16Employees() {
+  return employeeListCache;
+}
+
+export function getForm16EmployeeDropdown({ force = false } = {}) {
+  if (employeeListInflight && !force) return employeeListInflight;
+  const request = fetchForm16EmployeeOptions()
+    .then((list) => {
+      if (list.length) employeeListCache = list;
+      return list;
+    })
+    .finally(() => {
+      if (employeeListInflight === request) employeeListInflight = null;
+    });
+  employeeListInflight = request;
+  return request;
 }

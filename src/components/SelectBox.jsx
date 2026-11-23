@@ -73,6 +73,9 @@ export default function SelectBox({
   );
   const selected = normalized.find((item) => item.value === strValue) || null;
   const selectedLabel = selected ? selected.label : '';
+  // "Loading…" replaces the list only while there is nothing to show yet. When names are
+  // already available (a refresh) they stay visible and clickable.
+  const showLoading = loading && normalized.length === 0;
 
   const visible = useMemo(() => {
     if (!typing || !query.trim()) return normalized;
@@ -132,7 +135,7 @@ export default function SelectBox({
 
   useLayoutEffect(() => {
     if (open) place();
-  }, [open, place, visible.length, loading]);
+  }, [open, place, visible.length, showLoading]);
 
   useEffect(() => {
     if (!open) return undefined;
@@ -238,7 +241,7 @@ export default function SelectBox({
         name={name}
         className={`sb-input ${open ? 'sb-input--open' : ''} ${className}`.trim()}
         value={shownText}
-        placeholder={loading ? 'Loading…' : placeholder}
+        placeholder={showLoading ? 'Loading…' : placeholder}
         required={required}
         disabled={disabled}
         autoComplete="off"
@@ -248,11 +251,12 @@ export default function SelectBox({
         aria-expanded={open}
         aria-controls={open ? `${key}-listbox` : undefined}
         aria-activedescendant={open && active >= 0 && visible[active] ? `${key}-option-${visible[active].value}` : undefined}
-        aria-busy={loading || undefined}
+        aria-busy={showLoading || undefined}
         data-picker="select"
         data-value={strValue}
         data-selected-label={selectedLabel}
         data-loading={loading ? 'true' : 'false'}
+        data-option-count={normalized.length}
         data-testid={`select-input-${key}`}
         onChange={handleText}
         onClick={handleClick}
@@ -271,13 +275,13 @@ export default function SelectBox({
           onClick={(event) => event.stopPropagation()}
         >
           <ul ref={listRef} id={`${key}-listbox`} className="sb-list" role="listbox" aria-label={rest['aria-label'] || name || id}>
-            {loading && (
+            {showLoading && (
               <li className="sb-note" role="presentation" data-testid={`select-loading-${key}`}>Loading…</li>
             )}
-            {!loading && visible.length === 0 && (
+            {!showLoading && visible.length === 0 && (
               <li className="sb-note" role="presentation" data-testid={`select-empty-${key}`}>{emptyText}</li>
             )}
-            {!loading && visible.map((item, index) => (
+            {!showLoading && visible.map((item, index) => (
               <li
                 key={item.value}
                 id={`${key}-option-${item.value}`}
