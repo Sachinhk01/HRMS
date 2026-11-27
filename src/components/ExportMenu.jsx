@@ -11,7 +11,7 @@ const easeOut = [0.16, 1, 0.3, 1];
  * actual download logic (which endpoint to hit, filters to apply, etc.),
  * this component only owns the open/close + busy-state UI.
  */
-export default function ExportMenu({ onExport, disabled, label = 'Export' }) {
+export default function ExportMenu({ onExport, disabled, label = 'Export', testId = 'export', loading = false }) {
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const wrapRef = useRef(null);
@@ -25,6 +25,13 @@ export default function ExportMenu({ onExport, disabled, label = 'Export' }) {
     }
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) return undefined;
+    const onKey = (event) => { if (event.key === 'Escape') setOpen(false); };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
   }, [open]);
 
   async function pick(format) {
@@ -42,6 +49,12 @@ export default function ExportMenu({ onExport, disabled, label = 'Export' }) {
       <button
         type="button"
         className="btn btn-soft btn-export"
+        id={`${testId}-button`}
+        data-testid={`${testId}-button`}
+        data-loading={loading ? 'true' : 'false'}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        aria-controls={open ? `${testId}-menu` : undefined}
         disabled={disabled || busy}
         onClick={() => setOpen((v) => !v)}
       >
@@ -51,16 +64,19 @@ export default function ExportMenu({ onExport, disabled, label = 'Export' }) {
         {open && (
           <motion.div
             className="export-menu"
+            id={`${testId}-menu`}
+            data-testid={`${testId}-menu`}
+            role="menu"
             initial={{ opacity: 0, y: -6, scale: 0.98 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -6, scale: 0.98 }}
             transition={{ duration: 0.14, ease: easeOut }}
           >
-            <button type="button" className="export-menu-item" onClick={() => pick('pdf')}>
+            <button type="button" role="menuitem" id={`${testId}-pdf`} data-testid={`${testId}-pdf`} className="export-menu-item" onClick={() => pick('pdf')}>
               <FileText size={14} />
               <span>Export as PDF</span>
             </button>
-            <button type="button" className="export-menu-item" onClick={() => pick('excel')}>
+            <button type="button" role="menuitem" id={`${testId}-excel`} data-testid={`${testId}-excel`} className="export-menu-item" onClick={() => pick('excel')}>
               <FileSpreadsheet size={14} />
               <span>Export as Excel</span>
             </button>

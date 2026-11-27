@@ -5,6 +5,7 @@ import {
 } from 'lucide-react';
 import DatePicker, { MonthPicker } from '../../components/DatePicker';
 import ExportMenu from '../../components/ExportMenu';
+import SelectBox from '../../components/SelectBox';
 import AttendanceMix from './AttendanceMix';
 import EmployeePicker from './EmployeePicker';
 import Pagination from '../../components/Pagination';
@@ -110,6 +111,7 @@ export default function ReportExplorer({ kind }) {
 
   const [departments, setDepartments] = useState([]);
   const [employees, setEmployees] = useState([]);
+  const [lookupsLoading, setLookupsLoading] = useState(true);
 
   const validation = validateReportFilters(filters);
 
@@ -120,6 +122,7 @@ export default function ReportExplorer({ kind }) {
       if (cancelled) return;
       setDepartments(d.status === 'fulfilled' ? d.value || [] : []);
       setEmployees(e.status === 'fulfilled' ? e.value || [] : []);
+      setLookupsLoading(false);
     });
     return () => { cancelled = true; };
   }, []);
@@ -187,6 +190,16 @@ export default function ReportExplorer({ kind }) {
     }
   }
 
+  // Options for the two filter dropdowns (real DOM rows, so tests can click them).
+  const departmentOptions = useMemo(
+    () => [{ value: '', label: 'All departments' }, ...departments.map((d) => ({ value: d.id, label: d.name }))],
+    [departments]
+  );
+  const statusOptions = useMemo(
+    () => [{ value: '', label: 'All statuses' }, ...cfg.statuses.map((s) => ({ value: s, label: statusLabel(s) }))],
+    [cfg]
+  );
+
   const rows = data?.content || [];
   const attendanceShare = kind === 'attendance'
     ? calculateAttendanceShare(data?.summary, missedCheckoutCount)
@@ -210,27 +223,43 @@ export default function ReportExplorer({ kind }) {
   return (
     <div className="rx-wrap">
       <section className="panel rx-panel">
-        <div className="rx-filter-grid">
-          <label className="rx-field">
+        <div className="rx-filter-grid" data-testid={`rx-${kind}-filters`}>
+          <label className="rx-field" htmlFor={`rx-${kind}-department`}>
             <span>Department</span>
-            <select className="compact-select" value={filters.departmentId} onChange={(e) => change({ departmentId: e.target.value })}>
-              <option value="">All departments</option>
-              {departments.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
-            </select>
+            <SelectBox
+              id={`rx-${kind}-department`}
+              name="departmentId"
+              className="compact-select"
+              aria-label="Department"
+              value={filters.departmentId}
+              onChange={(e) => change({ departmentId: e.target.value })}
+              options={departmentOptions}
+              placeholder="All departments"
+              emptyText="No departments found"
+              loading={lookupsLoading}
+            />
           </label>
 
-          <label className="rx-field">
+          <label className="rx-field" htmlFor={`rx-${kind}-status`}>
             <span>Status</span>
-            <select className="compact-select" value={filters.status} onChange={(e) => change({ status: e.target.value })}>
-              <option value="">All statuses</option>
-              {cfg.statuses.map((s) => <option key={s} value={s}>{statusLabel(s)}</option>)}
-            </select>
+            <SelectBox
+              id={`rx-${kind}-status`}
+              name="status"
+              className="compact-select"
+              aria-label="Status"
+              value={filters.status}
+              onChange={(e) => change({ status: e.target.value })}
+              options={statusOptions}
+              placeholder="All statuses"
+            />
           </label>
 
           <div className="rx-field rx-field-wide">
             <span>Employee</span>
             <EmployeePicker
+              id={`rx-${kind}-employee`}
               employees={employees}
+              loading={lookupsLoading}
               value={filters.employeeId}
               onChange={(id) => change({ employeeId: id })}
             />
@@ -259,9 +288,9 @@ export default function ReportExplorer({ kind }) {
 
           <div className="rx-actions">
             {isDirty && (
-              <button type="button" className="rx-reset" onClick={resetFilters}><RotateCcw size={14} />Reset</button>
+              <button type="button" className="rx-reset" id={`rx-${kind}-reset`} data-testid={`rx-${kind}-reset`} onClick={resetFilters}><RotateCcw size={14} />Reset</button>
             )}
-            <ExportMenu label="Export" disabled={Boolean(validation) || showLoading || !data?.totalElements} onExport={handleExport} />
+            <ExportMenu label="Export" testId={`rx-${kind}-export`} loading={showLoading} disabled={Boolean(validation) || showLoading || !data?.totalElements} onExport={handleExport} />
           </div>
         </div>
 
@@ -271,7 +300,7 @@ export default function ReportExplorer({ kind }) {
 
       {!validation && data?.summary && (
         <section className="panel rx-panel rx-stats-panel">
-          <div className="rx-stats" data-count={cards.length}>
+          <div className="rx-stats" data-count={cards.length} data-testid={`rx-${kind}-stats`}>
             {cards.map((card) => (
               <div key={card.label} className={`rx-stat tone-${card.tone}`} title={card.hint}>
                 <div className="kpi-icon"><card.icon size={17} /></div>
@@ -303,7 +332,13 @@ export default function ReportExplorer({ kind }) {
         )}
 
         <div className="rx-table-wrap">
-          <table className="rx-table">
+          <table
+            className="rx-table"
+            data-testid={`rx-${kind}-table`}
+            data-loading={showLoading ? 'true' : 'false'}
+            data-count={validation ? 0 : rows.length}
+            aria-busy={showLoading}
+          >
             <thead>
               <tr>
                 {cfg.columns.map((col) => (
@@ -318,7 +353,7 @@ export default function ReportExplorer({ kind }) {
                 </tr>
               ))}
               {!showLoading && !validation && rows.map((row) => (
-                <tr key={cfg.rowKey(row)}>
+                <tr key={cfg.rowKey(row)} data-testid={`rx-${kind}-row-${cfg.rowKey(row)}`}>
                   {cfg.columns.map((col) => <td key={col.key} className={col.align ? `rx-${col.align}` : ''}>{col.render(row)}</td>)}
                 </tr>
               ))}

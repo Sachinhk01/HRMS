@@ -59,6 +59,9 @@
 
 * { box-sizing: border-box; }
 html {
+  /* scrolled-to elements (scrollIntoView, anchors, tab focus) stop below the sticky top bar */
+  scroll-padding-top: 96px;
+  scroll-padding-bottom: 24px;
   scroll-behavior: smooth;
   zoom: var(--app-zoom);
 }
@@ -203,4 +206,10 @@ html.automation {
 }
 html.automation * {
   scroll-behavior: auto !important;
+}
+/* no entrance animations while a test is running: elements that are still sliding in make
+   clicks miss and position checks fail */
+html.automation .page-reveal > *,
+html.automation .page-reveal > *::before {
+  animation: none !important;
 }

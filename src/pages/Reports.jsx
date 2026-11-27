@@ -16,6 +16,7 @@ import * as XLSX from 'xlsx';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import ExportMenu from '../components/ExportMenu';
+import SelectBox from '../components/SelectBox';
 import { useToast } from '../context/ToastContext';
 import { getEmployees } from '../services/employeeService';
 import { getAttendanceReport } from '../services/attendanceService';
@@ -236,6 +237,11 @@ export default function Reports() {
     return Array.from(names).sort();
   }, [employees]);
 
+  const departmentFilterOptions = useMemo(
+    () => [{ value: '', label: 'All departments' }, ...departmentOptions.map((name) => ({ value: name, label: name }))],
+    [departmentOptions]
+  );
+
   const filteredEmployees = useMemo(() => {
     const term = search.trim().toLowerCase();
     return employees.filter((x) => {
@@ -411,7 +417,9 @@ export default function Reports() {
             <div className="rd-kpi-body">
               <span className="rd-kpi-label">{kpi.label}</span>
               {kpi.loading ? <span className="rd-skel rd-skel--value" /> : <strong className="rd-kpi-value">{kpi.value}</strong>}
-              {!kpi.loading && kpi.desc && <small className="rd-kpi-desc">{kpi.desc}</small>}
+              {kpi.desc && (
+                <small className="rd-kpi-desc" style={kpi.loading ? { visibility: 'hidden' } : undefined}>{kpi.desc}</small>
+              )}
             </div>
             {!kpi.loading && kpi.progress != null && (
               <div className="rd-kpi-meter" role="img" aria-label={`${Math.round(kpi.progress)} percent`}>
@@ -494,23 +502,27 @@ export default function Reports() {
         </section>
       </div>
 
-      {attendanceSummary?.totalRecords > 0 && (
-        <section className="rd-card">
+      {(loadingAttendance || attendanceSummary?.totalRecords > 0) && (
+        <section className="rd-card rd-card--attendance" data-testid="attendance-mix-card" data-loading={loadingAttendance ? 'true' : 'false'}>
           <div className="rd-card-head">
             <span className="rd-card-icon"><Clock3 size={17} /></span>
             <div>
               <h3>Attendance mix</h3>
-              <small>{attendanceSummary.totalRecords} person-days this month</small>
+              <small>{loadingAttendance ? 'Loading…' : `${attendanceSummary.totalRecords} person-days this month`}</small>
             </div>
           </div>
-          <AttendanceMix summary={attendanceSummary} />
+          {loadingAttendance || !attendanceSummary ? (
+            <div className="rd-skel rd-skel--row" />
+          ) : (
+            <AttendanceMix summary={attendanceSummary} />
+          )}
         </section>
       )}
 
-      <section className="panel">
+      <section className="panel" id="employee-directory" data-testid="employee-directory">
         <div className="panel-title">
           <div>
-            <span className="eyebrow">
+            <span className="eyebrow" data-testid="employee-directory-count">
               {employeesLoading ? 'Loading…' : `${filteredEmployees.length} of ${employees.length} employees`}
             </span>
             <h2>Employee directory</h2>
@@ -522,33 +534,46 @@ export default function Reports() {
           <div className="reports-search">
             <Search size={16} />
             <input maxLength={INPUT_LIMITS.SEARCH}
+              id="reports-search"
+              name="search"
+              data-testid="reports-search"
+              aria-label="Search employees"
               type="text"
               placeholder="Search by name, code, email, mobile or department…"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
           </div>
-          <select
+          <SelectBox
+            id="reports-department"
+            name="department"
             className="compact-select"
+            aria-label="Filter by department"
             value={department}
             onChange={(e) => setDepartment(e.target.value)}
-          >
-            <option value="">All departments</option>
-            {departmentOptions.map((name) => (
-              <option key={name} value={name}>{name}</option>
-            ))}
-          </select>
+            options={departmentFilterOptions}
+            placeholder="All departments"
+            loading={employeesLoading}
+          />
           <div className="reports-export">
             <ExportMenu
               label="Export"
-              disabled={!filteredEmployees.length}
+              testId="reports-export"
+              loading={employeesLoading}
+              disabled={employeesLoading || !filteredEmployees.length}
               onExport={(format) => (format === 'excel' ? downloadExcel(filteredEmployees) : downloadPdf(filteredEmployees))}
             />
           </div>
         </div>
 
         <div className="table-wrap">
-          <table className="reports-table reports-table--wide">
+          <table
+            className="reports-table reports-table--wide"
+            data-testid="employees-table"
+            data-loading={employeesLoading ? 'true' : 'false'}
+            data-count={filteredEmployees.length}
+            aria-busy={employeesLoading}
+          >
             <thead>
               <tr>
                 <th>Code</th><th>Employee</th><th>Gender</th><th>Date of Birth</th><th>Date of Joining</th>
@@ -566,7 +591,7 @@ export default function Reports() {
                 ))}
               {!employeesLoading &&
                 filteredEmployees.map((x) => (
-                  <tr key={x.id}>
+                  <tr key={x.id} data-testid={`employee-row-${x.id}`}>
                     <td className="cell-nowrap">{orDash(x.employeeCode)}</td>
                     <td>
                       <div className="emp-cell">

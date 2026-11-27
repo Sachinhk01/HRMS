@@ -135,20 +135,56 @@ function normalizeEmployeeOptions(payload) {
     .filter((employee) => employee.id != null && employee.id !== '');
 }
 
-async function fetchForm16EmployeeOptions() {
-  try {
-    // short timeout: if this endpoint hangs we move on to the fallback instead of waiting 15s
-    const { data } = await api.get('/employees/dropdown', { timeout: 10000 });
-    const options = normalizeEmployeeOptions(data);
-    if (options.length) return options;
-  } catch (error) {
-    // Fall through to the paginated employee endpoint below.
-  }
+const runEmployeeRequest = (url, config) =>
+  api.get(url, config).then(({ data }) => normalizeEmployeeOptions(data));
 
-  const { data } = await api.get('/employees', {
-    params: { page: 0, size: 500, search: '', sortBy: 'employeeCode', sortDirection: 'asc' },
+// Resolves with the first request that returns names. Rejects only when every request failed.
+function firstNonEmpty(promises) {
+  return new Promise((resolve, reject) => {
+    let remaining = promises.length;
+    let lastError = null;
+    const oneDone = () => {
+      remaining -= 1;
+      if (remaining > 0) return;
+      if (lastError) reject(lastError); else resolve([]);
+    };
+    promises.forEach((promise) => promise.then(
+      (list) => { if (list.length) resolve(list); else oneDone(); },
+      (error) => { lastError = error; oneDone(); },
+    ));
   });
-  return normalizeEmployeeOptions(data);
+}
+
+// Two sources are asked for the names:
+//   1. /employees/dropdown  - small and quick
+//   2. /employees           - the full list, started when (1) fails, comes back empty, or has
+//                             not answered within 4 seconds
+// Whichever returns names first wins, so one slow or failing endpoint no longer leaves the
+// page on "Loading..." until a long timeout runs out.
+function fetchForm16EmployeeOptions() {
+  const primary = runEmployeeRequest('/employees/dropdown', { timeout: 30000 });
+
+  const fallback = new Promise((resolve, reject) => {
+    let started = false;
+    const start = () => {
+      if (started) return;
+      started = true;
+      runEmployeeRequest('/employees', {
+        params: { page: 0, size: 500, search: '', sortBy: 'employeeCode', sortDirection: 'asc' },
+        timeout: 45000,
+      }).then(resolve, reject);
+    };
+    const timer = setTimeout(start, 4000);
+    primary.then(
+      (list) => {
+        clearTimeout(timer);
+        if (list.length) { started = true; resolve([]); } else start();
+      },
+      () => { clearTimeout(timer); start(); },
+    );
+  });
+
+  return firstNonEmpty([primary, fallback]);
 }
 
 // The list is kept for the session and shared between callers:

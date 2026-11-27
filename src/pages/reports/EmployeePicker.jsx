@@ -9,7 +9,7 @@ const initials = (name) =>
 const tone = (id) => Math.abs(Number(id) || 0) % 5;
 const labelOf = (employee) => (employee.employeeName || '').trim();
 
-export default function EmployeePicker({ employees = [], value = '', onChange, maxLength = 100 }) {
+export default function EmployeePicker({ id = 'employee-picker', employees = [], value = '', loading = false, onChange, maxLength = 100 }) {
   const [query, setQuery] = useState('');
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(0);
@@ -50,7 +50,14 @@ export default function EmployeePicker({ employees = [], value = '', onChange, m
 
   useEffect(() => {
     if (!open) return;
-    listRef.current?.querySelector('[data-active="true"]')?.scrollIntoView({ block: 'nearest' });
+    // Scroll only the list. scrollIntoView() would also move (and animate) the page behind it.
+    const list = listRef.current;
+    const row = list?.querySelector('[data-active="true"]');
+    if (!list || !row) return;
+    const top = row.offsetTop;
+    const bottom = top + row.offsetHeight;
+    if (top < list.scrollTop) list.scrollTop = top;
+    else if (bottom > list.scrollTop + list.clientHeight) list.scrollTop = bottom - list.clientHeight;
   }, [active, open]);
 
   function openList() {
@@ -112,6 +119,12 @@ export default function EmployeePicker({ employees = [], value = '', onChange, m
         <input
           ref={inputRef}
           type="text"
+          id={id}
+          name="employeeId"
+          data-testid={`select-input-${id}`}
+          data-value={String(value ?? '')}
+          data-loading={loading ? 'true' : 'false'}
+          data-option-count={employees.length}
           role="combobox"
           aria-label="Employee"
           aria-expanded={open}
@@ -120,7 +133,7 @@ export default function EmployeePicker({ employees = [], value = '', onChange, m
           aria-autocomplete="list"
           autoComplete="off"
           maxLength={maxLength}
-          placeholder={showingSelected ? '' : 'Search by name or code…'}
+          placeholder={showingSelected ? '' : (loading && !employees.length ? 'Loading…' : 'Search by name or code…')}
           value={showingSelected
             ? `${labelOf(selected)}${selected.employeeCode ? ` (${selected.employeeCode})` : ''}`
             : query}
@@ -145,7 +158,7 @@ export default function EmployeePicker({ employees = [], value = '', onChange, m
       </div>
 
       {open && (
-        <ul className="ep-list" id={listId} role="listbox" ref={listRef}>
+        <ul className="ep-list" id={listId} role="listbox" ref={listRef} data-testid={`select-popup-${id}`}>
           {options.map((option, index) => {
             const isAll = Boolean(option.all);
             const isSelected = isAll
@@ -158,6 +171,8 @@ export default function EmployeePicker({ employees = [], value = '', onChange, m
                 role="option"
                 aria-selected={Boolean(isSelected)}
                 data-active={index === active}
+                data-value={isAll ? '' : String(option.id)}
+                data-testid={`select-option-${id}-${isAll ? 'all' : option.id}`}
                 className={`ep-option${index === active ? ' is-active' : ''}${isSelected ? ' is-selected' : ''}`}
                 onMouseEnter={() => setActive(index)}
                 onMouseDown={(event) => event.preventDefault()}
@@ -183,7 +198,7 @@ export default function EmployeePicker({ employees = [], value = '', onChange, m
           })}
 
           {term && matches.length === 0 && (
-            <li className="ep-empty">No employee matches “{query.trim()}”</li>
+            <li className="ep-empty" data-testid={`select-empty-${id}`}>No employee matches “{query.trim()}”</li>
           )}
           {total > MAX_RESULTS && (
             <li className="ep-more">Showing {MAX_RESULTS} of {total} — type more to narrow down</li>

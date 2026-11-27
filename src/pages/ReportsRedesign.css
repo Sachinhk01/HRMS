@@ -242,3 +242,24 @@
   .rh-bar, .rh-ring, .rh-badge, .rd-kpi-meter span, .rd-dept-fill, .rd-skel { animation: none; }
   .reports-hero-illustration svg { transition: none; }
 }
+
+/* ---------- Scrolling and automation fixes ----------
+   1. Attendance.css has a global ".table-wrap { overflow: auto; max-height: 340px }". It leaked
+      into this page and turned the employee directory into a small scroll box inside the page,
+      so wheel / scroll commands scrolled the box instead of the page. Scope it back here.
+   2. Content that arrives after load (attendance card, KPI captions, chart cards) now reserves
+      its height, so nothing above the directory grows or shrinks while the page is scrolled.
+   3. Elements that are scrolled to are kept clear of the sticky top bar. */
+.reports-page { overflow-anchor: auto; }
+.reports-page .table-wrap {
+  max-height: none;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 0;
+}
+.reports-page .rd-card--attendance { min-height: 150px; }
+.reports-page .rd-charts-grid .rd-card { min-height: 300px; }
+.reports-page .rd-kpi-desc { display: block; min-height: 14px; }
+.reports-page #employee-directory,
+.reports-page .reports-toolbar { scroll-margin-top: 96px; }
+.reports-page .reports-toolbar { position: relative; z-index: 2; }
